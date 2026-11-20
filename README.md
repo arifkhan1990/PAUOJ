@@ -94,9 +94,9 @@ curl http://localhost:3000/health
 
 Open <http://localhost:3000>. The seed prints the admin username; the password is
 `SEED_ADMIN_PASSWORD` from `.env` (example: `ChangeMe123!`). Demo data adds four coders (`rakib`,
-`nusrat`, `tanvir`, `sadia` / `Demo@12345`), a teacher, a live contest and the assessment
-`/assessments/pau-coding-assessment-2026` (code `PAU-TEST-2026`). Mailpit at <http://localhost:8025>
-catches verification and reset email.
+`nusrat`, `tanvir`, `sadia` / `Demo@12345`), a teacher (`teacher` / `Demo@12345`), a live contest and
+the assessment `/assessments/pau-coding-assessment-2026` (code `PAU-TEST-2026`). Mailpit at
+<http://localhost:8025> catches verification and reset email.
 
 Set `SEED_DEMO_DATA=false` before a production seed. If 5432/6379 are taken, change `POSTGRES_PORT` /
 `REDIS_PORT` and matching `DATABASE_URL` / `REDIS_URL`.
@@ -113,12 +113,13 @@ pnpm worker:start
 ```
 
 `pnpm setup` is idempotent for development but re-applies seed data; never use it on production.
+
 ```bash
 pnpm db:generate     # generate a migration after schema changes
 pnpm db:migrate      # apply migrations
 pnpm db:seed         # seed admin/problems/contests/demo data
 pnpm db:studio       # Drizzle Studio
-pnpm judge:build       # rebuild the main language sandbox image
+pnpm judge:build     # rebuild the main language sandbox image
 pnpm judge:build:swift # rebuild the Swift sandbox image
 pnpm build:worker    # bundle dist/worker.js, dist/migrate.js, dist/seed.js
 pnpm verify          # hygiene, lint, typecheck, tests, build
