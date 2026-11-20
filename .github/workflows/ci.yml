@@ -49,4 +49,4 @@ jobs:
       - name: Verify judge toolchain
         run: |
           docker run --rm pauoj/judge:ci sh -c \
-            'g++ --version | head -n 1 && python3 --version && javac -version && node --version && test -x /harness.py'
+            'g++ --version | head -n 1 && python3 --version && javac -version && node --version && test -s /harness.py'
