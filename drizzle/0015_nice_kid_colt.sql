@@ -1,0 +1,1 @@
+ALTER TABLE "contests" ADD COLUMN "freeze_minutes" integer DEFAULT 0 NOT NULL;

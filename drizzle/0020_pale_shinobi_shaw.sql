@@ -1,0 +1,2 @@
+ALTER TABLE "notifications" ADD COLUMN "emailed_at" timestamp with time zone;--> statement-breakpoint
+UPDATE "notifications" SET "emailed_at" = now() WHERE "type" IN ('CONTRIBUTION', 'CONTEST_APPROVAL');

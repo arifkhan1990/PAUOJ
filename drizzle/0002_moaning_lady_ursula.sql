@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "assessments_access_code_unique" ON "assessments" USING btree ("access_code");

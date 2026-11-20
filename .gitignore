@@ -1,0 +1,92 @@
+# ===== AI tooling / working files (local only, never commit) =====
+/AGENTS.md
+/CLAUDE.md
+/GEMINI.md
+/.opencode/
+/.ai/
+/.claude/
+/.cursor/
+/.cursorrules
+/.windsurf/
+/.continue/
+/.aider*
+/opencode.json
+# Local references kept out of this repo (PAU-OJ-Design is its own repo)
+/PAU-OJ-Design/
+/rules-kit/
+# AI-generated scratch markdown in root
+/SUMMARY*.md
+/PLAN*.md
+/NOTES*.md
+/IMPLEMENTATION*.md
+/TODO*.md
+/REPORT*.md
+/ANALYSIS*.md
+
+# ===== Dependencies =====
+node_modules/
+vendor/
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# ===== Build output =====
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+.turbo/
+.cache/
+coverage/
+*.tsbuildinfo
+public/build/
+public/monaco/
+bootstrap/cache/*
+!bootstrap/cache/.gitkeep
+
+# ===== Env and secrets =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+
+# ===== Logs, temp, uploads, data =====
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+*.bak
+*.old
+*.orig
+*.swp
+uploads/
+storage/app/*
+storage/logs/
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+
+# ===== Test reports =====
+playwright-report/
+test-results/
+.nyc_output/
+
+# ===== IDE / OS =====
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db

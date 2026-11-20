@@ -1,0 +1,78 @@
+{
+  "name": "pauoj",
+  "version": "0.5.0",
+  "private": true,
+  "description": "PrimeAsia University Online Judge",
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/server/db/migrate.ts",
+    "db:seed": "tsx src/server/db/seed.ts",
+    "db:studio": "drizzle-kit studio",
+    "worker": "tsx watch src/worker/index.ts",
+    "worker:start": "tsx src/worker/index.ts",
+    "build:worker": "node scripts/build-worker.mjs",
+    "copy:monaco": "node scripts/copy-monaco.mjs",
+    "verify": "bash scripts/verify.sh",
+    "predev": "node scripts/copy-monaco.mjs",
+    "prebuild": "node scripts/copy-monaco.mjs",
+    "setup": "bash scripts/setup-dev.sh",
+    "judge:build": "docker build -t pauoj/judge:latest judge",
+    "judge:build:swift": "docker build -t pauoj/judge-swift:latest -f judge/Dockerfile.swift judge",
+    "docker:build": "docker compose --profile build build"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "4.7.0",
+    "@node-rs/argon2": "2.2.2",
+    "bullmq": "6.7.7",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "dotenv": "18.0.10",
+    "drizzle-orm": "0.45.4",
+    "ioredis": "6.0.0",
+    "lucide-react": "1.73.0",
+    "monaco-editor": "0.57.0",
+    "next": "16.4.6",
+    "next-themes": "0.4.6",
+    "nodemailer": "10.6.0",
+    "postgres": "4.1.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "recharts": "3.10.1",
+    "remark-gfm": "4.0.1",
+    "shiki": "4.6.0",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.5",
+    "@types/node": "26.6.6",
+    "@types/nodemailer": "8.0.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "drizzle-kit": "0.31.11",
+    "esbuild": "0.28.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.1.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "dompurify": "3.4.18"
+    }
+  }
+}

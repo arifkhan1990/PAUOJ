@@ -1,0 +1,2 @@
+CREATE TYPE "public"."review_email_frequency" AS ENUM('INSTANT', 'HOURLY', 'DAILY');--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "review_email_frequency" "review_email_frequency" DEFAULT 'INSTANT' NOT NULL;

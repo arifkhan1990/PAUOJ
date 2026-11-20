@@ -1,0 +1,1 @@
+CREATE INDEX "notifications_review_digest_idx" ON "notifications" USING btree ("created_at") WHERE "notifications"."emailed_at" is null and "notifications"."type" in ('CONTRIBUTION', 'CONTEST_APPROVAL');

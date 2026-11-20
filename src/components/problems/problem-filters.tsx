@@ -1,0 +1,187 @@
+import Link from "next/link";
+import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { buttonVariants } from "@/components/ui/button";
+import { DIFFICULTIES, difficultyMeta } from "@/lib/difficulty";
+import { buildQueryString, type SearchParams } from "@/lib/pagination";
+import type { ProblemTag } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+function filterHref(
+  searchParams: SearchParams,
+  updates: Record<string, string | number | undefined | null>,
+): string {
+  const query = buildQueryString(searchParams, { ...updates, page: 1 });
+  return query ? `/problems?${query}` : "/problems";
+}
+
+export function ProblemFilters({
+  searchParams,
+  q,
+  difficulty,
+  tag,
+  tags,
+  category,
+  subcategory,
+  company,
+  facets,
+}: {
+  searchParams: SearchParams;
+  q?: string;
+  difficulty?: string;
+  tag?: string;
+  tags: ProblemTag[];
+  category?: string;
+  subcategory?: string;
+  company?: string;
+  facets: { categories: string[]; subcategories: string[]; companies: string[] };
+}) {
+  const hasFilters = Boolean(
+    q || difficulty || tag || category || subcategory || company,
+  );
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <form
+          action="/problems"
+          method="get"
+          className="relative w-full max-w-md"
+          role="search"
+        >
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            name="q"
+            defaultValue={q}
+            placeholder="Search problems by title or slug…"
+            className="pl-9 pr-20"
+            aria-label="Search problems"
+          />
+          {difficulty ? (
+            <input type="hidden" name="difficulty" value={difficulty} />
+          ) : null}
+          {tag ? <input type="hidden" name="tag" value={tag} /> : null}
+          <button
+            type="submit"
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              "absolute right-1 top-1/2 -translate-y-1/2",
+            )}
+          >
+            Search
+          </button>
+        </form>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            <SlidersHorizontal className="size-3.5" /> Difficulty
+          </span>
+          <Link
+            href={filterHref(searchParams, { difficulty: undefined })}
+            className={cn(
+              buttonVariants({
+                variant: !difficulty ? "default" : "outline",
+                size: "sm",
+              }),
+            )}
+          >
+            All
+          </Link>
+          {DIFFICULTIES.map((value) => (
+            <Link
+              key={value}
+              href={filterHref(searchParams, { difficulty: value })}
+              className={cn(
+                buttonVariants({
+                  variant: difficulty === value ? "default" : "outline",
+                  size: "sm",
+                }),
+              )}
+            >
+              {difficultyMeta(value).label}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <form
+        action="/problems"
+        method="get"
+        className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-card p-3"
+      >
+        {q ? <input type="hidden" name="q" value={q} /> : null}
+        {difficulty ? (
+          <input type="hidden" name="difficulty" value={difficulty} />
+        ) : null}
+        {tag ? <input type="hidden" name="tag" value={tag} /> : null}
+        <div className="min-w-40 flex-1">
+          <label htmlFor="category" className="mb-1 block text-[11px] font-medium text-muted-foreground">
+            Category
+          </label>
+          <Select id="category" name="category" defaultValue={category ?? ""} className="h-8 text-xs">
+            <option value="">All categories</option>
+            {facets.categories.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="min-w-40 flex-1">
+          <label htmlFor="subcategory" className="mb-1 block text-[11px] font-medium text-muted-foreground">
+            Subcategory
+          </label>
+          <Select id="subcategory" name="subcategory" defaultValue={subcategory ?? ""} className="h-8 text-xs">
+            <option value="">All subcategories</option>
+            {facets.subcategories.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="min-w-40 flex-1">
+          <label htmlFor="company" className="mb-1 block text-[11px] font-medium text-muted-foreground">
+            Company
+          </label>
+          <Select id="company" name="company" defaultValue={company ?? ""} className="h-8 text-xs">
+            <option value="">All companies</option>
+            {facets.companies.map((value) => (
+              <option key={value} value={value}>{value}</option>
+            ))}
+          </Select>
+        </div>
+        <button type="submit" className={cn(buttonVariants({ size: "sm" }), "h-8")}>
+          Apply
+        </button>
+      </form>
+
+      {tags.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-1 text-xs font-medium text-muted-foreground">
+            Tags
+          </span>
+          {tags.map((item) => (
+            <Link
+              key={item.slug}
+              href={filterHref(searchParams, {
+                tag: tag === item.slug ? undefined : item.slug,
+              })}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                tag === item.slug
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-primary",
+              )}
+            >
+              {item.name}
+            </Link>
+          ))}
+          {hasFilters ? (
+            <Link
+              href="/problems"
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-muted-foreground hover:text-destructive"
+            >
+              <X className="size-3" /> Clear
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
