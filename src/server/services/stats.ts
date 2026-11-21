@@ -1,8 +1,9 @@
-import { count, eq, gte, sql } from "drizzle-orm";
+import { and, count, eq, gte, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { problems, submissions, users } from "@/server/db/schema";
 import type { HeatmapDay, SiteStats } from "@/lib/types";
 import { buildHeatmap } from "./activity";
+import { countedSubmission } from "./submission-filters";
 
 export async function getSiteStats(): Promise<SiteStats> {
   const db = getDb();
@@ -12,11 +13,11 @@ export async function getSiteStats(): Promise<SiteStats> {
       .from(problems)
       .where(eq(problems.isPublic, true)),
     db.select({ value: count() }).from(users),
-    db.select({ value: count() }).from(submissions),
+    db.select({ value: count() }).from(submissions).where(countedSubmission()),
     db
       .select({ value: count() })
       .from(submissions)
-      .where(eq(submissions.status, "ACCEPTED")),
+      .where(and(eq(submissions.status, "ACCEPTED"), countedSubmission())),
   ]);
 
   return {
@@ -38,7 +39,7 @@ export async function getSubmissionActivity(days = 14): Promise<HeatmapDay[]> {
       accepted: sql<number>`(count(*) filter (where ${submissions.status} = 'ACCEPTED'))::int`,
     })
     .from(submissions)
-    .where(gte(submissions.createdAt, start))
+    .where(and(gte(submissions.createdAt, start), countedSubmission()))
     .groupBy(sql`1`)
     .orderBy(sql`1`);
   return buildHeatmap(rows, days);

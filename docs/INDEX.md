@@ -30,9 +30,9 @@ owns what, who reads it, and where a change belongs.
 
 | File | What it covers | Audience | Update when |
 | --- | --- | --- | --- |
-| [README.md](../README.md) | Product pitch, features, stack, quick start, local dev, judge summary, languages, env vars, API overview, structure, testing, limitations | Everyone | A user-visible feature, command, env var or limitation changes |
-| [architecture.md](architecture.md) | Runtime components, submission flow, DB model, auth, contests, dashboards, profile, judge sandbox, recovery | Engineers | Behavior, data model or design decisions change |
-| [api.md](api.md) | Full `/api/v1` reference: auth, problems, submissions, runs, contests, assessments, ranking, admin, notifications, health | API consumers, frontend/backend | Any endpoint, payload, auth rule or error code changes |
+| [README.md](../README.md) | Product pitch, features (assessment join modes, invites, results CSV), stack, quick start, local dev, judge summary, languages, env vars, API overview, structure, testing, limitations | Everyone | A user-visible feature, command, env var or limitation changes |
+| [architecture.md](architecture.md) | Runtime components, submission flow, DB model, auth, contests, assessment invites and join modes, dashboards, profile, judge sandbox, recovery | Engineers | Behavior, data model or design decisions change |
+| [api.md](api.md) | Full `/api/v1` reference: auth, problems, submissions, runs, contests, assessments (join, invite claim, roster import, results CSV), ranking, admin, notifications, health | API consumers, frontend/backend | Any endpoint, payload, auth rule or error code changes |
 | [deployment.md](deployment.md) | Target topology, server setup, reverse proxy/TLS, backups, monitoring, security checklist, updates, troubleshooting | Operators | Infrastructure, ports, backup or recovery steps change |
 | [deploy/README.md](../deploy/README.md) | Production runbook: server requirements, first deploy, backups, monitoring, updates/rollback, CI/CD, security checklist | Operators | Deploy scripts, Compose prod files or CI/CD change |
 | [CHANGELOG.md](../CHANGELOG.md) | Release history (Keep a Changelog, SemVer); also rendered at `/changelog` | Everyone | Every release, in the same change that ships it |
@@ -47,6 +47,8 @@ owns what, who reads it, and where a change belongs.
 | How does login, email verification or a role check work? | [architecture.md](architecture.md#authentication-and-authorization) |
 | How are ICPC standings and ratings calculated? | [architecture.md](architecture.md#icpc-scoring) |
 | What are the contest and assessment access rules? | [architecture.md](architecture.md#contest-access-rules) |
+| How do assessment invite links, join modes and claim assurance work? | [architecture.md](architecture.md#assessment-invites-and-join-modes) |
+| What does `POST /assessments/:slug/join` accept and which errors can it return? | [api.md](api.md#coding-assessments) |
 | Which env var do I set for SMTP, judge or ports? | [README.md](../README.md#environment-variables) |
 | What does `POST /submissions` accept? | [api.md](api.md#post-submissions) |
 | Where are the production scripts? | [deploy/README.md](../deploy/README.md) |

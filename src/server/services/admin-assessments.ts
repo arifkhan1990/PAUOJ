@@ -104,6 +104,7 @@ export async function getAdminAssessmentDetail(
     startAt: assessment.startAt.toISOString(),
     endAt: assessment.endAt.toISOString(),
     durationMinutes: assessment.durationMinutes,
+    joinMode: assessment.joinMode,
     isPublished: assessment.isPublished,
     problemIds: problemRows.map((row) => row.problemId),
   };
@@ -172,6 +173,7 @@ export async function createAssessment(
         endAt: new Date(input.endAt),
         durationMinutes:
           input.durationMinutes > 0 ? input.durationMinutes : null,
+        joinMode: input.joinMode ?? "OPEN_CODE",
         isPublished: input.isPublished,
         createdBy: adminId,
       })
@@ -233,6 +235,9 @@ export async function updateAssessment(
         endAt: new Date(input.endAt),
         durationMinutes:
           input.durationMinutes > 0 ? input.durationMinutes : null,
+        // Only write the mode when supplied: an update without the field must
+        // never reset an INVITE assessment back to OPEN_CODE.
+        ...(input.joinMode ? { joinMode: input.joinMode } : {}),
         isPublished: input.isPublished,
         updatedAt: new Date(),
       })

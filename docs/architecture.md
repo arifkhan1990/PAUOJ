@@ -47,6 +47,7 @@ contests 1─* contest_rating_changes *─1 users
 contests 1─* virtual_contests *─1 users
 assessments 1─* assessment_problems *─1 problems
 assessments 1─* assessment_participants *─1 users
+assessments 1─* assessment_invites (optional invite_id on the participant)
 contests 1─* submissions (optional contest_id)
 assessments 1─* submissions (optional assessment_id)
 submissions 1─* submission_results *─0..1 test_cases
@@ -75,9 +76,10 @@ rejudge.
 
 The problem page aggregates verdict and language counts directly from
 `submissions` and computes the rankboard from each solver's first accepted
-submission. Assessment submissions are excluded from the rankboard so private
-test activity never appears there, and the whole insights block is hidden while
-a contest or assessment context is active.
+submission. Assessment submissions are excluded from both the counts and the
+rankboard, and the rankboard also excludes virtual contests, so private test
+activity never appears there; the whole insights block is hidden while a
+contest or assessment context is active.
 
 ## Problem discussions
 
@@ -268,9 +270,10 @@ penalty.
 ## Coding assessment rules
 
 - An assessment is private until an admin publishes it.
-- A candidate joins with the assessment access code. The participant row stores
-  their personal `started_at` and `expires_at` (session length or assessment end,
-  whichever is sooner).
+- A candidate joins either with the shared access code (`OPEN_CODE` mode) or through a personal
+  invite link (`INVITE` mode, which refuses a bare code). The participant row stores their
+  personal `started_at` and `expires_at` (session length or assessment end, whichever is
+  sooner).
 - Assessment problems are hidden from public lists and return `ASSESSMENT_LOCKED`
   unless the caller is an active participant or an admin.
 - Submissions from an assessment are tagged with `assessment_id`; source code is
@@ -278,6 +281,82 @@ penalty.
 - Candidates can finish early. Submissions stop at `finished_at` or `expires_at`.
 - Admin results aggregate first-accepted points, solved count, attempts and
   participant status.
+
+## Assessment invites and join modes
+
+Candidate-level delivery on top of the shared code (unreleased, 0.6.0 — see `CHANGELOG.md`).
+Automated invite email send/resend/revoke is not part of this work; owners copy links by hand.
+
+**Data model.**
+
+- `assessments.join_mode` — `OPEN_CODE` (default) or `INVITE`. `INVITE` refuses a bare access
+  code with `INVITE_ONLY`.
+- `assessment_invites` — one row per roster entry: required opaque `candidate_ref` (student,
+  roll or applicant ID; case- and space-insensitive uniqueness per assessment), optional `email`
+  (a delivery channel, never the identity key), optional `candidate_name` and free-text
+  `group_label`, `token_hash`, `status` (`UNSENT | SENT | OPENED | CLAIMED | REVOKED | EXPIRED`),
+  send-window and failed-claim counters, and `claimed_by_user_id`, `claimed_at`,
+  `claimed_assurance`. One email may appear only once per assessment.
+- `assessment_participants` gains `invite_id` (unique when set) and an `assurance` snapshot.
+  Presence of `invite_id` is the identity source; existing rows are untouched and no backfill
+  runs.
+
+**Tokens.** 32 CSPRNG bytes in base64url; only the SHA-256 hash is stored, and the raw token
+leaves the server exactly once — in the rotate response that the roster panel copies into a URL.
+The invite page and the resolve API send `Referrer-Policy: no-referrer`, `Cache-Control:
+no-store` and `X-Robots-Tag: noindex, nofollow` (a `next.config.ts` header rule plus route
+headers) so the token cannot leak through a `Referer` header, a cache or a crawler.
+
+**Claim matrix.** `POST /assessments/:slug/join` with `{ token, candidateRef? }`; `GET` on the
+invite route is read-only and never starts a timer or creates a participant.
+
+| Invite email | Signed-in account | Recorded assurance |
+| --- | --- | --- |
+| set | matches, email verified | `VERIFIED_EMAIL` |
+| set | matches, unverified | `EMAIL_MATCH` |
+| set | missing or different email | refused, `INVITE_EMAIL_MISMATCH` (403) |
+| none | submitted `candidateRef` matches | `REF_MATCH` |
+| none | ref absent or different | refused, `INVITE_REF_MISMATCH` (403) |
+
+`TOKEN_ONLY` deliberately does not exist: holding a forwarded link is never enough to bind an
+attempt. A claim refused by the matrix (wrong account or wrong reference) increments
+`failed_claim_count`; five failures are recorded per 15 minutes and the next attempt returns
+`INVITE_RATE_LIMITED` (429), while state refusals (already claimed, revoked, expired) do not
+consume a slot. An invite claimed by another account is 409, revoked/expired invites are 410,
+and an account already bound to a different invite is refused `PARTICIPANT_ALREADY_BOUND`. A
+candidate who joined earlier with the code is bound to the invite on a successful claim, keeping
+their original timer — never a fresh one, and never a merge of two accounts.
+
+**Roster import.** `POST /admin/assessments/:id/invites` takes pasted CSV text parsed by
+`fromCsv` (RFC-4180: BOM, quoted cells, embedded newlines, CRLF/LF). Caps are 64 KB and 500 data
+rows, checked before any write. Header detection maps `candidate_ref` (required), `email`,
+`candidate_name` and `group_label` (all optional) with manual column indexes as an override; a
+row without an email is valid and delivered by link only. Every row returns
+`created | updated | unchanged | duplicate | invalid` with a reason and a fix, so a bad row never
+aborts its neighbours. Owner (`created_by`) and admins only; audit `assessment.invites.import`.
+
+**Results export.** `GET /admin/assessments/:id/results.csv` writes one row per roster entry —
+including `NOT_STARTED` candidates, which is the point of the file — plus participants with no
+surviving invite (open-code joins). Columns: `candidate_ref`, `candidate_name`, `group_label`,
+`email`, `status`, `assurance`, `failed_claims`, `started_at`, `finished_at`,
+`last_submission_at`, `solved`, `points`, `submissions`. Rows sort by group label (nulls first),
+then roster rows before participant-only rows, points descending, then `candidate_ref`.
+Owner/admin only, audit `assessment.export`, `Cache-Control: no-store`, cells formula-escaped by
+`toCsv`.
+
+**E6 attribution fixes.** Public aggregates now exclude assessment submissions through the shared
+`countedSubmission()` helper (`submissions.assessment_id IS NULL`): the `/rank` totals and its
+per-user submission aggregate, the problem verdict/language statistics, site stats and the
+14-day activity chart, and the daily challenge. The rankboard and problem insights already
+excluded virtual contests, and `/rank` excludes `virtual_contest_id` as well. The denormalized
+`problems.accepted_count` / `submission_count` counters are recomputed in the judge with both
+filters. `toCsv` prefixes a `'` to string cells that start with `=`, `+`, `-`, `@`, tab or CR,
+which also hardens the contribution export. Rank points are derived on read, so excluding
+assessment acceptances lowers some public totals immediately and needs no backfill.
+
+**Deferred.** Automated invite email send/resend/revoke (E3), exclusion of assessment solves from
+profile aggregates (profile points, solved and activity still count them — tracked for v0.6.1),
+and per-problem solved/attempt export columns.
 
 ## ICPC scoring
 
@@ -294,7 +373,9 @@ penalty.
 
 Overall ranking sums the point value of distinct accepted problems per user.
 Each problem counts once, regardless of how many accepted submissions exist.
-Contest submissions count toward overall ranking as well.
+Contest submissions count toward overall ranking as well; assessment and
+virtual-contest submissions never do (see
+[Assessment invites and join modes](#assessment-invites-and-join-modes)).
 
 ## Judge sandbox
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildProblemStatistics } from "./problem-stats";
+import { PgDialect } from "drizzle-orm/pg-core";
+import {
+  buildProblemStatistics,
+  problemStatsConditions,
+} from "./problem-stats";
+
+const dialect = new PgDialect();
 
 describe("buildProblemStatistics", () => {
   it("totals verdicts, computes success rate and keeps chart order", () => {
@@ -41,5 +47,14 @@ describe("buildProblemStatistics", () => {
       byVerdict: [],
       byLanguage: [],
     });
+  });
+});
+
+describe("problemStatsConditions", () => {
+  it("excludes assessment submissions from public problem statistics", () => {
+    const rendered = dialect.sqlToQuery(problemStatsConditions("p-1")).sql;
+    expect(rendered).toContain('"submissions"."assessment_id" is null');
+    expect(rendered).toContain('"submissions"."virtual_contest_id" is null');
+    expect(rendered).toContain('"submissions"."problem_id" = $1');
   });
 });

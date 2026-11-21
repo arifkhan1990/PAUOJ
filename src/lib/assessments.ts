@@ -25,6 +25,19 @@ export function participantStatus(
   return "ACTIVE";
 }
 
+export function participantExpiresAt(
+  startedAt: Date,
+  durationMinutes: number | null | undefined,
+  endAt: string | Date,
+): Date {
+  const end = typeof endAt === "string" ? new Date(endAt) : endAt;
+  const durationMs =
+    durationMinutes && durationMinutes > 0
+      ? durationMinutes * 60_000
+      : Number.POSITIVE_INFINITY;
+  return new Date(Math.min(startedAt.getTime() + durationMs, end.getTime()));
+}
+
 export function participantRemainingMs(
   assessmentEndAt: string | Date,
   participant: { expiresAt: string | Date; finishedAt: string | Date | null },

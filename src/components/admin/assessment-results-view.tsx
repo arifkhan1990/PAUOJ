@@ -6,15 +6,18 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { AssessmentJoinMode } from "@/lib/assessment-invites";
 import type { AssessmentResults } from "@/lib/types";
 import { formatDateTime } from "@/lib/utils";
 
 export function AssessmentResultsView({
   results,
   basePath,
+  joinMode,
 }: {
   results: AssessmentResults;
   basePath: string;
+  joinMode: AssessmentJoinMode;
 }) {
   return (
     <div className="space-y-6">
@@ -40,29 +43,59 @@ export function AssessmentResultsView({
         }
       />
 
-      <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Access code
-          </p>
-          <p className="mt-0.5 font-mono text-xl font-semibold tracking-[0.16em]">
-            {results.assessment.accessCode}
-          </p>
-        </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <p>
-            {formatDateTime(results.assessment.startAt)} —{" "}
-            {formatDateTime(results.assessment.endAt)}
-          </p>
-          <p className="mt-1">{results.rows.length} joined</p>
-        </div>
-        <CopyButton value={results.assessment.accessCode} label="Copy code" />
-      </Card>
+      {joinMode === "INVITE" ? (
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Delivery
+            </p>
+            <p className="mt-0.5 text-base font-semibold">Invite-only</p>
+            <p className="mt-1 max-w-md text-xs leading-relaxed text-muted-foreground">
+              Candidates enter through personal links; the shared code is
+              disabled.
+            </p>
+          </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <p>
+              {formatDateTime(results.assessment.startAt)} —{" "}
+              {formatDateTime(results.assessment.endAt)}
+            </p>
+            <p className="mt-1">{results.rows.length} joined</p>
+          </div>
+        </Card>
+      ) : (
+        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Access code
+            </p>
+            <p className="mt-0.5 font-mono text-xl font-semibold tracking-[0.16em]">
+              {results.assessment.accessCode}
+            </p>
+          </div>
+          <div className="text-right text-xs text-muted-foreground">
+            <p>
+              {formatDateTime(results.assessment.startAt)} —{" "}
+              {formatDateTime(results.assessment.endAt)}
+            </p>
+            <p className="mt-1">{results.rows.length} joined</p>
+          </div>
+          <CopyButton value={results.assessment.accessCode} label="Copy code" />
+        </Card>
+      )}
 
       {results.rows.length === 0 ? (
         <EmptyState
-          title="No candidates have joined"
-          description="Share the assessment link and access code. Candidates appear here after joining."
+          title={
+            joinMode === "INVITE"
+              ? "No candidates have claimed an invite"
+              : "No candidates have joined"
+          }
+          description={
+            joinMode === "INVITE"
+              ? "Invite candidates from the roster below and send each their personal link."
+              : "Share the assessment link and access code. Candidates appear here after joining."
+          }
           icon={ClipboardCheck}
         />
       ) : (

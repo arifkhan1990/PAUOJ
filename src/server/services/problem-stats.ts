@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, count, eq, isNull, lt, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { getDb } from "@/server/db";
 import { submissions, users } from "@/server/db/schema";
@@ -9,6 +9,7 @@ import type {
   ProblemVerdictCount,
 } from "@/lib/types";
 import type { Verdict } from "@/lib/verdicts";
+import { countedSubmission } from "./submission-filters";
 
 const VERDICT_ORDER: Verdict[] = [
   "ACCEPTED",
@@ -24,6 +25,18 @@ const VERDICT_ORDER: Verdict[] = [
 ];
 
 type GroupRow = { value: number | string };
+
+/**
+ * WHERE shared by the verdict and language aggregates: public practice
+ * submissions only — no virtual contests, no assessments.
+ */
+export function problemStatsConditions(problemId: string): SQL {
+  return and(
+    eq(submissions.problemId, problemId),
+    isNull(submissions.virtualContestId),
+    countedSubmission(),
+  )!;
+}
 
 export function buildProblemStatistics(
   verdictRows: ({ status: Verdict } & GroupRow)[],
@@ -67,22 +80,12 @@ export async function getProblemStatistics(
     db
       .select({ status: submissions.status, value: count() })
       .from(submissions)
-      .where(
-        and(
-          eq(submissions.problemId, problemId),
-          isNull(submissions.virtualContestId),
-        ),
-      )
+      .where(problemStatsConditions(problemId))
       .groupBy(submissions.status),
     db
       .select({ language: submissions.language, value: count() })
       .from(submissions)
-      .where(
-        and(
-          eq(submissions.problemId, problemId),
-          isNull(submissions.virtualContestId),
-        ),
-      )
+      .where(problemStatsConditions(problemId))
       .groupBy(submissions.language),
   ]);
 

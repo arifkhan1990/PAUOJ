@@ -397,15 +397,72 @@ exposed on profile pages.
 
 ## Coding assessments
 
+Assessments have a join mode set in the admin editor: `OPEN_CODE` (default — one shared access
+code) or `INVITE` (personal links only; a bare code is refused with `INVITE_ONLY`).
+
 ### POST `/assessments/:slug/join`
+
+Send exactly one of an access code or an invite token.
 
 ```json
 { "code": "PAU-TEST-2026" }
 ```
 
-Starts (or resumes) the authenticated candidate's session and returns
-`{ startedAt, expiresAt }`. Requires a published, running assessment and a valid
-code. Rate limited per user and assessment.
+```json
+{ "token": "…", "candidateRef": "2210145" }
+```
+
+Authenticated, same-origin, rate limited to 10 attempts per 15 minutes per user and assessment.
+Both paths start (or resume) the candidate session and return `{ startedAt, expiresAt }`; a token
+claim also returns `assurance` and `resumed`.
+
+- `code` follows the `OPEN_CODE` path: `INVALID_ACCESS_CODE` (403) for a wrong code, `INVITE_ONLY`
+  (403) when the assessment is invite-mode.
+- `token` claims the personal link for the signed-in account. `candidateRef` is only read by
+  invites that have no email, and it must match that invite's reference (case- and
+  space-insensitive).
+
+The token path reports phase and session problems with the specific codes below; the shared-code
+path answers the same conditions with `NOT_FOUND` (404) and `CONFLICT` (409).
+
+Claim outcome — the `assurance` recorded on the invite and participant:
+
+| Invite email | Signed-in account | Result |
+| --- | --- | --- |
+| set | matches, email verified | `VERIFIED_EMAIL` |
+| set | matches, unverified email | `EMAIL_MATCH` |
+| set | missing or different email | `INVITE_EMAIL_MISMATCH` (403) |
+| none | `candidateRef` matches | `REF_MATCH` |
+| none | ref absent or different | `INVITE_REF_MISMATCH` (403) |
+
+Error codes:
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `INVITE_ONLY` | 403 | Access code sent to an invite-mode assessment |
+| `INVALID_ACCESS_CODE` | 403 | Wrong access code |
+| `INVITE_NOT_FOUND` | 404 | Unknown token, wrong slug or unpublished assessment |
+| `INVITE_EMAIL_MISMATCH` | 403 | Email invite opened by another account |
+| `INVITE_REF_MISMATCH` | 403 | Candidate reference missing or wrong |
+| `INVITE_CLAIMED` | 409 | Already claimed by another account |
+| `INVITE_REVOKED` | 410 | Invite revoked; ask the organiser for a new link |
+| `INVITE_EXPIRED` | 410 | Invite expired (assessment end) |
+| `INVITE_RATE_LIMITED` | 429 | Sixth failed claim within 15 minutes |
+| `INVITE_CLAIM_FAILED` | 409 | Lost a claim race; retry |
+| `ASSESSMENT_NOT_STARTED` | 409 | The window has not opened |
+| `ASSESSMENT_ENDED` | 410 | The window has closed |
+| `ASSESSMENT_ALREADY_FINISHED` | 409 | This account already finished |
+| `ASSESSMENT_SESSION_EXPIRED` | 410 | This account's session expired |
+| `PARTICIPANT_ALREADY_BOUND` | 409 | This account is linked to a different candidate |
+| `PARTICIPANT_START_FAILED` | 409 | Could not create the session; retry |
+| `RATE_LIMITED` | 429 | More than 10 join attempts in 15 minutes |
+
+A claim refused by the matrix (wrong account or wrong reference) increments the invite's
+failed-claim counter; five failures are recorded per 15-minute window and the next attempt
+returns `INVITE_RATE_LIMITED`. State refusals — already claimed, revoked, expired — do not
+consume a slot. A participant who joined earlier with the code is bound to the invite on a
+successful claim and keeps their original timer; a session that already finished or expired is
+refused before any claim is consumed.
 
 ### POST `/assessments/:slug/finish`
 
@@ -414,6 +471,103 @@ Ends the candidate session early. No further submissions are accepted.
 Assessment problem links return `ASSESSMENT_LOCKED` when the caller has not
 joined or the session has expired. Private assessment problems return `404` to
 users without access.
+
+### GET `/assessments/:slug/invites/:token`
+
+Read-only resolve used by the invite page. It never creates a participant, never starts a timer
+and never moves the invite status, so mail scanners, prefetchers and chat unfurlers cannot consume
+an attempt. It returns the assessment window and limited invite metadata — never the invited email
+and never the full candidate reference:
+
+```json
+{
+  "data": {
+    "assessment": {
+      "slug": "pau-coding-assessment-2026",
+      "title": "PAU Coding Assessment",
+      "startAt": "2026-11-21T09:00:00.000Z",
+      "endAt": "2026-11-21T12:00:00.000Z",
+      "durationMinutes": 60,
+      "phase": "RUNNING"
+    },
+    "invite": {
+      "status": "SENT",
+      "candidateName": "Md. Rakib Hasan",
+      "requiresRef": false,
+      "refHint": "145",
+      "hasEmail": true
+    }
+  }
+}
+```
+
+`status` is `UNSENT`, `SENT`, `OPENED`, `CLAIMED`, `REVOKED` or `EXPIRED` (an invite past the
+assessment end reads `EXPIRED`); `refHint` is only the last three characters of a reference longer
+than eight characters, and `requiresRef` is true only for invites without an email. Unknown tokens
+return `INVITE_NOT_FOUND` (404). Responses send `Referrer-Policy: no-referrer`,
+`Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow`.
+
+### GET `/admin/assessments/:id/invites`
+
+Staff session required; teachers are scoped to assessments they created, admins to any (other
+records return `404`). Returns `{ data: { invites: [...] } }`, ordered by group label (nulls
+first) then `candidate_ref`. Each item has `candidateRef`, `candidateName`, `groupLabel`, `email`,
+effective `status`, send counters, `failedClaimCount`, `claimedAt` and `claimedAssurance`. Tokens
+are never listed.
+
+### POST `/admin/assessments/:id/invites`
+
+Same staff scoping. Imports a pasted roster:
+
+```json
+{
+  "csv": "candidate_ref,email,candidate_name,group_label\n2210145,rakib@example.edu,Md. Rakib Hasan,CSE-3B",
+  "mapping": { "candidate_ref": 0, "email": 1 },
+  "groupLabel": "CSE-3B"
+}
+```
+
+`csv` is RFC-4180 CSV text (UTF-8 BOM, quoted fields, embedded newlines and CRLF accepted).
+`mapping` holds optional 0-based column indexes; header detection runs first and manual values
+override it. `groupLabel` is a fallback for rows with a blank group. `candidate_ref` is required;
+`email`, `candidate_name` and `group_label` are optional — a row without an email imports as
+link-only and is never an error.
+
+Limits: 64 KB of CSV and 500 data rows (`ROSTER_TOO_LARGE` 413; `VALIDATION_ERROR` 422 for the
+row cap, an empty paste or a paste with no resolvable `candidate_ref` column), checked before any
+database write. A duplicate email inside the same assessment fails that row with
+`INVITE_EMAIL_TAKEN` (409, "leave the email blank and deliver by link").
+
+Response: `{ data: { rows, counts, mapping, header } }`. Every input row reports `created`,
+`updated`, `unchanged`, `duplicate` or `invalid` with `reason`/`fix`, and `counts` totals them;
+one bad row never aborts the rest. Re-importing the same paste is an `unchanged` no-op. Audit:
+`assessment.invites.import`.
+
+### POST `/admin/assessments/:id/invites/:inviteId/rotate`
+
+Same staff scoping. Issues a fresh token, invalidates the previous link and resets the invite to
+`UNSENT`. Returns `{ data: { invite, token } }` with `Cache-Control: no-store` and
+`Pragma: no-cache` — the raw token appears only in this response (roster import never returns
+tokens; only its SHA-256 hash is stored). Refused with `INVITE_CLAIMED` or `INVITE_REVOKED` (409),
+`INVITE_NOT_ROTATABLE` (409), or `404` when the invite belongs to another assessment. Audit:
+`assessment.invite.rotate`.
+
+### GET `/admin/assessments/:id/results.csv`
+
+Staff session; the export itself is owner/admin only (another teacher's assessment is `404`).
+Response headers: `text/csv; charset=utf-8`,
+`Content-Disposition: attachment; filename="<slug>-results.csv"`, `Cache-Control: no-store` and
+`X-Robots-Tag: noindex, nofollow`. One row per roster entry — invited candidates who never
+started appear as `NOT_STARTED` — plus participants without a surviving invite (open-code joins).
+Columns:
+
+`candidate_ref, candidate_name, group_label, email, status, assurance, failed_claims,
+started_at, finished_at, last_submission_at, solved, points, submissions`
+
+`status` is `NOT_STARTED`, `ACTIVE`, `FINISHED`, `EXPIRED` or `REVOKED`; `assurance` is blank
+until the candidate claims. Rows sort by group label (nulls first), then roster rows before
+participant-only rows, points descending, then `candidate_ref`. Cells are formula-escaped. Audit:
+`assessment.export` with the row count.
 
 ## Ranking
 
@@ -441,6 +595,8 @@ other records return `404`.
   `{ "banned": true|false }` (admin only)
 - `POST /admin/assessments`
 - `PUT /admin/assessments/:id`
+- Assessment roster invites, link rotation and the results CSV export are documented under
+  [Coding assessments](#coding-assessments).
 
 ## Notifications
 

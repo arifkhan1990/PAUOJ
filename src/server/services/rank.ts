@@ -6,13 +6,37 @@ import {
   eq,
   gt,
   inArray,
+  isNull,
   or,
   sql,
+  type SQL,
 } from "drizzle-orm";
 import { toOffset, type PaginationInput } from "@/server/api/validation";
 import { getDb } from "@/server/db";
 import { problems, submissions, users } from "@/server/db/schema";
 import type { RankRow } from "@/lib/types";
+import { countedSubmission } from "./submission-filters";
+
+/**
+ * WHERE for the solved/totals aggregate: accepted practice submissions only —
+ * no virtual contests, no assessments.
+ */
+export function rankSolvedConditions(): SQL {
+  return and(
+    eq(submissions.status, "ACCEPTED"),
+    isNull(submissions.virtualContestId),
+    countedSubmission(),
+  )!;
+}
+
+/** WHERE for the per-user submission aggregate shown on the rank board. */
+export function rankSubmissionAggConditions(usernames: string[]): SQL {
+  return and(
+    inArray(users.username, usernames),
+    isNull(submissions.virtualContestId),
+    countedSubmission(),
+  )!;
+}
 
 function buildTotals() {
   const db = getDb();
@@ -24,7 +48,7 @@ function buildTotals() {
     })
     .from(submissions)
     .innerJoin(problems, eq(problems.id, submissions.problemId))
-    .where(eq(submissions.status, "ACCEPTED"))
+    .where(rankSolvedConditions())
     .groupBy(submissions.userId, submissions.problemId, problems.points)
     .as("solved");
 
@@ -76,7 +100,7 @@ export async function listRank(
           })
           .from(submissions)
           .innerJoin(users, eq(users.id, submissions.userId))
-          .where(inArray(users.username, usernames))
+          .where(rankSubmissionAggConditions(usernames))
           .groupBy(users.username)
       : [];
 

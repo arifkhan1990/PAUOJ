@@ -48,8 +48,15 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Contest integrity** — admins review code-similarity signals before acting; advisory only.
 
 ### Assessments & roles
-- **Coding assessments** — private timed tests with one shared access code, per-candidate timers,
-  early finish, private problems and submissions, and admin results.
+- **Coding assessments** — private timed tests with per-candidate timers, early finish, private
+  problems and submissions, and admin results. Each assessment picks a join mode: `OPEN_CODE`
+  keeps one shared access code as the fallback, while `INVITE` disables the code and admits
+  candidates only through a personal link.
+- **Candidate invites and roster import** *(unreleased, 0.6.0)* — paste a roster CSV to create one
+  invite per candidate: `candidate_ref` is required, email/name/group are optional, and rows
+  without an email are delivered by link only. Owners copy each personal link from the results
+  page, and the roster-complete results CSV lists every candidate, including those who never
+  started.
 - **Accounts** — Argon2id passwords, opaque database sessions, email verification, password reset,
   profile settings, session-revoking password changes and admin moderation.
 - **Teacher workspace** — own problems, contests and assessments, scoped to created content; admins
@@ -199,11 +206,16 @@ All app routes are under `/api/v1`. Success: `{ "data": ..., "meta": { "page": 1
 | GET/POST | `/submissions`, `/submissions/:id`, `/submissions/:id/events` | optional/user | List, create, detail, SSE |
 | POST | `/runs`, GET `/runs/:id` | user | Custom run and poll |
 | GET/POST | `/contests`, `/contests/:slug/standings`, `/contests/:slug/register` | optional/user | Contest and scoreboard |
-| POST | `/assessments/:slug/join`, `/assessments/:slug/finish` | user | Assessment session |
+| POST | `/assessments/:slug/join` (access code or invite token), `/assessments/:slug/finish` | user | Assessment session |
+| GET | `/assessments/:slug/invites/:token` | public | Read-only invite metadata |
+| GET/POST | `/admin/assessments/:id/invites` | admin/teacher | Roster list and CSV import |
+| POST | `/admin/assessments/:id/invites/:inviteId/rotate` | admin/teacher | Re-issue a personal link |
+| GET | `/admin/assessments/:id/results.csv` | admin/teacher | Roster-complete results export |
 | POST/PUT | `/admin/problems`, `/admin/contests`, `/admin/assessments` | admin/teacher | Content management |
 | GET | `/rank`, `/health` | public | Ranking and health |
 
-Full reference: [docs/api.md](docs/api.md) (contributions, discussions, admin actions, notifications).
+Full reference: [docs/api.md](docs/api.md) (contributions, discussions, admin actions, notifications,
+invite claim rules and error codes).
 
 ## Project structure
 
@@ -249,7 +261,12 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 
 - Scoreboard is computed on demand; very large contests will want a cache.
 - Similarity signals are advisory only; there is no automatic penalty or disqualification.
-- Assessments use one shared access code; per-candidate email invites are not implemented.
+- Assessments fall back to one shared access code. Personal invite links are implemented but
+  unreleased (0.6.0), and there is no automated invite email send, resend or revoke — owners copy
+  each link by hand.
+- Profile aggregates (points, solved counts, activity) still include assessment solves; `/rank` and
+  problem statistics already exclude them. Tracked for v0.6.1.
+- The results export is roster-level; per-problem solved/attempt columns are not exported.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.
 
@@ -259,7 +276,7 @@ These are deliberate v1 boundaries; the judge and core workflows are functional.
 
 - [docs/INDEX.md](docs/INDEX.md) — map of every doc and where to write what.
 - [docs/architecture.md](docs/architecture.md) — runtime, submission flow, data model, auth,
-  contests, dashboards, sandbox.
+  contests, assessments and invite delivery, dashboards, sandbox.
 - [docs/api.md](docs/api.md) — full `/api/v1` reference.
 - [docs/deployment.md](docs/deployment.md) and [deploy/README.md](deploy/README.md) — deployment
   guide and production runbook.

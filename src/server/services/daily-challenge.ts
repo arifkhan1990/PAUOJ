@@ -7,6 +7,7 @@ import {
   computeCurrentStreak,
 } from "./activity";
 import { getRestrictedProblemIds } from "./problem-access";
+import { countedSubmission } from "./submission-filters";
 
 export type DailyChallenge = {
   date: string;
@@ -74,6 +75,7 @@ export async function getDailyChallenge(
           eq(submissions.problemId, problem.id),
           eq(submissions.status, "ACCEPTED"),
           gte(submissions.createdAt, dayStart),
+          countedSubmission(),
         ),
       );
     solvedToday = Number(solvedRow?.value ?? 0) > 0;
@@ -91,6 +93,7 @@ export async function getDailyChallenge(
         and(
           eq(submissions.userId, userId),
           gte(submissions.createdAt, start),
+          countedSubmission(),
         ),
       )
       .groupBy(sql`1`)

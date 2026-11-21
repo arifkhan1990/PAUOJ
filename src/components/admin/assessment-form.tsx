@@ -19,6 +19,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { ApiClientError, apiPost, apiPut } from "@/lib/api-client";
 import { assessmentInputSchema } from "@/lib/schemas/assessment";
 import type { AdminAssessmentDetail, ProblemOption } from "@/lib/types";
@@ -28,6 +29,7 @@ type FormValues = {
   slug: string;
   description: string;
   accessCode: string;
+  joinMode: "OPEN_CODE" | "INVITE";
   startAt: string;
   endAt: string;
   durationMinutes: string;
@@ -62,6 +64,7 @@ function defaultValues(initial: AdminAssessmentDetail | null): FormValues {
       slug: "",
       description: "",
       accessCode: "",
+      joinMode: "OPEN_CODE",
       startAt: toLocalDateTime(start.toISOString()),
       endAt: toLocalDateTime(end.toISOString()),
       durationMinutes: "90",
@@ -74,6 +77,7 @@ function defaultValues(initial: AdminAssessmentDetail | null): FormValues {
     slug: initial.slug,
     description: initial.description,
     accessCode: initial.accessCode,
+    joinMode: initial.joinMode,
     startAt: toLocalDateTime(initial.startAt),
     endAt: toLocalDateTime(initial.endAt),
     durationMinutes: String(initial.durationMinutes ?? 0),
@@ -140,6 +144,7 @@ export function AssessmentForm({
       slug: values.slug || undefined,
       description: values.description,
       accessCode: values.accessCode,
+      joinMode: values.joinMode,
       startAt: start.toISOString(),
       endAt: end.toISOString(),
       durationMinutes: Number(values.durationMinutes),
@@ -186,7 +191,7 @@ export function AssessmentForm({
       <PageHeader
         eyebrow="Coding test"
         title={initial ? "Edit assessment" : "New assessment"}
-        description="Candidates join with the access code, get their own timer and only see the problems while their session is active."
+        description="Candidates join with the access code or their personal invite link, get their own timer and only see the problems while their session is active."
         actions={
           <>
             {initial ? (
@@ -272,6 +277,26 @@ export function AssessmentForm({
                   <RefreshCw className="size-4" />
                 </Button>
               </div>
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="joinMode">Join mode</Label>
+              <Select
+                id="joinMode"
+                value={values.joinMode}
+                onChange={(event) =>
+                  update(
+                    "joinMode",
+                    event.target.value as FormValues["joinMode"],
+                  )
+                }
+              >
+                <option value="OPEN_CODE">Shared access code</option>
+                <option value="INVITE">Personal invite links</option>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Invite links disable the shared code for candidates. Create the
+                roster after saving.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="startAt">Starts</Label>

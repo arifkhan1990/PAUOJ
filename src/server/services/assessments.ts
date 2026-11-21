@@ -14,7 +14,7 @@ import type {
   AssessmentProblemItem,
   AssessmentParticipantInfo,
 } from "@/lib/types";
-import { assessmentPhase, participantStatus } from "@/lib/assessments";
+import { assessmentPhase, participantExpiresAt, participantStatus } from "@/lib/assessments";
 
 export function generateAccessCode(): string {
   return randomBytes(5).toString("hex").toUpperCase();
@@ -142,6 +142,7 @@ export async function getAssessmentBySlug(
     endAt: assessment.endAt.toISOString(),
     durationMinutes: assessment.durationMinutes,
     phase,
+    joinMode: assessment.joinMode,
     isPublished: assessment.isPublished,
     participantCount: Number(participantCountRow?.value ?? 0),
     problemCount: problemRows.length,
@@ -149,6 +150,7 @@ export async function getAssessmentBySlug(
     canJoin:
       phase === "RUNNING" &&
       assessment.isPublished &&
+      assessment.joinMode === "OPEN_CODE" &&
       Boolean(userId) &&
       !participant,
     canFinish: info?.status === "ACTIVE",
@@ -181,6 +183,13 @@ export async function joinAssessment(
   }
   if (phase === "ENDED") {
     throw errors.conflict("This assessment has ended.");
+  }
+  if (assessment.joinMode === "INVITE") {
+    throw new ApiError(
+      "INVITE_ONLY",
+      "This assessment only accepts personal invite links. Open the link you were given.",
+      403,
+    );
   }
   if (!codesMatch(assessment.accessCode, code)) {
     throw new ApiError(
@@ -215,13 +224,7 @@ export async function joinAssessment(
     };
   }
 
-  const durationMs =
-    assessment.durationMinutes && assessment.durationMinutes > 0
-      ? assessment.durationMinutes * 60_000
-      : Number.MAX_SAFE_INTEGER;
-  const expiresAt = new Date(
-    Math.min(now.getTime() + durationMs, assessment.endAt.getTime()),
-  );
+  const expiresAt = participantExpiresAt(now, assessment.durationMinutes, assessment.endAt);
 
   const inserted = await db
     .insert(assessmentParticipants)

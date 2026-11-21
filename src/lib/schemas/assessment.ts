@@ -37,6 +37,7 @@ export const assessmentInputSchema = z
     }),
     durationMinutes: z.coerce.number().int().min(0).max(1440).default(0),
     isPublished: z.boolean().default(false),
+    joinMode: z.enum(["OPEN_CODE", "INVITE"]).optional(),
     problemIds: z
       .array(z.uuid())
       .min(1, "Select at least one problem.")
@@ -59,9 +60,19 @@ export const assessmentInputSchema = z
     }
   });
 
-export const joinAssessmentSchema = z.object({
+const joinByCodeSchema = z.strictObject({
   code: z.string().trim().min(1, "Enter the access code.").max(40),
 });
+
+const joinByTokenSchema = z.strictObject({
+  token: z.string().trim().min(1, "Enter the invite token.").max(500),
+  candidateRef: z.string().trim().max(200).optional(),
+});
+
+export const joinAssessmentSchema = z.union(
+  [joinByCodeSchema, joinByTokenSchema],
+  { error: "Send exactly one of: an access code or an invite token." },
+);
 
 export type AssessmentInput = z.infer<typeof assessmentInputSchema>;
 export type JoinAssessmentInput = z.infer<typeof joinAssessmentSchema>;

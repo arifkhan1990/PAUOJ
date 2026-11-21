@@ -32,10 +32,7 @@ export type SessionUser = {
   createdAt: string;
 };
 
-export type HeaderUser = Pick<
-  SessionUser,
-  "id" | "username" | "displayName" | "role"
-> & { emailVerified: boolean };
+export type HeaderUser = Pick<SessionUser, "id" | "username" | "displayName" | "role"> & { emailVerified: boolean };
 
 export type ProblemTag = {
   name: string;
@@ -175,6 +172,8 @@ export * from "./clarification-types";
 
 export type AssessmentPhase = "UPCOMING" | "RUNNING" | "ENDED";
 
+export type { AssessmentClaimAssurance, AssessmentInviteDetail, AssessmentInviteStatus, AssessmentInviteSummary } from "./assessment-invites";
+
 export type AssessmentParticipantStatus = "ACTIVE" | "FINISHED" | "EXPIRED";
 
 export type AssessmentProblemItem = {
@@ -204,6 +203,7 @@ export type AssessmentDetail = {
   endAt: string;
   durationMinutes: number | null;
   phase: AssessmentPhase;
+  joinMode: "OPEN_CODE" | "INVITE";
   isPublished: boolean;
   participantCount: number;
   problemCount: number;
@@ -238,6 +238,7 @@ export type AdminAssessmentDetail = {
   startAt: string;
   endAt: string;
   durationMinutes: number | null;
+  joinMode: "OPEN_CODE" | "INVITE";
   isPublished: boolean;
   problemIds: string[];
 };

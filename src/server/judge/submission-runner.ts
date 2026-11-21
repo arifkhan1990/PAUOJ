@@ -147,8 +147,8 @@ export async function completeSubmission(
     await tx
       .update(problems)
       .set({
-        acceptedCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.status = 'ACCEPTED' and s.virtual_contest_id is null)`,
-        submissionCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.virtual_contest_id is null)`,
+        acceptedCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.status = 'ACCEPTED' and s.virtual_contest_id is null and s.assessment_id is null)`,
+        submissionCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.virtual_contest_id is null and s.assessment_id is null)`,
       })
       .where(eq(problems.id, submission.problemId));
   });
@@ -196,8 +196,8 @@ export async function failSubmission(
     await tx
       .update(problems)
       .set({
-        acceptedCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.status = 'ACCEPTED' and s.virtual_contest_id is null)`,
-        submissionCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.virtual_contest_id is null)`,
+        acceptedCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.status = 'ACCEPTED' and s.virtual_contest_id is null and s.assessment_id is null)`,
+        submissionCount: sql`(select count(*)::int from submissions s where s.problem_id = ${submission.problemId} and s.virtual_contest_id is null and s.assessment_id is null)`,
       })
       .where(eq(problems.id, submission.problemId));
   });

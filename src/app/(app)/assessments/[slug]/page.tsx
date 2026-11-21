@@ -231,8 +231,9 @@ export default async function AssessmentPage({
                 <LockKeyhole className="size-4 text-primary" /> Sign in required
               </h2>
               <p className="mt-2 text-sm text-muted-foreground">
-                Sign in with your PAU OJ account, then enter the access code to
-                start the assessment.
+                {assessment.joinMode === "INVITE"
+                  ? "Sign in with your PAU OJ account, then open your personal invite link to start the assessment."
+                  : "Sign in with your PAU OJ account, then enter the access code to start the assessment."}
               </p>
               <Link
                 href={`/login?next=${encodeURIComponent(`/assessments/${assessment.slug}`)}`}
@@ -312,16 +313,28 @@ export default async function AssessmentPage({
               )}
             </Card>
           ) : assessment.phase === "RUNNING" && assessment.isPublished ? (
-            <Card className="p-5">
-              <h2 className="text-sm font-semibold">Join this assessment</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Enter the access code from your instructor. The timer starts
-                immediately.
-              </p>
-              <div className="mt-4">
-                <AssessmentJoinForm slug={assessment.slug} />
-              </div>
-            </Card>
+            assessment.joinMode === "INVITE" ? (
+              <Card className="p-5">
+                <h2 className="text-sm font-semibold">
+                  Invite-only assessment
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Open the personal link from your instructor. The shared access
+                  code is disabled for this assessment.
+                </p>
+              </Card>
+            ) : (
+              <Card className="p-5">
+                <h2 className="text-sm font-semibold">Join this assessment</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Enter the access code from your instructor. The timer starts
+                  immediately.
+                </p>
+                <div className="mt-4">
+                  <AssessmentJoinForm slug={assessment.slug} />
+                </div>
+              </Card>
+            )
           ) : (
             <Card className="p-5">
               <h2 className="text-sm font-semibold">

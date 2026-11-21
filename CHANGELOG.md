@@ -6,6 +6,28 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Assessments gained join modes: `OPEN_CODE` (default) keeps the shared access code, while
+  `INVITE` disables it and admits candidates only through a personal link at
+  `/assessments/:slug/invite/:token`. `POST /assessments/:slug/join` now takes either the code or
+  an invite token, records how the claim was bound (`VERIFIED_EMAIL`, `EMAIL_MATCH`, `REF_MATCH`)
+  and refuses a mismatched account or candidate reference; each invite allows five failed claims
+  per 15 minutes. Resolving an invite is read-only, so a mail scanner or link prefetcher cannot
+  consume an attempt.
+- Roster import for assessments: paste a CSV on the results page to create one invite per
+  candidate — `candidate_ref` is required, `email`, `candidate_name` and `group_label` are
+  optional, and rows without an email are delivered by link only. RFC-4180 parsing with a 64 KB /
+  500-row cap, header detection plus manual column mapping, and a per-row
+  `created`/`updated`/`unchanged`/`duplicate`/`invalid` report with a reason and a fix; owner and
+  admin only.
+- Roster-complete results export at `GET /api/v1/admin/assessments/:id/results.csv`: one row per
+  roster entry, including candidates who never started, with group label, claim assurance, failed
+  claim count, timings, solved, points and submissions. Owner/admin only, formula-escaped cells,
+  audit logged as `assessment.export`.
+- The admin and teacher assessment results page now has a roster panel: paste import with column
+  mapping and report, an invite table with per-candidate link copy (copying rotates the token and
+  invalidates the previous link) and a results CSV button. The assessment editor gained the
+  join-mode select, and invite-only assessments replace the access-code card with an invite-only
+  notice.
 - Profiles now show approved community-editorial credits with the problem list
   and approval dates, linking back to each editorial tab.
 - Admins now receive one weekly review backlog report (pending proposals,
@@ -153,6 +175,15 @@ All notable changes to PAU OJ are documented here. The format follows
   table.
 
 ### Fixed
+- Global `/rank` (its totals and the per-user submission count) and the problem verdict/language
+  statistics now exclude assessment and virtual-contest submissions, so an exam attempt can no
+  longer raise public rank or problem statistics. Site counts, the 14-day activity chart, the
+  daily challenge and the denormalized problem counters exclude assessment submissions too. Rank
+  points are derived on read, so some existing public totals drop immediately and need no
+  backfill.
+- CSV exports are safe to open in a spreadsheet: `toCsv` prefixes a `'` to string cells starting
+  with `=`, `+`, `-`, `@`, tab or CR (OWASP CSV-injection guard). This also hardens the existing
+  contribution export.
 - Dashboard sidebars highlight only the current section instead of also
   highlighting Overview on every subpage.
 - The admin review queue excludes the reviewer's own proposals, so unactionable
@@ -161,6 +192,11 @@ All notable changes to PAU OJ are documented here. The format follows
   getting a 404 from the View action.
 
 ### Changed
+- Assessment joining is one endpoint with a union body: send either `code` or `token`. A code on
+  an invite-mode assessment returns `INVITE_ONLY` instead of a generic invalid-code error, and
+  invite refusals have their own codes (`INVITE_EMAIL_MISMATCH`, `INVITE_REF_MISMATCH`,
+  `INVITE_CLAIMED`, `INVITE_REVOKED`, `INVITE_EXPIRED`, `INVITE_RATE_LIMITED`), so the candidate
+  always sees why an attempt was refused.
 - Contest problem requests now support bulk selection with one-click approve or
   decline, including a shared decline reason. Individual actions remain.
 - Problem review queues now compare the live and proposed statement/editorial
@@ -181,6 +217,25 @@ All notable changes to PAU OJ are documented here. The format follows
   card-based statement/input/output/constraints sections, RankBoard overview
   tiles and medal-styled solver ranks, a structured submissions table and a
   dedicated editorial unlock state. Data-heavy tabs use the full content width.
+
+### Security
+- Invite links carry a bearer token in the path: only its SHA-256 hash is stored, the raw token
+  leaves the server once (the rotate/copy response, sent with `Cache-Control: no-store`), the
+  resolve route returns no email and only a three-character reference hint, wrong-account and
+  wrong-reference claims are refused instead of being accepted, and each invite throttles after
+  five failed claims per 15 minutes. The invite page and API send `Referrer-Policy: no-referrer`,
+  `Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow`. Residual risk: reverse proxies
+  commonly log request paths, so an invite URL can still reach an access log — strip path logging
+  for invite URLs at the proxy or rotate the link.
+- Assessment roster and export data stays owner/admin scoped, every roster import and results
+  export writes an audit row (`assessment.invites.import`, `assessment.export`), and exported
+  cells are formula-escaped.
+
+### Not included
+- Automated invite email send, resend and revoke (E3): links are copied by hand from the roster
+  panel, and no mail is sent for invites yet.
+- Excluding assessment solves from profile aggregates (points, solved and activity still count
+  them) — tracked for v0.6.1, together with per-problem solved/attempt export columns.
 
 ## [0.5.0] - 2026-11-17
 
