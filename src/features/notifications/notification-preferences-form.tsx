@@ -6,7 +6,7 @@ import { Loader2, Save } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ApiClientError, apiPatch } from "@/lib/api-client";
 import type { NotificationPreferences } from "@/lib/notification-types";
 
@@ -104,23 +104,24 @@ export function NotificationPreferencesForm({
             digest email.
           </p>
         </div>
-        <Select
+        <SearchableSelect
           id="reviewEmailFrequency"
           value={preferences.reviewEmailFrequency}
           disabled={!preferences.emailReviews}
-          onChange={(event) =>
+          onValueChange={(next) =>
             setPreferences((current) => ({
               ...current,
-              reviewEmailFrequency: event.target
-                .value as NotificationPreferences["reviewEmailFrequency"],
+              reviewEmailFrequency:
+                next as NotificationPreferences["reviewEmailFrequency"],
             }))
           }
           className="w-full sm:w-48"
-        >
-          <option value="INSTANT">Instant</option>
-          <option value="HOURLY">Hourly digest</option>
-          <option value="DAILY">Daily digest</option>
-        </Select>
+          options={[
+            { value: "INSTANT", label: "Instant" },
+            { value: "HOURLY", label: "Hourly digest" },
+            { value: "DAILY", label: "Daily digest" },
+          ]}
+        />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] text-muted-foreground">

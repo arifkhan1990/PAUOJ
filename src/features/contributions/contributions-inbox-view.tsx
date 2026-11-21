@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Download, ListChecks, Send } from "lucide-react";
 import { ContributionList } from "@/features/contributions/contribution-list";
 import { ContestApprovalList } from "@/features/contributions/contest-approval-list";
+import { ProblemReviewInboxSections } from "@/features/reviews/problem-review-inbox";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
 import type { SafeUser } from "@/server/auth/session";
@@ -90,6 +91,8 @@ export async function ContributionsInboxView({
           </>
         }
       />
+
+      <ProblemReviewInboxSections viewer={viewer} basePath={meta.basePath} />
 
       {contestTotal > 0 ? (
         <section className="space-y-3">

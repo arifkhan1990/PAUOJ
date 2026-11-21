@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   pgEnum,
@@ -27,6 +29,11 @@ export const problemCheckerEnum = pgEnum("problem_checker", [
   "CUSTOM",
 ]);
 
+export const problemPublicationStatusEnum = pgEnum(
+  "problem_publication_status",
+  ["DRAFT", "IN_REVIEW", "CHANGES_REQUESTED", "PUBLISHED"],
+);
+
 export const problems = pgTable(
   "problems",
   {
@@ -48,7 +55,12 @@ export const problems = pgTable(
     points: integer("points").notNull().default(100),
     timeLimitMs: integer("time_limit_ms").notNull().default(1000),
     memoryLimitMb: integer("memory_limit_mb").notNull().default(256),
-    isPublic: boolean("is_public").notNull().default(true),
+    isPublic: boolean("is_public").notNull().default(false),
+    publicationStatus: problemPublicationStatusEnum("publication_status")
+      .notNull()
+      .default("DRAFT"),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
+    reviewCycle: integer("review_cycle").notNull().default(0),
     authorId: uuid("author_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -67,6 +79,10 @@ export const problems = pgTable(
     index("problems_public_idx").on(table.isPublic),
     index("problems_category_idx").on(table.category, table.subcategory),
     index("problems_companies_idx").using("gin", table.companies),
+    check(
+      "problems_publication_public_check",
+      sql`"is_public" = ("publication_status" = 'PUBLISHED')`,
+    ),
   ],
 );
 

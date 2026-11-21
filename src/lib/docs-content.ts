@@ -181,6 +181,19 @@ export const DOC_SECTIONS: DocSection[] = [
     ],
   },
   {
+    id: "problem-publication-review",
+    title: "Problem publication review",
+    category: "account",
+    icon: ShieldCheck,
+    body: [
+      "Saving a new problem sends it to review. It stays out of the public practice list until the review passes, so a work-in-progress problem never reaches other solvers.",
+      "Two other setters must approve it. Each approval records the reference solution the reviewer used to check the problem, and the problem also needs an editorial and at least one test case added by a reviewer.",
+      "A reviewer can put your problem on hold with comments. Approvals are reset and nobody can approve it again until you reply to the hold and the reviewer resolves it. While the problem is in review or published, its content is locked, so ask for a hold before fixing a statement or test.",
+      "When every check passes, you or an administrator publish the problem and it joins the practice list. Each approving reviewer then earns contribution credit. If a published problem needs a change, start a re-review from its review workspace; it leaves the public list until it passes two fresh approvals again.",
+      "Only teachers and administrators review problems. Follow the status of your own problem from the Reviews page on your dashboard.",
+    ],
+  },
+  {
     id: "profile",
     title: "Profile and achievements",
     category: "account",

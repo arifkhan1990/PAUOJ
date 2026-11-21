@@ -17,6 +17,11 @@ export type ChangelogRelease = {
 };
 
 const RELEASE_META: Record<string, { title: string; summary: string }> = {
+  "0.7.0": {
+    title: "Two-Setter Publication Review",
+    summary:
+      "New problems need two setter approvals, a reference solution, an editorial and a reviewer test before they enter the public list, with holds, review cycles and contributor credit.",
+  },
   "0.6.5": {
     title: "Reviewer Leaderboard & Markdown Editor",
     summary:

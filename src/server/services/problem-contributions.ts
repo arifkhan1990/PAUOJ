@@ -89,6 +89,22 @@ export async function createProblemContribution(
   if (!problem.isPublic && contributor.role !== "ADMIN") {
     throw errors.notFound("Problem not found.");
   }
+  if (
+    problem.publicationStatus === "IN_REVIEW" ||
+    problem.publicationStatus === "CHANGES_REQUESTED"
+  ) {
+    throw errors.conflict(
+      "This problem is locked for publication review. Ask a reviewer to put it on hold instead of submitting a proposal.",
+    );
+  }
+  if (
+    problem.publicationStatus === "PUBLISHED" &&
+    input.kind !== "EDITORIAL"
+  ) {
+    throw errors.conflict(
+      "Statement and test changes to a published problem need a new publication review.",
+    );
+  }
   if (contributor.role === "USER") {
     if (input.kind !== "EDITORIAL") {
       throw errors.validation(
@@ -311,6 +327,7 @@ export async function decideProblemContribution(
         id: problems.id,
         title: problems.title,
         authorId: problems.authorId,
+        publicationStatus: problems.publicationStatus,
       })
       .from(problems)
       .where(eq(problems.id, contribution.problemId))
@@ -340,6 +357,22 @@ export async function decideProblemContribution(
     }
 
     if (input.action === "approve") {
+      if (
+        problem.publicationStatus === "IN_REVIEW" ||
+        problem.publicationStatus === "CHANGES_REQUESTED"
+      ) {
+        throw errors.conflict(
+          "This problem is locked for publication review. Use a review hold instead of approving a proposal.",
+        );
+      }
+      if (
+        problem.publicationStatus === "PUBLISHED" &&
+        contribution.kind !== "EDITORIAL"
+      ) {
+        throw errors.conflict(
+          "Statement and test changes to a published problem need a new publication review.",
+        );
+      }
       await applyContribution(tx, contribution, problem.id);
     }
 

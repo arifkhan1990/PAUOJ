@@ -39,6 +39,8 @@ problems 1─* test_cases
 problems *─* tags (problem_tags)
 problems 1─* problem_resources *─0..1 users
 problems 1─* problem_ratings *─1 users
+problems 1─* problem_review_approvals *─1 users
+problems 1─* problem_review_holds *─1 users
 study_lists 1─* study_list_items *─1 problems
 contests 1─* contest_problems *─1 problems
 contests 1─* contest_registrations *─1 users
@@ -66,7 +68,11 @@ Key constraints:
 - `submission_results` is unique per `(submission_id, position)`;
 - deleting a problem cascades to its tests and submissions;
 - deleting a contest sets `submissions.contest_id` to null so historical
-  submissions survive.
+  submissions survive;
+- `is_public` mirrors `publication_status = 'PUBLISHED'` through the
+  `problems_publication_public_check` constraint, and one approval per
+  `(problem, reviewer, cycle)` plus at most one active hold per
+  `(problem, reviewer)` (partial unique index) are enforced in the database.
 
 Problem counters (`accepted_count`, `submission_count`) are denormalized for the
 problem list and recomputed transactionally after every judged submission or
@@ -92,6 +98,130 @@ deletions write an `audit_logs` entry.
 Discussion is hidden and the API returns `DISCUSSION_LOCKED` whenever the
 problem belongs to a running contest or assessment, including the caller's own
 registered round, so statements and solutions cannot leak during a competition.
+
+## Problem publication review
+
+New problems are gated by a two-setter publication review (v0.7.0).
+`problems.publication_status` (`problem_publication_status`: `DRAFT`,
+`IN_REVIEW`, `CHANGES_REQUESTED`, `PUBLISHED`) drives the workflow, and
+`is_public` is no longer a free-form flag: the check constraint
+`is_public = (publication_status = 'PUBLISHED')` keeps the two in step, so the
+public problem list — which filters on `is_public` — only ever shows published
+problems. `published_at` records the publish time and `review_cycle` counts the
+review rounds.
+
+### State machine
+
+| Action | Actor | From | To |
+| --- | --- | --- | --- |
+| `submit` | author/admin | `DRAFT` | `IN_REVIEW` (`review_cycle + 1`) |
+| `approve` | eligible reviewer | `IN_REVIEW` | `IN_REVIEW`, or `PUBLISHED` when every gate passes |
+| `hold` | eligible reviewer | `IN_REVIEW` | `CHANGES_REQUESTED`; active approvals become `SUPERSEDED` |
+| `respond` | author/admin | `CHANGES_REQUESTED` | `CHANGES_REQUESTED` (hold becomes `ADDRESSED`) |
+| `resolve` | hold raiser/admin | `CHANGES_REQUESTED` | `IN_REVIEW` when no `OPEN`/`ADDRESSED` hold remains (`review_cycle + 1`) |
+| `reopen` | hold raiser/admin | `CHANGES_REQUESTED` | `CHANGES_REQUESTED` (hold back to `OPEN`) |
+| `publish` | author/admin | `IN_REVIEW` | `PUBLISHED` when every gate passes |
+| `reopen_publication` | author/admin | `PUBLISHED` | `DRAFT`; hidden from the public list, active approvals superseded; edit and submit again |
+
+`PUBLISHED` is terminal until someone starts a re-review. Approvals are counted
+per `review_cycle`, so every cycle change (submit or resolve) starts a fresh
+round, and a hold supersedes the approvals collected so far in the current
+cycle. Problem content is editable only in `DRAFT` and `CHANGES_REQUESTED`;
+while `IN_REVIEW` or `PUBLISHED`, `PUT /admin/problems/:id` returns `409`, so an
+author cannot replace the statement or test set after approvals have been
+recorded. The same guard applies to the contribution pipeline: statement and
+test proposals are rejected while `IN_REVIEW`/`CHANGES_REQUESTED`, and a
+`PUBLISHED` problem accepts only `EDITORIAL` proposals. A reviewer raises a hold
+when a fix is needed.
+
+Starting a re-review withdraws a published problem: it becomes `DRAFT`, leaves
+the public list, and its active approvals are superseded. The author edits it,
+submits it for review, and two fresh approvals are required before it returns to
+`PUBLISHED`. The previous `published_at` is kept as the last publication date
+until the next publish overwrites it.
+
+### Gates
+
+Publishing (and an `approve` that publishes) requires all of:
+
+- two `ACTIVE` approvals in the current cycle (`REQUIRED_PUBLICATION_APPROVALS = 2`);
+- a non-empty editorial;
+- at least one test case added by a reviewer (recorded as `tests_added`);
+- at least one approval carrying a reference solution (`solution_source`);
+- no hold in `OPEN` or `ADDRESSED`.
+
+`evaluatePublicationGates` in `src/server/services/problem-review-policy.ts`
+computes this checklist and returns it as `gates` with a `missing` list, so the
+review workspace can show exactly what is still required.
+
+### Authorization
+
+| Action | Who |
+| --- | --- |
+| Review: `approve`, `hold` | `TEACHER`/`ADMIN`, and not the problem author |
+| `submit`, `respond`, `publish` | the problem author, or an `ADMIN` acting for them |
+| `reopen_publication` | the problem author, or an `ADMIN` acting for them |
+| `resolve`, `reopen` | the reviewer who raised the hold, or an `ADMIN` |
+| Read the workspace (`GET /problem-reviews/:problemId`) | the author, admins, the current cycle's approvers after publish, and other staff while it is in review; unrelated users never see drafts |
+| Edit content (`PUT /admin/problems/:id`) | the author or an admin, only while `DRAFT` or `CHANGES_REQUESTED`; `IN_REVIEW` and `PUBLISHED` return `409` |
+
+A reviewer cannot approve their own problem: the unique
+`(problem_id, reviewer_id, cycle)` index plus a service check turn a second
+approval into a conflict. Nobody can approve while an `OPEN` or `ADDRESSED`
+hold exists.
+
+### Data model
+
+- `problem_review_approvals` — one row per approval: `problem_id` and
+  `reviewer_id` (both cascade), `cycle`, `status` (`ACTIVE`/`SUPERSEDED`),
+  optional `note`, `solution_language` and `solution_source` (the reference
+  solution), `tests_added`, `editorial_provided`, timestamps. Unique per
+  `(problem, reviewer, cycle)`; indexed by `(problem, cycle, status)` for the
+  gate count and `(reviewer, created_at)` for the credit query.
+- `problem_review_holds` — one row per hold: `problem_id`, `reviewer_id`,
+  `cycle`, `status` (`OPEN` → `ADDRESSED` → `RESOLVED`), the required `note`,
+  `author_response`/`responded_at`, `resolution_note`/`resolved_by_id`/
+  `resolved_at`, `reopen_note`/`reopened_at`, timestamps. A partial unique
+  index allows at most one `OPEN`/`ADDRESSED` hold per `(problem, reviewer)`.
+
+### Consistency and concurrency
+
+Every action is written as one unit over the problem, approval and hold rows:
+the status change, the approval/hold row and `review_cycle` move together, and
+the `problems_publication_public_check` constraint guarantees `is_public` can
+never disagree with `publication_status` inside that write. The unique and
+partial unique indexes are the hard backstop against races — a duplicate
+approval in the same cycle or a second active hold by the same reviewer fails
+at the database and surfaces as a conflict, and gate re-checks always read the
+current cycle's `ACTIVE` rows before writing.
+
+### Notifications, audit and credit
+
+Review events reuse the `CONTRIBUTION` notification type and the existing
+review email preferences (`emailReviews`, `reviewEmailFrequency`): submit
+notifies every eligible reviewer except the author; each approval notifies the
+author with progress; hold notifies the author and every other eligible
+reviewer; respond notifies the hold raiser and the reviewers; resolve notifies
+the author (and, when the review reopens, every eligible reviewer); reopen
+notifies the author; publish notifies the author and every approver;
+`reopen_publication` notifies the author and every other eligible setter.
+Dedupe keys follow
+`problem-review:<problemId>:<cycle>:<event>[:<holdId>]` on the
+`(user_id, dedupe_key)` unique index, so retries cannot double-send.
+
+The approval and hold rows are the audit trail for the workflow — actor, cycle,
+notes, response, resolution and reopen fields with timestamps — which backs the
+review workspace, the inbox and the publication status shown in the admin
+problem list. On publication every approving reviewer earns contribution credit,
+surfaced as the "published review credits" section of the review inbox
+(`listProblemReviewCredits`).
+
+### Backfill
+
+Migration `0025` added the columns and backfilled existing rows: problems that
+were `is_public = true` became `PUBLISHED` with `published_at = created_at`,
+everything else became `DRAFT`. Existing public problems therefore stay public
+without a new review, and the check constraint holds for every row.
 
 ## Notifications and email
 
@@ -435,6 +565,20 @@ Run container:
 - output checkers: exact (whitespace-normalized), token, floating-point with
   per-problem tolerance, and custom Python scripts. Custom checkers run after the
   submission with the input/expected/output paths and exit 0 to accept.
+
+## Shared form controls
+
+Choice fields use one client-side `SearchableSelect` (`src/components/ui/searchable-select.tsx`)
+instead of a native `<select>`. The trigger keeps the existing input styling and
+the menu renders in a portal with fixed positioning, so it is not clipped by
+tables or cards. Search appears automatically when a field has more than five
+options (`src/lib/select-options.ts`), matches labels, descriptions and values,
+and supports arrow keys, Home/End, Enter and Escape. Long option labels wrap to
+two lines; the closed trigger truncates with a tooltip. When a `name` is supplied
+the component also renders a hidden input for server-rendered GET filters. Those
+forms stay usable without JavaScript: a native select is hidden and disabled once
+the app hydrates, and a `<noscript>` style in the root layout reveals it while
+hiding the custom trigger, so exactly one control submits.
 
 ## Failure and recovery
 

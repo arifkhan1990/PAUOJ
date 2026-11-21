@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Markdown } from "@/components/shared/markdown";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { applyMarkdownAction, type MarkdownAction } from "@/lib/markdown-editing";
 import { cn } from "@/lib/utils";
@@ -253,20 +253,18 @@ export function MarkdownEditor({
                 />
               ))}
               {group.some((item) => item.action === "code-block") ? (
-                <Select
+                <SearchableSelect
                   value={language}
-                  onChange={(event) => setLanguage(event.target.value)}
+                  onValueChange={setLanguage}
                   aria-label="Code block language"
                   title="Code block language"
                   disabled={previewing}
-                  className="h-8 w-[7.25rem] px-2 pr-7 text-xs"
-                >
-                  {LANGUAGES.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </Select>
+                  options={LANGUAGES.map((item) => ({
+                    value: item,
+                    label: item,
+                  }))}
+                  className="h-8 w-[7.25rem] text-xs"
+                />
               ) : null}
             </Fragment>
           ))}

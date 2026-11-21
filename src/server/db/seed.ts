@@ -71,6 +71,7 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
       .limit(1);
     const existing = existingRows[0];
 
+    const isPublic = definition.isPublic ?? true;
     let problemId: string;
     if (existing) {
       problemId = existing.id;
@@ -87,7 +88,9 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           points: definition.points,
           timeLimitMs: definition.timeLimitMs,
           memoryLimitMb: definition.memoryLimitMb,
-          isPublic: definition.isPublic ?? true,
+          isPublic,
+          publicationStatus: isPublic ? "PUBLISHED" : "DRAFT",
+          publishedAt: isPublic ? new Date() : null,
           authorId: adminId,
           updatedAt: new Date(),
         })
@@ -109,7 +112,9 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           points: definition.points,
           timeLimitMs: definition.timeLimitMs,
           memoryLimitMb: definition.memoryLimitMb,
-          isPublic: definition.isPublic ?? true,
+          isPublic,
+          publicationStatus: isPublic ? "PUBLISHED" : "DRAFT",
+          publishedAt: isPublic ? new Date() : null,
           authorId: adminId,
         })
         .returning({ id: problems.id });
@@ -271,8 +276,8 @@ async function main(): Promise<void> {
         ? `Demo users: ${DEMO_USERS.map((user) => user.username).join(", ")} / ${DEMO_PASSWORD}`
         : "Demo data disabled.",
       env.SEED_DEMO_DATA
-        ? `Demo teacher: teacher / ${DEMO_PASSWORD}`
-        : "Demo teacher disabled.",
+        ? `Demo teachers: teacher, teacher2 / ${DEMO_PASSWORD}`
+        : "Demo teachers disabled.",
       assessment
         ? `Assessment: /assessments/${assessment.slug} · code ${assessment.accessCode}`
         : "Demo assessment disabled.",

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { buttonVariants } from "@/components/ui/button";
 import { DIFFICULTIES, difficultyMeta } from "@/lib/difficulty";
 import { buildQueryString, type SearchParams } from "@/lib/pagination";
@@ -117,34 +117,49 @@ export function ProblemFilters({
           <label htmlFor="category" className="mb-1 block text-[11px] font-medium text-muted-foreground">
             Category
           </label>
-          <Select id="category" name="category" defaultValue={category ?? ""} className="h-8 text-xs">
-            <option value="">All categories</option>
-            {facets.categories.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </Select>
+          <SearchableSelect
+            id="category"
+            name="category"
+            defaultValue={category ?? ""}
+            aria-label="Category"
+            className="h-8 text-xs"
+            options={[
+              { value: "", label: "All categories" },
+              ...facets.categories.map((value) => ({ value, label: value })),
+            ]}
+          />
         </div>
         <div className="min-w-40 flex-1">
           <label htmlFor="subcategory" className="mb-1 block text-[11px] font-medium text-muted-foreground">
             Subcategory
           </label>
-          <Select id="subcategory" name="subcategory" defaultValue={subcategory ?? ""} className="h-8 text-xs">
-            <option value="">All subcategories</option>
-            {facets.subcategories.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </Select>
+          <SearchableSelect
+            id="subcategory"
+            name="subcategory"
+            defaultValue={subcategory ?? ""}
+            aria-label="Subcategory"
+            className="h-8 text-xs"
+            options={[
+              { value: "", label: "All subcategories" },
+              ...facets.subcategories.map((value) => ({ value, label: value })),
+            ]}
+          />
         </div>
         <div className="min-w-40 flex-1">
           <label htmlFor="company" className="mb-1 block text-[11px] font-medium text-muted-foreground">
             Company
           </label>
-          <Select id="company" name="company" defaultValue={company ?? ""} className="h-8 text-xs">
-            <option value="">All companies</option>
-            {facets.companies.map((value) => (
-              <option key={value} value={value}>{value}</option>
-            ))}
-          </Select>
+          <SearchableSelect
+            id="company"
+            name="company"
+            defaultValue={company ?? ""}
+            aria-label="Company"
+            className="h-8 text-xs"
+            options={[
+              { value: "", label: "All companies" },
+              ...facets.companies.map((value) => ({ value, label: value })),
+            ]}
+          />
         </div>
         <button type="submit" className={cn(buttonVariants({ size: "sm" }), "h-8")}>
           Apply

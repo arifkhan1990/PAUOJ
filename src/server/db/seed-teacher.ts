@@ -4,13 +4,19 @@ import { getDb } from "./index";
 import { contests, problems, users } from "./schema";
 import { DEMO_PASSWORD } from "./seed-demo";
 
-export async function seedTeacher(): Promise<string> {
+type DemoTeacher = {
+  email: string;
+  username: string;
+  displayName: string;
+  institution: string;
+};
+
+async function ensureTeacher(teacher: DemoTeacher): Promise<string> {
   const db = getDb();
-  const email = "teacher@pauoj.local";
   const rows = await db
     .select({ id: users.id, role: users.role })
     .from(users)
-    .where(eq(users.email, email))
+    .where(eq(users.email, teacher.email))
     .limit(1);
   const existing = rows[0];
   if (existing) {
@@ -31,18 +37,38 @@ export async function seedTeacher(): Promise<string> {
   const [created] = await db
     .insert(users)
     .values({
-      username: "teacher",
-      email,
-      displayName: "Nadia Rahman",
+      username: teacher.username,
+      email: teacher.email,
+      displayName: teacher.displayName,
       passwordHash,
       role: "TEACHER",
-      institution: "PrimeAsia University",
+      institution: teacher.institution,
       emailVerifiedAt: new Date(),
     })
     .returning({ id: users.id });
   if (!created) throw new Error("Could not create the demo teacher.");
-  process.stdout.write(`Created teacher teacher <${email}>\n`);
+  process.stdout.write(
+    `Created teacher ${teacher.username} <${teacher.email}>\n`,
+  );
   return created.id;
+}
+
+export async function seedTeacher(): Promise<string> {
+  const primary = await ensureTeacher({
+    email: "teacher@pauoj.local",
+    username: "teacher",
+    displayName: "Nadia Rahman",
+    institution: "PrimeAsia University",
+  });
+  // The publication review needs two setters other than the author. A fresh
+  // demo therefore ships with two teachers plus the admin account.
+  await ensureTeacher({
+    email: "teacher2@pauoj.local",
+    username: "teacher2",
+    displayName: "Imran Hossain",
+    institution: "PrimeAsia University",
+  });
+  return primary;
 }
 
 export async function attachTeacherDemoContent(teacherId: string): Promise<void> {

@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { SubmissionTable } from "@/components/submissions/submission-table";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { getCurrentUser } from "@/server/auth/session";
 import { listSubmissions } from "@/server/services/submissions";
 import { listProblemOptions } from "@/server/services/problem-options";
@@ -74,6 +74,19 @@ export default async function SubmissionsPage({
     isPendingVerdict(item.status),
   );
 
+  const statusFilterOptions = [
+    { value: "", label: "Any verdict" },
+    ...statusOptions.map(([value, meta]) => ({ value, label: meta.label })),
+  ];
+  const languageFilterOptions = [
+    { value: "", label: "Any language" },
+    ...LANGUAGES.map((item) => ({ value: item.id, label: item.label })),
+  ];
+  const problemFilterOptions = [
+    { value: "", label: "Any problem" },
+    ...problemOptions.map((item) => ({ value: item.slug, label: item.title })),
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <AutoRefresh enabled={hasPending} intervalMs={5000} />
@@ -126,40 +139,40 @@ export default async function SubmissionsPage({
             <label htmlFor="status" className="mb-1 block text-xs font-medium text-muted-foreground">
               Verdict
             </label>
-            <Select id="status" name="status" defaultValue={status ?? ""} className="h-9 text-xs">
-              <option value="">Any verdict</option>
-              {statusOptions.map(([value, meta]) => (
-                <option key={value} value={value}>
-                  {meta.label}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+              id="status"
+              name="status"
+              defaultValue={status ?? ""}
+              aria-label="Verdict"
+              className="h-9 text-xs"
+              options={statusFilterOptions}
+            />
           </div>
           <div className="min-w-40 flex-1">
             <label htmlFor="language" className="mb-1 block text-xs font-medium text-muted-foreground">
               Language
             </label>
-            <Select id="language" name="language" defaultValue={language ?? ""} className="h-9 text-xs">
-              <option value="">Any language</option>
-              {LANGUAGES.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+              id="language"
+              name="language"
+              defaultValue={language ?? ""}
+              aria-label="Language"
+              className="h-9 text-xs"
+              options={languageFilterOptions}
+            />
           </div>
           <div className="min-w-48 flex-[1.4]">
             <label htmlFor="problem" className="mb-1 block text-xs font-medium text-muted-foreground">
               Problem
             </label>
-            <Select id="problem" name="problem" defaultValue={problem ?? ""} className="h-9 text-xs">
-              <option value="">Any problem</option>
-              {problemOptions.map((item) => (
-                <option key={item.id} value={item.slug}>
-                  {item.title}
-                </option>
-              ))}
-            </Select>
+            <SearchableSelect
+              id="problem"
+              name="problem"
+              defaultValue={problem ?? ""}
+              aria-label="Problem"
+              className="h-9 text-xs"
+              options={problemFilterOptions}
+            />
           </div>
           <button type="submit" className={cn(buttonVariants({ size: "sm" }), "h-9")}>
             <Filter className="size-3.5" /> Filter

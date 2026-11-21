@@ -1,7 +1,6 @@
 import type { Difficulty } from "./difficulty";
 export type { Difficulty } from "./difficulty";
 import type { ProblemRatingSummary } from "./problem-extras-types";
-import type { ContestProblemApprovalSummary } from "./contest-approval-types";
 export type {
   ProblemRatingSummary,
   ProblemResourceItem,
@@ -19,7 +18,15 @@ export type {
 
 export type UserRole = "USER" | "TEACHER" | "ADMIN";
 
-export type ProblemCheckerType = "EXACT" | "TOKEN" | "FLOAT" | "CUSTOM";
+export type {
+  AdminProblemDetail,
+  AdminProblemListItem,
+  ProblemCheckerType,
+} from "./admin-problem-types";
+export type {
+  AdminContestDetail,
+  AdminContestListItem,
+} from "./admin-contest-types";
 
 export type SessionUser = {
   id: string;
@@ -349,71 +356,6 @@ export type HeatmapDay = {
 export type { ProfileStats } from "./profile-types";
 
 export type { SiteStats } from "./stats-types";
-
-export type AdminProblemListItem = {
-  id: string;
-  slug: string;
-  title: string;
-  difficulty: Difficulty;
-  isPublic: boolean;
-  submissionCount: number;
-  testCount: number;
-  pendingContributions: number;
-  updatedAt: string;
-};
-
-export type AdminProblemDetail = {
-  id: string;
-  slug: string;
-  title: string;
-  statement: string;
-  inputFormat: string | null;
-  outputFormat: string | null;
-  constraints: string | null;
-  editorial: string | null;
-  category: string | null;
-  subcategory: string | null;
-  companies: string[];
-  checkerType: ProblemCheckerType;
-  checkerSource: string | null;
-  floatTolerance: number;
-  difficulty: Difficulty;
-  points: number;
-  timeLimitMs: number;
-  memoryLimitMb: number;
-  isPublic: boolean;
-  tags: string[];
-  tests: { input: string; expectedOutput: string; isSample: boolean }[];
-  pendingContributions: number;
-};
-
-export type AdminContestListItem = {
-  id: string;
-  slug: string;
-  title: string;
-  startAt: string;
-  endAt: string;
-  isPublic: boolean;
-  division: ContestDivision;
-  freezeMinutes: number;
-  problemCount: number;
-  participantCount: number;
-  pendingApprovals: number;
-};
-
-export type AdminContestDetail = {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  startAt: string;
-  endAt: string;
-  isPublic: boolean;
-  division: ContestDivision;
-  freezeMinutes: number;
-  problemIds: string[];
-  problemApprovals: ContestProblemApprovalSummary[];
-};
 
 export type AdminUserListItem = {
   id: string;

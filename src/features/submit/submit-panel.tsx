@@ -14,7 +14,7 @@ import {
 import { useToast } from "@/components/providers/toast-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ApiClientError, apiPost } from "@/lib/api-client";
 import { getLanguage, LANGUAGES, type LanguageId } from "@/lib/languages";
 import { isPendingVerdict, verdictMeta } from "@/lib/verdicts";
@@ -297,18 +297,16 @@ export function SubmitPanel({
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <Select
+            <SearchableSelect
               value={language}
-              onChange={(event) => changeLanguage(event.target.value as LanguageId)}
+              onValueChange={(next) => changeLanguage(next as LanguageId)}
+              options={LANGUAGES.map((item) => ({
+                value: item.id,
+                label: item.label,
+              }))}
               aria-label="Programming language"
               className="h-9 w-52 text-xs"
-            >
-              {LANGUAGES.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
+            />
             <span className="text-[11px] text-muted-foreground">
               {getLanguage(language).compiler}
             </span>

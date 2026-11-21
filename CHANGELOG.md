@@ -3,6 +3,44 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.7.0] - 2026-11-22
+
+### Added
+- A two-setter problem publication review: a new problem enters review and reaches the public
+  practice list only after two other setters approve it, each approval recording the reference
+  solution used to verify the problem. Publishing also requires an editorial and at least one test
+  case added by a reviewer.
+- Reviewer holds with a respond/resolve cycle: a hold moves the problem to `CHANGES_REQUESTED`,
+  supersedes the approvals collected so far and blocks every further approval until the author
+  responds and the hold raiser (or an admin) resolves it; resolving the last hold reopens the
+  review with a fresh cycle. Reviewers get contribution credit on publication.
+- Review workspaces at `/teacher/reviews`, `/admin/reviews` and `/dashboard/reviews`, with an inbox
+  of review queues, held problems and published review credits, plus `GET`/`POST`
+  `/api/v1/problem-reviews/:problemId` for the actions (`submit`, `approve`, `hold`, `respond`,
+  `resolve`, `reopen`, `publish`, `reopen_publication`) and a publication gate checklist.
+- Approving reviewers notify the author of each approval's progress. A published problem can be
+  withdrawn into a re-review (`reopen_publication`); it leaves the public list, its approvals reset,
+  and it must pass two fresh approvals before returning. The workspace warns when fewer than two
+  other eligible setters exist.
+
+### Changed
+- `problems` gained `publication_status` (`DRAFT`, `IN_REVIEW`, `CHANGES_REQUESTED`, `PUBLISHED`),
+  `published_at` and `review_cycle`; `is_public` now defaults to false and is pinned to
+  `publication_status = 'PUBLISHED'` by a database check, so the public list shows published
+  problems only. Existing rows were backfilled: public problems became `PUBLISHED` (with
+  `published_at = created_at`), everything else `DRAFT`.
+- `POST`/`PUT /admin/problems` no longer accept an `isPublic` publish flag. A saved problem starts
+  in review and is published only through the review workflow; contest-only problems and private
+  drafts remain possible, and reviews are staff-only (teachers and administrators).
+- Problem content is locked in `IN_REVIEW` and `PUBLISHED`; the editor and `PUT /admin/problems/:id`
+  reject rewrites (409) so approvals and reviewer-added tests cannot be invalidated after the fact.
+  Statement/test contribution proposals are rejected in those states (published problems accept
+  editorial proposals only). The author asks for a hold when a fix is needed. Problem and review
+  test payloads also carry combined size caps, and problem creation is rate-limited.
+- Choice fields across the app now use one custom searchable select. Search appears above five
+  options, the menu is keyboard accessible and portal-positioned, long labels wrap, and GET filters
+  keep a native no-JS fallback while the hydrated UI submits through a hidden input.
+
 ## [0.6.5] - 2026-11-21
 
 ### Added

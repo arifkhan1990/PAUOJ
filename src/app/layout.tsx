@@ -51,6 +51,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+        <noscript>
+          <style>{`.searchable-select-fallback{display:block!important}.searchable-select-js{display:none!important}`}</style>
+        </noscript>
         <ThemeProvider>
           <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>

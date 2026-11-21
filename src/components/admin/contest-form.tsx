@@ -12,10 +12,19 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ApiClientError, apiPost, apiPut } from "@/lib/api-client";
 import { contestInputSchema } from "@/lib/schemas/contest";
+import type { SelectOption } from "@/lib/select-options";
 import type { AdminContestDetail, ProblemOption } from "@/lib/types";
+
+const DIVISION_OPTIONS: SelectOption[] = [
+  { value: "OPEN", label: "Open" },
+  { value: "DIV1", label: "Div. 1" },
+  { value: "DIV2", label: "Div. 2" },
+  { value: "DIV3", label: "Div. 3" },
+  { value: "DIV4", label: "Div. 4" },
+];
 
 type FormValues = {
   title: string;
@@ -248,19 +257,14 @@ export function ContestForm({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="division">Division</Label>
-              <Select
+              <SearchableSelect
                 id="division"
                 value={values.division}
-                onChange={(event) =>
-                  update("division", event.target.value as FormValues["division"])
+                onValueChange={(next) =>
+                  update("division", next as FormValues["division"])
                 }
-              >
-                <option value="OPEN">Open</option>
-                <option value="DIV1">Div. 1</option>
-                <option value="DIV2">Div. 2</option>
-                <option value="DIV3">Div. 3</option>
-                <option value="DIV4">Div. 4</option>
-              </Select>
+                options={DIVISION_OPTIONS}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="freezeMinutes">Freeze (minutes)</Label>

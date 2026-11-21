@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ListChecks, Plus, Search } from "lucide-react";
+import { PublicationStatusBadge } from "@/components/problems/publication-status-badge";
 import { DifficultyBadge } from "@/components/shared/difficulty-badge";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -17,6 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { AdminProblemListItem } from "@/lib/types";
+import { REQUIRED_PUBLICATION_APPROVALS } from "@/lib/problem-review-types";
 import type { SearchParams } from "@/lib/pagination";
 import { cn, formatRelative } from "@/lib/utils";
 
@@ -37,6 +39,10 @@ export function ProblemManagementView({
   totalPages: number;
   description: string;
 }) {
+  const reviewBasePath = basePath.startsWith("/admin")
+    ? "/admin/reviews"
+    : "/teacher/reviews";
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -93,11 +99,15 @@ export function ProblemManagementView({
                 <TableHead className="hidden text-right md:table-cell">
                   Updated
                 </TableHead>
-                <TableHead className="text-right">Edit</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {items.map((problem) => (
+              {items.map((problem) => {
+                const canEdit =
+                  problem.publicationStatus === "DRAFT" ||
+                  problem.publicationStatus === "CHANGES_REQUESTED";
+                return (
                 <TableRow key={problem.id}>
                   <TableCell className="max-w-[260px]">
                     <Link
@@ -118,14 +128,23 @@ export function ProblemManagementView({
                   </TableCell>
                   <TableCell className="text-right">
                     {problem.pendingContributions > 0 ? (
-                      <Link
-                        href={`${basePath}/${problem.id}/contributions`}
-                        aria-label={`${problem.pendingContributions} pending proposals`}
-                      >
-                        <Badge variant="warning">
+                      canEdit ? (
+                        <Link
+                          href={`${basePath}/${problem.id}/contributions`}
+                          aria-label={`${problem.pendingContributions} pending proposals`}
+                        >
+                          <Badge variant="warning">
+                            {problem.pendingContributions}
+                          </Badge>
+                        </Link>
+                      ) : (
+                        <Badge
+                          variant="warning"
+                          title="Proposals are locked during publication review"
+                        >
                           {problem.pendingContributions}
                         </Badge>
-                      </Link>
+                      )
                     ) : (
                       <span className="font-mono text-xs text-muted-foreground">
                         0
@@ -136,25 +155,54 @@ export function ProblemManagementView({
                     {problem.submissionCount}
                   </TableCell>
                   <TableCell>
-                    {problem.isPublic ? (
-                      <Badge variant="success">Public</Badge>
-                    ) : (
-                      <Badge variant="warning">Hidden</Badge>
-                    )}
+                    <div className="space-y-1">
+                      <PublicationStatusBadge
+                        status={problem.publicationStatus}
+                        withIcon={false}
+                      />
+                      <p className="font-mono text-[11px] text-muted-foreground">
+                        {problem.publicationStatus === "PUBLISHED"
+                          ? "Review complete"
+                          : problem.publicationStatus === "DRAFT"
+                            ? "Not submitted"
+                            : `${problem.approvalCount}/${REQUIRED_PUBLICATION_APPROVALS} approvals`}
+                      </p>
+                      {problem.openHoldCount > 0 ? (
+                        <Badge variant="destructive">
+                          {problem.openHoldCount} hold
+                          {problem.openHoldCount === 1 ? "" : "s"}
+                        </Badge>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell className="hidden text-right text-xs text-muted-foreground md:table-cell">
                     {formatRelative(problem.updatedAt)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link
-                      href={`${basePath}/${problem.id}/edit`}
-                      className="text-xs font-medium text-primary hover:underline"
-                    >
-                      Edit
-                    </Link>
+                    <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                      <Link
+                        href={`${reviewBasePath}/${problem.id}`}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Review
+                      </Link>
+                      {canEdit ? (
+                        <Link
+                          href={`${basePath}/${problem.id}/edit`}
+                          className="text-xs font-medium text-primary hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">
+                          Locked
+                        </span>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </Card>

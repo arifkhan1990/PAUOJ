@@ -105,6 +105,7 @@ export async function loadProblemRow(slug: string) {
       title: problems.title,
       authorId: problems.authorId,
       isPublic: problems.isPublic,
+      publicationStatus: problems.publicationStatus,
     })
     .from(problems)
     .where(eq(problems.slug, slug))

@@ -118,7 +118,8 @@ Revokes all sessions and issues a new one.
 
 ### GET `/problems?page=1&pageSize=20&q=array&difficulty=EASY&tag=arrays`
 
-Returns public problems visible to the caller. Problems in a running contest are
+Returns public problems visible to the caller — only `PUBLISHED` problems appear in this list.
+Problems in a running contest are
 hidden unless the caller is registered or an admin. Each item includes
 `acceptedCount`, `submissionCount`, tags and `solvedByMe`/`attemptedByMe`.
 
@@ -204,6 +205,61 @@ the right people.
   `REJECTED` or `WITHDRAWN`; `range` is `7`, `30` or `all`. Columns include the
   problem, kind, status, contributor/reviewer, notes, timestamps and review
   hours. Responses use `Content-Disposition: attachment`.
+
+### Problem publication review
+
+New problems go through a two-setter review before they can appear in the public list; a problem
+saved through `POST /admin/problems` starts in review and cannot be published directly (see
+[Admin and teacher content](#admin-and-teacher-content)).
+
+- `GET /problem-reviews/:problemId` returns `{ data: review }` — the full review workspace: the
+  statement/tests snapshot, `publicationStatus`, `reviewCycle`, `publishedAt`, `approvals`, `holds`,
+  the `gates` checklist (`approvalCount`, `requiredApprovals`, `editorialReady`,
+  `reviewerTestsReady`, `solutionReady`, `holdsClear`, `ready`, `missing`) and the caller's
+  `viewer` capability flags. Allowed for the problem author and staff reviewers (`TEACHER`,
+  `ADMIN`); a `USER` who is not the author gets 403/404, unrelated callers never see drafts, and an
+  unknown problem id is 404. No session → 401.
+
+- `POST /problem-reviews/:problemId` runs one action. The body is a discriminated union on
+  `action`:
+
+| Action | Payload | Who | Effect |
+| --- | --- | --- | --- |
+| `submit` | `{}` | author or admin | `DRAFT` → `IN_REVIEW`, `reviewCycle + 1` |
+| `approve` | `note?`, `solutionLanguage`, `solutionSource`, `editorial?`, `tests?` | teacher/admin who is not the author, problem `IN_REVIEW`, no active hold, not yet approved this cycle | adds an `ACTIVE` approval; publishes when every gate passes |
+| `hold` | `note` (required) | same reviewers as `approve`, one active hold each | `IN_REVIEW` → `CHANGES_REQUESTED`, active approvals become `SUPERSEDED` |
+| `respond` | `holdId`, `response` (required) | author or admin | the hold becomes `ADDRESSED` |
+| `resolve` | `holdId`, `note?` | the reviewer who raised the hold, or an admin | hold `RESOLVED`; when no `OPEN`/`ADDRESSED` hold remains → `IN_REVIEW`, `reviewCycle + 1` |
+| `reopen` | `holdId`, `note` (required) | the reviewer who raised the hold, or an admin | the hold returns to `OPEN` |
+| `publish` | `{}` | author or admin, problem `IN_REVIEW` with every gate | `IN_REVIEW` → `PUBLISHED` |
+| `reopen_publication` | `note` (required) | author or admin, problem `PUBLISHED` | `PUBLISHED` → `DRAFT`; hidden from the public list, active approvals superseded; edit and submit again |
+
+Field rules: `note` is optional and capped at 2,000 characters; `hold.note`, `reopen.note`,
+`reopen_publication.note` and `respond.response` are required, 10–2,000 characters;
+`solutionLanguage` must be a supported judge language and `solutionSource` is required
+(1–65,536 characters); `editorial` is optional but needs at least 40 characters when present;
+`tests` is an optional array (max 20) of `{ "input", "expectedOutput", "isSample" }` where empty
+rows are rejected.
+
+Response: `{ data: { review, published, reopened } }` — `published` reports that this action moved
+the problem to `PUBLISHED`; `reopened` reports that the review round was reopened (the last hold was
+resolved, or a published problem was withdrawn for re-review).
+
+Errors:
+
+| Status | When |
+| --- | --- |
+| 401 | no session |
+| 403 | wrong role, not the author, a reviewer approving their own problem, or a caller who is not the hold raiser resolving/reopening a hold |
+| 404 | unknown problem id, or a problem the caller may not see |
+| 409 | already approved this cycle, an active hold already raised by this reviewer, or the problem is already reviewed/published |
+| 422 | schema failure (short note, missing solution, empty tests) or a gate not met (missing editorial, second approval, reviewer test, open hold) |
+
+Every action returns the refreshed `review`, so the workspace can re-render without a second GET.
+
+The contribution pipeline follows the same content lock: `POST /problems/:slug/contributions` and
+`PATCH /contributions/:id` reject statement/test proposals while the problem is `IN_REVIEW` or
+`CHANGES_REQUESTED`, and a `PUBLISHED` problem accepts only `EDITORIAL` proposals.
 
 ### Study plans
 
@@ -631,6 +687,13 @@ other records return `404`.
 - `PUT /admin/problems/:id`
   - Problem payloads accept `checkerType` (`EXACT`, `TOKEN`, `FLOAT`, `CUSTOM`),
     `checkerSource` (Python source for `CUSTOM`) and `floatTolerance`.
+  - Problem payloads no longer accept an `isPublic` publish flag: `POST /admin/problems` creates the
+    problem in review (`IN_REVIEW`) and nothing here can publish it directly. Publication status
+    changes only through `POST /problem-reviews/:problemId` (see
+    [Problem publication review](#problem-publication-review)) once the gates pass.
+  - Content edits are accepted only while the problem is `DRAFT` or `CHANGES_REQUESTED`
+    (the author fixing a hold). `PUT /admin/problems/:id` returns `409` for `IN_REVIEW` and
+    `PUBLISHED`, so approvals and reviewer-added tests cannot be invalidated by a rewrite.
 - `POST /admin/lists`
 - `PUT /admin/lists/:id`
 - `POST /admin/contests`
@@ -658,8 +721,9 @@ All endpoints require a session except unsubscribe.
   `verdicts`, `contests`, `clarifications`, `reviews`.
 
 In-app notifications are created for finished verdicts, contest starts,
-clarification activity, problem contribution proposals/reviews and contest
-problem approval requests/decisions. Email copies follow the user's preferences
+clarification activity, problem contribution proposals/reviews, contest
+problem approval requests/decisions and problem publication review events
+(submit, hold, respond, resolve, reopen and publish). Email copies follow the user's preferences
 and require a verified email address. Review emails cover contribution and
 contest-approval events, have their own `emailReviews` toggle, and follow the
 `reviewEmailFrequency` setting: `INSTANT` sends each event immediately, while

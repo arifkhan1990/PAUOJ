@@ -9,95 +9,34 @@ import { ProblemCheckerSection } from "@/components/admin/problem-checker-fields
 import { ProblemFormFooter } from "@/components/admin/problem-form-footer";
 import { ProblemFormHeader } from "@/components/admin/problem-form-header";
 import { ProblemTagsField } from "@/components/admin/problem-tags-field";
-import { TestCaseEditor, type TestForm } from "@/components/admin/test-case-editor";
+import { TestCaseEditor } from "@/components/admin/test-case-editor";
+import {
+  initialProblemFormValues,
+  type ProblemFormValues,
+} from "@/components/admin/problem-form-values";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  NewProblemReviewNotice,
+  PublicationStatusNotice,
+} from "@/features/reviews/publication-status-notice";
 import { ApiClientError, apiPost, apiPut } from "@/lib/api-client";
 import { DIFFICULTIES, difficultyMeta } from "@/lib/difficulty";
 import { EDITORIAL_OUTLINE } from "@/lib/editorial-template";
 import { problemInputSchema } from "@/lib/schemas/problem";
+import type { SelectOption } from "@/lib/select-options";
 import type {
   AdminProblemDetail,
   Difficulty,
   ProblemCheckerType,
 } from "@/lib/types";
 
-type FormValues = {
-  title: string;
-  slug: string;
-  statement: string;
-  inputFormat: string;
-  outputFormat: string;
-  constraints: string;
-  editorial: string;
-  difficulty: Difficulty;
-  points: string;
-  timeLimitMs: string;
-  memoryLimitMb: string;
-  isPublic: boolean;
-  tags: string;
-  category: string;
-  subcategory: string;
-  companies: string;
-  checkerType: ProblemCheckerType;
-  checkerSource: string;
-  floatTolerance: string;
-  tests: TestForm[];
-};
-
-function initialValues(initial: AdminProblemDetail | null): FormValues {
-  if (!initial) {
-    return {
-      title: "",
-      slug: "",
-      statement: "",
-      inputFormat: "",
-      outputFormat: "",
-      constraints: "",
-      editorial: "",
-      difficulty: "EASY",
-      points: "100",
-      timeLimitMs: "1000",
-      memoryLimitMb: "256",
-      isPublic: true,
-      tags: "",
-      category: "",
-      subcategory: "",
-      companies: "",
-      checkerType: "EXACT",
-      checkerSource: "",
-      floatTolerance: "0.000001",
-      tests: [
-        { input: "", expectedOutput: "", isSample: true },
-        { input: "", expectedOutput: "", isSample: false },
-      ],
-    };
-  }
-  return {
-    title: initial.title,
-    slug: initial.slug,
-    statement: initial.statement,
-    inputFormat: initial.inputFormat ?? "",
-    outputFormat: initial.outputFormat ?? "",
-    constraints: initial.constraints ?? "",
-    editorial: initial.editorial ?? "",
-    difficulty: initial.difficulty,
-    points: String(initial.points),
-    timeLimitMs: String(initial.timeLimitMs),
-    memoryLimitMb: String(initial.memoryLimitMb),
-    isPublic: initial.isPublic,
-    tags: initial.tags.join(", "),
-    category: initial.category ?? "",
-    subcategory: initial.subcategory ?? "",
-    companies: initial.companies.join(", "),
-    checkerType: initial.checkerType,
-    checkerSource: initial.checkerSource ?? "",
-    floatTolerance: String(initial.floatTolerance),
-    tests: initial.tests,
-  };
-}
+const DIFFICULTY_OPTIONS: SelectOption[] = DIFFICULTIES.map((difficulty) => ({
+  value: difficulty,
+  label: difficultyMeta(difficulty).label,
+}));
 
 export function ProblemForm({
   initial,
@@ -106,12 +45,24 @@ export function ProblemForm({
   initial: AdminProblemDetail | null;
   basePath?: string;
 }) {
-  const [values, setValues] = useState<FormValues>(() => initialValues(initial));
+  const [values, setValues] = useState<ProblemFormValues>(() => initialProblemFormValues(initial));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [dirty, setDirty] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const reviewBasePath = basePath.startsWith("/admin")
+    ? "/admin/reviews"
+    : "/teacher/reviews";
+  const locked = Boolean(
+    initial &&
+      (initial.publicationStatus === "IN_REVIEW" ||
+        initial.publicationStatus === "PUBLISHED"),
+  );
+  const lockedReason =
+    initial?.publicationStatus === "PUBLISHED"
+      ? "Published problems are locked. Publication review is terminal for this workflow."
+      : "This problem is locked while two setters review it. Ask a reviewer to put it on hold before editing.";
 
   useEffect(() => {
     if (!dirty) return;
@@ -123,9 +74,9 @@ export function ProblemForm({
     return () => window.removeEventListener("beforeunload", handler);
   }, [dirty]);
 
-  const update = <K extends keyof FormValues,>(
+  const update = <K extends keyof ProblemFormValues,>(
     key: K,
-    value: FormValues[K],
+    value: ProblemFormValues[K],
   ) => {
     setValues((current) => ({ ...current, [key]: value }));
     setDirty(true);
@@ -133,6 +84,10 @@ export function ProblemForm({
 
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (locked) {
+      setError(lockedReason);
+      return;
+    }
     setError(null);
 
     const parsed = problemInputSchema.safeParse({
@@ -147,7 +102,6 @@ export function ProblemForm({
       points: Number(values.points),
       timeLimitMs: Number(values.timeLimitMs),
       memoryLimitMb: Number(values.memoryLimitMb),
-      isPublic: values.isPublic,
       tags: values.tags
         .split(",")
         .map((tag) => tag.trim())
@@ -178,15 +132,33 @@ export function ProblemForm({
     try {
       if (initial) {
         await apiPut(`/api/v1/admin/problems/${initial.id}`, parsed.data);
+        toast({
+          title: "Problem updated",
+          description:
+            initial.publicationStatus === "CHANGES_REQUESTED"
+              ? "Changes saved. Respond to every hold so the review can reopen."
+              : undefined,
+          variant: "success",
+        });
+        router.push(
+          initial.publicationStatus === "CHANGES_REQUESTED"
+            ? `${reviewBasePath}/${initial.id}`
+            : basePath,
+        );
       } else {
-        await apiPost("/api/v1/admin/problems", parsed.data);
+        const created = await apiPost<{ id: string; slug: string }>(
+          "/api/v1/admin/problems",
+          parsed.data,
+        );
+        toast({
+          title: "Problem created",
+          description:
+            "Sent to publication review. Two other setters must approve it before it can go public.",
+          variant: "success",
+        });
+        router.push(`${reviewBasePath}/${created.id}`);
       }
       setDirty(false);
-      toast({
-        title: initial ? "Problem updated" : "Problem created",
-        variant: "success",
-      });
-      router.push(basePath);
       router.refresh();
     } catch (submitError) {
       const message =
@@ -204,6 +176,15 @@ export function ProblemForm({
     <div className="space-y-6">
       <ProblemFormHeader initial={initial} basePath={basePath} />
 
+      {initial ? (
+        <PublicationStatusNotice
+          problem={initial}
+          reviewBasePath={reviewBasePath}
+        />
+      ) : (
+        <NewProblemReviewNotice />
+      )}
+
       {error ? (
         <div
           role="alert"
@@ -214,6 +195,7 @@ export function ProblemForm({
       ) : null}
 
       <form onSubmit={(event) => void submit(event)} className="space-y-5">
+        <fieldset disabled={locked} className="space-y-5">
         <Card className="p-5">
           <h2 className="text-sm font-semibold">Basics</h2>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -242,19 +224,14 @@ export function ProblemForm({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="difficulty">Difficulty</Label>
-              <Select
+              <SearchableSelect
                 id="difficulty"
                 value={values.difficulty}
-                onChange={(event) =>
-                  update("difficulty", event.target.value as Difficulty)
+                onValueChange={(next) =>
+                  update("difficulty", next as Difficulty)
                 }
-              >
-                {DIFFICULTIES.map((difficulty) => (
-                  <option key={difficulty} value={difficulty}>
-                    {difficultyMeta(difficulty).label}
-                  </option>
-                ))}
-              </Select>
+                options={DIFFICULTY_OPTIONS}
+              />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="points">Points</Label>
@@ -296,15 +273,6 @@ export function ProblemForm({
                 />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={values.isPublic}
-                onChange={(event) => update("isPublic", event.target.checked)}
-                className="size-4 accent-[var(--primary)]"
-              />
-              Publish this problem publicly
-            </label>
           </div>
         </Card>
 
@@ -389,7 +357,15 @@ export function ProblemForm({
           />
         </Card>
 
-        <ProblemFormFooter dirty={dirty} loading={loading} basePath={basePath} />
+        </fieldset>
+
+        <ProblemFormFooter
+          dirty={dirty}
+          loading={loading}
+          locked={locked}
+          lockedReason={lockedReason}
+          basePath={basePath}
+        />
       </form>
     </div>
   );

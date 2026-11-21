@@ -3,9 +3,17 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
+import type { SelectOption } from "@/lib/select-options";
 import type { ProblemCheckerType } from "@/lib/types";
+
+const CHECKER_OPTIONS: SelectOption[] = [
+  { value: "EXACT", label: "Exact output" },
+  { value: "TOKEN", label: "Token comparison" },
+  { value: "FLOAT", label: "Floating point" },
+  { value: "CUSTOM", label: "Custom Python checker" },
+];
 
 export function ProblemCheckerFields({
   checkerType,
@@ -26,16 +34,12 @@ export function ProblemCheckerFields({
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="checkerType">Checker</Label>
-          <Select
+          <SearchableSelect
             id="checkerType"
             value={checkerType}
-            onChange={(event) => onChange("checkerType", event.target.value)}
-          >
-            <option value="EXACT">Exact output</option>
-            <option value="TOKEN">Token comparison</option>
-            <option value="FLOAT">Floating point</option>
-            <option value="CUSTOM">Custom Python checker</option>
-          </Select>
+            onValueChange={(next) => onChange("checkerType", next)}
+            options={CHECKER_OPTIONS}
+          />
         </div>
         {checkerType === "FLOAT" ? (
           <div className="space-y-1.5">

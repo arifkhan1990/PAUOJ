@@ -15,7 +15,11 @@ import type {
   AdminProblemListItem,
 } from "@/lib/types";
 import { slugify } from "@/lib/utils";
+import type { SafeUser } from "@/server/auth/session";
 import { countPendingContributions } from "./problem-contributions";
+import { assertProblemNotInLiveContext } from "./problem-access";
+import { notifyProblemReviewRequested } from "./problem-review-notify";
+import { canEditProblemContent } from "./problem-review-policy";
 
 type Transaction = Parameters<
   Parameters<Database["transaction"]>[0]
@@ -88,7 +92,10 @@ export async function createProblem(
         points: input.points,
         timeLimitMs: input.timeLimitMs,
         memoryLimitMb: input.memoryLimitMb,
-        isPublic: input.isPublic,
+        isPublic: false,
+        publicationStatus: "IN_REVIEW",
+        reviewCycle: 1,
+        publishedAt: null,
         authorId,
       })
       .returning({ id: problems.id });
@@ -108,31 +115,56 @@ export async function createProblem(
     return created.id;
   });
 
+  await notifyProblemReviewRequested(id, 1);
   return { id, slug };
 }
 
 export async function updateProblem(
   id: string,
   input: ProblemInput,
-  authorId?: string,
+  actor: Pick<SafeUser, "id" | "role">,
 ): Promise<{ id: string; slug: string }> {
   const db = getDb();
-  const rows = await db
-    .select({ id: problems.id })
-    .from(problems)
-    .where(
-      authorId
-        ? and(eq(problems.id, id), eq(problems.authorId, authorId))
-        : eq(problems.id, id),
-    )
-    .limit(1);
-  if (!rows[0]) throw errors.notFound("Problem not found.");
-
   const slug = input.slug || slugify(input.title);
   if (!slug) throw errors.validation("Give the problem a valid slug.");
   await assertSlugAvailable(slug, id);
+  await assertProblemNotInLiveContext(
+    id,
+    "PROBLEM_LOCKED",
+    "This problem belongs to a running contest or assessment. Edit it after the round ends.",
+  );
 
   await db.transaction(async (tx) => {
+    const [problem] = await tx
+      .select({
+        id: problems.id,
+        authorId: problems.authorId,
+        publicationStatus: problems.publicationStatus,
+      })
+      .from(problems)
+      .where(
+        actor.role === "ADMIN"
+          ? eq(problems.id, id)
+          : and(eq(problems.id, id), eq(problems.authorId, actor.id)),
+      )
+      .for("update")
+      .limit(1);
+    if (!problem) throw errors.notFound("Problem not found.");
+    if (
+      !canEditProblemContent({
+        viewerId: actor.id,
+        viewerRole: actor.role,
+        authorId: problem.authorId,
+        status: problem.publicationStatus,
+      })
+    ) {
+      throw errors.conflict(
+        problem.publicationStatus === "PUBLISHED"
+          ? "Published problems are locked. Publication review is terminal for this workflow."
+          : "This problem is locked while two setters review it. Ask a reviewer to put it on hold before editing.",
+      );
+    }
+
     await tx
       .update(problems)
       .set({
@@ -153,7 +185,6 @@ export async function updateProblem(
         points: input.points,
         timeLimitMs: input.timeLimitMs,
         memoryLimitMb: input.memoryLimitMb,
-        isPublic: input.isPublic,
         updatedAt: new Date(),
       })
       .where(eq(problems.id, id));
@@ -230,6 +261,9 @@ export async function getAdminProblemDetail(
     timeLimitMs: problem.timeLimitMs,
     memoryLimitMb: problem.memoryLimitMb,
     isPublic: problem.isPublic,
+    publicationStatus: problem.publicationStatus,
+    reviewCycle: problem.reviewCycle,
+    publishedAt: problem.publishedAt?.toISOString() ?? null,
     tags: tagRows.map((row) => row.name),
     tests: testRows,
     pendingContributions,
@@ -252,6 +286,8 @@ export async function listAdminProblems(
     .where(where);
   const testCount = sql<number>`(select count(*)::int from test_cases tc where tc.problem_id = "problems"."id")`;
   const pendingContributions = sql<number>`(select count(*)::int from problem_contributions pc where pc.problem_id = "problems"."id" and pc.status = 'PENDING')`;
+  const approvalCount = sql<number>`(select count(*)::int from problem_review_approvals pra where pra.problem_id = "problems"."id" and pra.cycle = "problems"."review_cycle" and pra.status = 'ACTIVE')`;
+  const openHoldCount = sql<number>`(select count(*)::int from problem_review_holds prh where prh.problem_id = "problems"."id" and prh.status in ('OPEN', 'ADDRESSED'))`;
   const rows = await db
     .select({
       id: problems.id,
@@ -259,9 +295,14 @@ export async function listAdminProblems(
       title: problems.title,
       difficulty: problems.difficulty,
       isPublic: problems.isPublic,
+      publicationStatus: problems.publicationStatus,
+      reviewCycle: problems.reviewCycle,
+      publishedAt: problems.publishedAt,
       submissionCount: problems.submissionCount,
       testCount,
       pendingContributions,
+      approvalCount,
+      openHoldCount,
       updatedAt: problems.updatedAt,
     })
     .from(problems)
@@ -278,6 +319,11 @@ export async function listAdminProblems(
       title: row.title,
       difficulty: row.difficulty,
       isPublic: row.isPublic,
+      publicationStatus: row.publicationStatus,
+      reviewCycle: row.reviewCycle,
+      approvalCount: Number(row.approvalCount),
+      openHoldCount: Number(row.openHoldCount),
+      publishedAt: row.publishedAt?.toISOString() ?? null,
       submissionCount: row.submissionCount,
       testCount: Number(row.testCount),
       pendingContributions: Number(row.pendingContributions),

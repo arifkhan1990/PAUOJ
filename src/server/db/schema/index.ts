@@ -2,6 +2,7 @@ export * from "./auth";
 export * from "./problems";
 export * from "./problem-extras";
 export * from "./problem-contributions";
+export * from "./problem-reviews";
 export * from "./study-lists";
 export * from "./contests";
 export * from "./contest-problem-approvals";

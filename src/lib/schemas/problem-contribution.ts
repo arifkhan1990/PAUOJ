@@ -26,7 +26,16 @@ export const testsContributionSchema = z.object({
       tests: z
         .array(testCaseInputSchema)
         .min(1, "Add at least one test case.")
-        .max(100, "At most 100 tests are allowed."),
+        .max(100, "At most 100 tests are allowed.")
+        .refine(
+          (tests) =>
+            tests.reduce(
+              (total, test) =>
+                total + test.input.length + test.expectedOutput.length,
+              0,
+            ) <= 2_000_000,
+          "The combined test payload is too large (2 MB maximum).",
+        ),
     })
     .superRefine((value, context) => {
       if (!value.tests.some((test) => test.isSample)) {

@@ -19,10 +19,16 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ApiClientError, apiPost, apiPut } from "@/lib/api-client";
 import { assessmentInputSchema } from "@/lib/schemas/assessment";
+import type { SelectOption } from "@/lib/select-options";
 import type { AdminAssessmentDetail, ProblemOption } from "@/lib/types";
+
+const JOIN_MODE_OPTIONS: SelectOption[] = [
+  { value: "OPEN_CODE", label: "Shared access code" },
+  { value: "INVITE", label: "Personal invite links" },
+];
 
 type FormValues = {
   title: string;
@@ -280,19 +286,14 @@ export function AssessmentForm({
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label htmlFor="joinMode">Join mode</Label>
-              <Select
+              <SearchableSelect
                 id="joinMode"
                 value={values.joinMode}
-                onChange={(event) =>
-                  update(
-                    "joinMode",
-                    event.target.value as FormValues["joinMode"],
-                  )
+                onValueChange={(next) =>
+                  update("joinMode", next as FormValues["joinMode"])
                 }
-              >
-                <option value="OPEN_CODE">Shared access code</option>
-                <option value="INVITE">Personal invite links</option>
-              </Select>
+                options={JOIN_MODE_OPTIONS}
+              />
               <p className="text-[11px] text-muted-foreground">
                 Invite links disable the shared code for candidates. Create the
                 roster after saving.

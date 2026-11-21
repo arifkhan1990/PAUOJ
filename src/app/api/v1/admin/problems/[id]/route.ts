@@ -16,11 +16,7 @@ export async function PUT(
     const staff = await requireApiStaff();
     const { id } = await context.params;
     const input = await parseJson(request, problemInputSchema);
-    const updated = await updateProblem(
-      id,
-      input,
-      staff.role === "TEACHER" ? staff.id : undefined,
-    );
+    const updated = await updateProblem(id, input, staff);
     await getDb().insert(auditLogs).values({
       actorId: staff.id,
       action: "problem.update",

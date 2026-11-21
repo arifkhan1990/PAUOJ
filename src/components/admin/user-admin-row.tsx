@@ -7,11 +7,18 @@ import { useToast } from "@/components/providers/toast-provider";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ApiClientError, apiPatch } from "@/lib/api-client";
+import type { SelectOption } from "@/lib/select-options";
 import type { AdminUserListItem, UserRole } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
+
+const ROLE_OPTIONS: SelectOption[] = [
+  { value: "USER", label: "Coder" },
+  { value: "TEACHER", label: "Teacher" },
+  { value: "ADMIN", label: "Admin" },
+];
 
 export function UserAdminRow({
   user,
@@ -99,17 +106,14 @@ export function UserAdminRow({
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
-          <Select
+          <SearchableSelect
             value={role}
-            onChange={(event) => void updateRole(event.target.value as UserRole)}
+            onValueChange={(next) => void updateRole(next as UserRole)}
             disabled={isSelf || loading}
             className="h-8 w-28 text-xs"
             aria-label={`Role for ${user.username}`}
-          >
-            <option value="USER">Coder</option>
-            <option value="TEACHER">Teacher</option>
-            <option value="ADMIN">Admin</option>
-          </Select>
+            options={ROLE_OPTIONS}
+          />
           {role === "ADMIN" || role === "TEACHER" ? (
             <ShieldCheck className="size-4 text-primary" />
           ) : null}

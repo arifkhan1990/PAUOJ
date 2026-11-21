@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { DashboardMetric } from "@/components/dashboard/dashboard-metric";
 import { DashboardPanel } from "@/components/dashboard/dashboard-panel";
+import { PublicationReviewPanel } from "@/components/dashboard/publication-review-panel";
 import { ReviewActivityPanel } from "@/components/dashboard/review-activity-panel";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -148,6 +149,8 @@ export default async function AdminDashboardPage({
         basePath="/admin"
         range={range}
       />
+
+      <PublicationReviewPanel viewer={admin} basePath="/admin" />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
         <SubmissionActivityChart

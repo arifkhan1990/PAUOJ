@@ -40,7 +40,6 @@ export const problemInputSchema = z
     points: z.coerce.number().int().min(10).max(1000),
     timeLimitMs: z.coerce.number().int().min(100).max(10_000),
     memoryLimitMb: z.coerce.number().int().min(64).max(1024),
-    isPublic: z.boolean().default(true),
     tags: z
       .array(z.string().trim().min(1).max(30))
       .max(10, "Use at most 10 tags.")
@@ -48,7 +47,16 @@ export const problemInputSchema = z
     tests: z
       .array(testCaseInputSchema)
       .min(2, "Add at least one sample and one hidden test.")
-      .max(100, "At most 100 tests are allowed."),
+      .max(100, "At most 100 tests are allowed.")
+      .refine(
+        (tests) =>
+          tests.reduce(
+            (total, test) =>
+              total + test.input.length + test.expectedOutput.length,
+            0,
+          ) <= 2_000_000,
+        "The combined test payload is too large (2 MB maximum).",
+      ),
   })
   .superRefine((value, context) => {
     if (!value.tests.some((test) => test.isSample)) {

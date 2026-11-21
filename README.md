@@ -2,7 +2,7 @@
 
 ![PAU OJ — PrimeAsia University Online Judge](public/brand/pauoj-logo.png)
 
-**Version 0.6.3.** A full-stack online judge for PrimeAsia University: browse problems, write code in
+**Version 0.7.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
 the browser, get sandboxed verdicts, compete in ICPC-style contests, run timed assessments and track
 progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 
@@ -33,6 +33,10 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Problem contributions** — author-reviewed proposals for statements, tests and editorials, with
   the same Markdown editor and an editorial outline, private drafts, an audit log, CSV export and
   optional rejudge of practice submissions.
+- **Problem publication review** — new problems never reach the public list on day one: two other
+  setters must each approve it with a reference solution, an editorial and a reviewer-added test are
+  required, a hold blocks every approval until the author responds and the hold is resolved, and
+  published reviews earn contribution credit.
 - **Reviewer leaderboard** — a public `/reviewers` board ranks reviewers by completed
   contribution decisions, with 7/30/all-time filters, approval rate, turnaround time, a top-3
   podium and a mobile-safe table.
@@ -49,7 +53,8 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Contests** — registration, divisions, contest-only problems, ICPC scoreboard with penalties,
   live standings, clarifications, ratings, virtual replays, a freeze window and an admin editor.
 - **Problem approvals** — another setter's problems need approval before publication; drafts stay
-  private, admins can publish immediately, and approval is individual or bulk.
+  private, admin-created contests approve their problems automatically, and approval is individual or
+  bulk.
 - **Contest integrity** — admins review code-similarity signals before acting; advisory only.
 
 ### Assessments & roles
@@ -77,6 +82,41 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   7/30/all-time filters and 48-hour flags, and a version/changelog footer.
 - **Production plumbing** — migrations, seeds, Docker Compose, worker heartbeats, health checks,
   Caddy HTTPS, backups/restore, deploy scripts, CI and Vitest.
+
+## Problem publication review
+
+Saving a new problem sends it into review. It stays out of the public practice list until the review
+passes, so a work-in-progress problem never reaches solvers.
+
+States (`problems.publication_status`):
+
+| State | Meaning |
+| --- | --- |
+| `DRAFT` | The author is still writing; never public. |
+| `IN_REVIEW` | Open to eligible reviewers; approvals are collected in the current review cycle. |
+| `CHANGES_REQUESTED` | At least one hold is open or addressed; approvals are locked. |
+| `PUBLISHED` | In the public problem list (terminal for this workflow). |
+
+Who can do what:
+
+| Action | Who | Effect |
+| --- | --- | --- |
+| `submit` | Author or admin | `DRAFT` → `IN_REVIEW`, review cycle +1 |
+| `approve` | Any teacher/admin except the author | Records a reference solution; publishes when every gate passes |
+| `hold` | Any teacher/admin except the author | `IN_REVIEW` → `CHANGES_REQUESTED`; approvals collected so far are superseded |
+| `respond` | Author or admin | Answers a hold; the hold becomes `ADDRESSED` |
+| `resolve` | The reviewer who raised the hold, or an admin | Last hold cleared: back to `IN_REVIEW`, review cycle +1 |
+| `reopen` | The reviewer who raised the hold, or an admin | The hold returns to `OPEN` |
+| `publish` | Author or admin | `IN_REVIEW` → `PUBLISHED` when every gate passes |
+| `reopen_publication` | Author or admin | `PUBLISHED` → `DRAFT`; hides the problem from the public list, resets approvals and lets the author edit and submit it again |
+
+Publish gates: two active approvals in the current review cycle, a non-empty editorial, at least one
+test case added by a reviewer, at least one approval carrying a reference solution, and no open or
+addressed hold. Reviewers are teachers and administrators who did not write the problem, and nobody
+can approve their own problem. Approving reviewers get contribution credit when the problem is
+published. A published problem that needs a change is withdrawn into a re-review; it leaves the
+public list until it passes two fresh approvals again. Full state machine:
+[docs/architecture.md](docs/architecture.md#problem-publication-review).
 
 ## Stack
 
@@ -220,6 +260,7 @@ All app routes are under `/api/v1`. Success: `{ "data": ..., "meta": { "page": 1
 | POST | `/admin/assessments/:id/invites/:inviteId/revoke` | admin/teacher | Revoke one invite link |
 | GET | `/admin/assessments/:id/results.csv` | admin/teacher | Roster-complete results export |
 | POST/PUT | `/admin/problems`, `/admin/contests`, `/admin/assessments` | admin/teacher | Content management |
+| GET/POST | `/problem-reviews/:problemId` | author/staff | Publication review workspace and actions |
 | GET | `/rank`, `/health` | public | Ranking and health |
 
 Full reference: [docs/api.md](docs/api.md) (contributions, discussions, admin actions, notifications,
@@ -274,6 +315,15 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
   domain (SPF/DKIM/DMARC) at deployment. Link-only invites work without SMTP.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.
+- Problem publication review is staff-only: only teachers and administrators can approve, hold,
+  resolve or reopen, and coders only see the status of problems they authored. The public problem
+  list shows published problems only — contest-only problems and private drafts never appear there.
+- Problem content is locked while it is in review or published; a fix needs a reviewer to put the
+  problem on hold first. A published problem can be withdrawn into a re-review, but it leaves the
+  public list until it passes two fresh approvals again. Statement/test contributions are rejected
+  in those states; a published problem accepts editorial proposals only.
+- Existing problems were backfilled by the publication migration: public problems became
+  `PUBLISHED`, private ones `DRAFT`. Nothing that was public before is hidden now.
 
 These are deliberate v1 boundaries; the judge and core workflows are functional.
 

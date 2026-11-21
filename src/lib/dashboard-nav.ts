@@ -65,6 +65,7 @@ export function dashboardNav(
             label: "Contributions",
             icon: GitPullRequest,
           },
+          { href: "/admin/reviews", label: "Reviews", icon: ShieldCheck },
           { href: "/admin/lists", label: "Study lists", icon: BookOpen },
           { href: "/admin/contests", label: "Contests", icon: Trophy },
           {
@@ -118,6 +119,7 @@ export function dashboardNav(
             label: "Contributions",
             icon: GitPullRequest,
           },
+          { href: "/teacher/reviews", label: "Reviews", icon: ShieldCheck },
           { href: "/teacher/contests", label: "Contests", icon: Trophy },
           {
             href: "/teacher/assessments",
@@ -190,6 +192,7 @@ export function dashboardNav(
           label: "Contributions",
           icon: GitPullRequest,
         },
+        { href: "/dashboard/reviews", label: "Reviews", icon: ShieldCheck },
         { href: "/notifications", label: "Notifications", icon: Bell },
       ],
     },

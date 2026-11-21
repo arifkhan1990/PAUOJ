@@ -11,7 +11,7 @@ import { Pagination } from "@/components/shared/pagination";
 import { SubmissionTable } from "@/components/submissions/submission-table";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { getCurrentUser } from "@/server/auth/session";
 import { ApiError } from "@/server/api/errors";
 import { getContestAccess } from "@/server/services/contest-access";
@@ -132,6 +132,15 @@ export default async function ContestSubmissionsPage({
     isPendingVerdict(item.status),
   );
 
+  const statusFilterOptions = [
+    { value: "", label: "Any verdict" },
+    ...statusOptions.map(([value, meta]) => ({ value, label: meta.label })),
+  ];
+  const languageFilterOptions = [
+    { value: "", label: "Any language" },
+    ...LANGUAGES.map((item) => ({ value: item.id, label: item.label })),
+  ];
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <AutoRefresh enabled={hasPending} intervalMs={5000} />
@@ -198,19 +207,14 @@ export default async function ContestSubmissionsPage({
             >
               Verdict
             </label>
-            <Select
+            <SearchableSelect
               id="status"
               name="status"
               defaultValue={status ?? ""}
+              aria-label="Verdict"
               className="h-9 text-xs"
-            >
-              <option value="">Any verdict</option>
-              {statusOptions.map(([value, meta]) => (
-                <option key={value} value={value}>
-                  {meta.label}
-                </option>
-              ))}
-            </Select>
+              options={statusFilterOptions}
+            />
           </div>
           <div className="min-w-40 flex-1">
             <label
@@ -219,19 +223,14 @@ export default async function ContestSubmissionsPage({
             >
               Language
             </label>
-            <Select
+            <SearchableSelect
               id="language"
               name="language"
               defaultValue={language ?? ""}
+              aria-label="Language"
               className="h-9 text-xs"
-            >
-              <option value="">Any language</option>
-              {LANGUAGES.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </Select>
+              options={languageFilterOptions}
+            />
           </div>
           <button
             type="submit"

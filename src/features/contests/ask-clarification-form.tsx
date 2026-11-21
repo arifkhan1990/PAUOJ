@@ -6,7 +6,7 @@ import { Loader2, Send } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiClientError, apiPost } from "@/lib/api-client";
 import type { ContestProblemOption } from "@/lib/types";
@@ -65,19 +65,19 @@ export function AskClarificationForm({
             >
               Problem
             </label>
-            <Select
+            <SearchableSelect
               id="clarification-problem"
               value={problemId}
-              onChange={(event) => setProblemId(event.target.value)}
+              onValueChange={setProblemId}
+              options={[
+                { value: "", label: "General question" },
+                ...problems.map((problem) => ({
+                  value: problem.id,
+                  label: `${problem.label}. ${problem.title}`,
+                })),
+              ]}
               className="h-9 text-xs"
-            >
-              <option value="">General question</option>
-              {problems.map((problem) => (
-                <option key={problem.id} value={problem.id}>
-                  {problem.label}. {problem.title}
-                </option>
-              ))}
-            </Select>
+            />
           </div>
           <Button type="submit" size="sm" disabled={submitting || question.trim().length < 5}>
             {submitting ? (
