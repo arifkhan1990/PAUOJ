@@ -379,6 +379,7 @@ Manage email preferences or unsubscribe: ${input.unsubscribeUrl}`);
     badge: "NOTIFICATION",
     preheader: toPreheader(input.message),
     appUrl: input.href ? footerAppUrl(input.href) : null,
+    assetBaseUrl: input.unsubscribeUrl,
     footerNote: "You received this because email notifications are enabled on PAU OJ.",
     body,
   });

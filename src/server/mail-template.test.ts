@@ -9,6 +9,27 @@ import {
 } from "./mail-template";
 
 const LONG_URL = `https://oj.primeasia.edu.bd/verify-email?token=${"a".repeat(180)}`;
+const APP_ORIGIN = "https://oj.primeasia.edu.bd";
+
+const BRAND_SRCS = [
+  `${APP_ORIGIN}/brand/pauoj-mark.png`,
+  `${APP_ORIGIN}/brand/social/facebook.png`,
+  `${APP_ORIGIN}/brand/social/x.png`,
+  `${APP_ORIGIN}/brand/social/linkedin.png`,
+  `${APP_ORIGIN}/brand/social/github.png`,
+];
+
+function imageTags(html: string): string[] {
+  return html.match(/<img\b[^>]*>/g) ?? [];
+}
+
+function imageSrcs(html: string): string[] {
+  return imageTags(html).map((tag) => /src="([^"]*)"/.exec(tag)?.[1] ?? "");
+}
+
+function socialAnchors(html: string): string[] {
+  return html.match(/<a\b[^>]*href="#"[^>]*>/g) ?? [];
+}
 
 function buildShell(overrides: Partial<Parameters<typeof renderEmailShell>[0]> = {}) {
   return renderEmailShell({
@@ -94,13 +115,18 @@ describe("renderEmailShell", () => {
     expect(html).not.toContain("mso-hide:all;display:block");
   });
 
-  it("includes the dark brand header, monogram, wordmark and teal accent", () => {
+  it("renders the original mark in a light tile beside the wordmark", () => {
     const html = buildShell();
 
     expect(html).toContain("#0b1f1a");
-    expect(html).toContain(">PAU</td>");
+    expect(html).toContain(
+      `<img src="${APP_ORIGIN}/brand/pauoj-mark.png" width="30" height="31" alt="PAU OJ logo" border="0"`,
+    );
+    expect(html).toContain('class="pauoj-marktile"');
+    expect(html).toContain("background:#ffffff;border-radius:12px");
+    expect(html).not.toContain(">PAU</td>");
     expect(html).toContain("PAU OJ");
-    expect(html).toContain("PrimeAsia University");
+    expect(html).toContain("PrimeAsia University &middot; Online Judge");
     expect(html).toContain("#0f766e");
     expect(html).toContain("height:4px");
   });
@@ -137,20 +163,81 @@ describe("renderEmailShell", () => {
     expect(html).toContain("ACCOUNT &lt;SECURITY&gt;");
     expect(html).toContain("Preview &lt;script&gt;alert(1)&lt;/script&gt;");
     expect(html).not.toContain("<script>");
-    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(html).not.toContain("<img src=x");
     expect(html).not.toContain('onclick="x"');
+    // The injected <img> stays escaped; only the five brand images render.
+    expect(imageTags(html)).toHaveLength(5);
   });
 
-  it("uses no flex, grid, external CSS, scripts or images", () => {
+  it("renders exactly four social placeholders in Facebook, X, LinkedIn, GitHub order", () => {
+    const html = buildShell();
+
+    expect(html).toContain('class="pauoj-socials"');
+    expect(socialAnchors(html)).toHaveLength(4);
+    for (const anchor of socialAnchors(html)) {
+      expect(anchor).toContain('title="');
+      expect(anchor).toContain('aria-label="');
+      expect(anchor).not.toContain("target=");
+      expect(anchor).not.toContain("rel=");
+    }
+
+    expect(imageSrcs(html)).toEqual(BRAND_SRCS);
+    for (const [index, network] of ["Facebook", "X", "LinkedIn", "GitHub"].entries()) {
+      const src = BRAND_SRCS[index + 1];
+      expect(html).toContain(
+        `<img class="pauoj-social-icon" src="${src}" width="32" height="32" alt="${network}" border="0"`,
+      );
+      expect(html).toContain(`aria-label="${network}"`);
+    }
+    // 10px spacer cells separate the icons; no flex or grid.
+    expect(html.split('width="10" height="32"').length - 1).toBe(3);
+  });
+
+  it("resolves brand images from assetBaseUrl when no app URL is available", () => {
+    const html = buildShell({ appUrl: null, assetBaseUrl: "https://judge.example.edu/path" });
+
+    expect(imageSrcs(html)).toEqual([
+      "https://judge.example.edu/brand/pauoj-mark.png",
+      "https://judge.example.edu/brand/social/facebook.png",
+      "https://judge.example.edu/brand/social/x.png",
+      "https://judge.example.edu/brand/social/linkedin.png",
+      "https://judge.example.edu/brand/social/github.png",
+    ]);
+  });
+
+  it("falls back to a text mark when no trustworthy origin exists", () => {
+    const html = buildShell({ appUrl: null });
+
+    expect(html).not.toContain("<img");
+    expect(html).not.toContain("/brand/");
+    expect(html).not.toContain('class="pauoj-socials"');
+    expect(html).toContain(">PAU</td>");
+    expect(html).toContain("PAU OJ");
+    expect(html).not.toContain(">Open PAU OJ</a>");
+  });
+
+  it("renders only same-origin brand images with no scripts, flex, grid or data URIs", () => {
     const html = buildShell();
 
     expect(html).not.toContain("display:flex");
     expect(html).not.toContain("display:grid");
     expect(html).not.toContain("<link");
     expect(html).not.toContain("<script");
-    expect(html).not.toContain("<img");
     expect(html).not.toContain("@import");
     expect(html).not.toContain("url(");
+    expect(html).not.toContain("data:");
+
+    expect(imageSrcs(html)).toEqual(BRAND_SRCS);
+    for (const tag of imageTags(html)) {
+      expect(tag).toContain('border="0"');
+      expect(tag).toContain("display:block");
+      expect(tag).toContain('alt="');
+    }
+    for (const src of imageSrcs(html)) {
+      expect(new URL(src).origin).toBe(APP_ORIGIN);
+      expect(BRAND_SRCS).toContain(src);
+    }
   });
 
   it("keeps at least 1:1 text contrast for the body copy", () => {

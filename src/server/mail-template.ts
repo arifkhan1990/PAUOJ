@@ -6,7 +6,11 @@
  * - One small <style> block for the mobile + dark-mode media queries; no
  *   external CSS. Inline light styles stay the default, so clients that drop
  *   <style> (or Outlook, which ignores media queries) still render correctly.
- * - No images, web fonts or JavaScript, so the mail survives image blocking.
+ * - Only same-origin brand images: the PAU OJ mark and four footer social
+ *   icons, served from absolute app-origin URLs. No remote, tracking or
+ *   data: images, so the adjacent text wordmark still identifies us when a
+ *   client blocks images.
+ * - No web fonts or JavaScript.
  * - `body` passed to the shell is trusted, pre-escaped HTML built by callers.
  * - Known Outlook limitation: wrapped in conditional VML a rounded CTA would
  *   be possible, but the extra markup risks other clients and dark overrides,
@@ -70,6 +74,17 @@ export function footerAppUrl(value: string): string | null {
 const TEXT_FOOTER =
   "PrimeAsia University Online Judge\nThis is a transactional email about your account.";
 
+/** Same-origin brand assets. Only these paths may appear in <img src>. */
+const BRAND_MARK_PATH = "/brand/pauoj-mark.png";
+const SOCIAL_ASSET_PATH = "/brand/social";
+
+const SOCIAL_NETWORKS = [
+  { name: "Facebook", file: "facebook.png" },
+  { name: "X", file: "x.png" },
+  { name: "LinkedIn", file: "linkedin.png" },
+  { name: "GitHub", file: "github.png" },
+] as const;
+
 /** Appends the plain-text counterpart of the HTML footer. */
 export function withTextFooter(body: string): string {
   return `${body}\n\n--\n${TEXT_FOOTER}`;
@@ -92,9 +107,55 @@ export type EmailShellInput = {
   preheader?: string;
   /** Absolute app URL used for the "Open PAU OJ" footer link. */
   appUrl?: string | null;
+  /**
+   * Absolute app URL (or origin) used to resolve the same-origin brand
+   * images. Falls back to `appUrl`; the notification builder passes its
+   * unsubscribe URL so a message without a CTA still loads the brand assets.
+   */
+  assetBaseUrl?: string | null;
   /** Extra muted line in the footer. Escaped by the shell. */
   footerNote?: string;
 };
+
+/** Resolves the origin for brand images: explicit asset URL first, then appUrl. */
+function assetOriginFor(input: EmailShellInput): string | null {
+  const fromAsset = input.assetBaseUrl ? appOriginFromUrl(input.assetBaseUrl) : null;
+  if (fromAsset) return fromAsset;
+  return input.appUrl ? appOriginFromUrl(input.appUrl) : null;
+}
+
+/**
+ * Original mark inside a white tile so the teal/green artwork stays visible on
+ * the dark header. Without a trustworthy origin, fall back to a text tile
+ * rather than emitting a broken relative image URL.
+ */
+function brandMarkMarkup(origin: string | null): string {
+  if (!origin) {
+    return `<td width="46" height="46" align="center" valign="middle" bgcolor="${COLOR.teal}" style="width:46px;height:46px;background:${COLOR.teal};border-radius:12px;font:800 11px/1 ${FONT};letter-spacing:0.06em;color:#ffffff">PAU</td>`;
+  }
+  return `<td width="46" height="46" align="center" valign="middle" bgcolor="#ffffff" class="pauoj-marktile" style="width:46px;height:46px;background:#ffffff;border-radius:12px">
+                        <img src="${escapeHtml(`${origin}${BRAND_MARK_PATH}`)}" width="30" height="31" alt="PAU OJ logo" border="0" style="display:block;width:30px;height:31px;border:0;outline:none;text-decoration:none">
+                      </td>`;
+}
+
+/** One horizontal row of four 32px social icons; links are placeholders. */
+function socialMarkup(origin: string): string {
+  const cells = SOCIAL_NETWORKS.map((network, index) => {
+    const spacer =
+      index === 0
+        ? ""
+        : `<td width="10" height="32" aria-hidden="true" style="width:10px;height:32px;font-size:0;line-height:0">&nbsp;</td>`;
+    const label = escapeHtml(network.name);
+    const src = escapeHtml(`${origin}${SOCIAL_ASSET_PATH}/${network.file}`);
+    return `${spacer}<td width="32" height="32" style="width:32px;height:32px">
+                          <a href="#" class="pauoj-social-link" title="${label}" aria-label="${label}" style="display:block;border:0;text-decoration:none"><img class="pauoj-social-icon" src="${src}" width="32" height="32" alt="${label}" border="0" style="display:block;width:32px;height:32px;border:0;outline:none;text-decoration:none"></a>
+                        </td>`;
+  }).join("");
+
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" class="pauoj-socials" style="margin:16px 0 0">
+                  <tr>${cells}</tr>
+                </table>`;
+}
 
 function badgeMarkup(label: string): string {
   return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px">
@@ -104,21 +165,23 @@ function badgeMarkup(label: string): string {
           </table>`;
 }
 
-function footerMarkup(input: EmailShellInput): string {
+function footerMarkup(input: EmailShellInput, assetOrigin: string | null): string {
   const href = input.appUrl ? input.appUrl.trim().replace(/\/+$/, "") : "";
   const appLink = href
-    ? `<div style="margin-top:10px"><a class="pauoj-link" href="${escapeHtml(href)}" target="_blank" rel="noopener" style="font:600 12px/1.5 ${FONT};color:${COLOR.teal};text-decoration:none">Open PAU OJ</a></div>`
+    ? `<div style="margin-top:12px"><a class="pauoj-link" href="${escapeHtml(href)}" target="_blank" rel="noopener" style="font:600 12px/1.5 ${FONT};color:${COLOR.teal};text-decoration:none">Open PAU OJ</a></div>`
     : "";
   const note = input.footerNote
     ? `<div class="pauoj-muted" style="margin-top:4px;font:400 12px/1.6 ${FONT};color:${COLOR.muted}">${escapeHtml(input.footerNote)}</div>`
     : "";
+  const socials = assetOrigin ? socialMarkup(assetOrigin) : "";
 
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="pauoj-footerbox" bgcolor="${COLOR.soft}" style="width:100%;background:${COLOR.soft};border-top:1px solid ${COLOR.border}">
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="pauoj-footerbox" bgcolor="${COLOR.soft}" style="width:100%;background:${COLOR.soft};border:1px solid ${COLOR.border};border-radius:14px">
             <tr>
-              <td class="pauoj-footer" style="padding:20px 24px;font-family:${FONT}">
+              <td class="pauoj-footer" style="padding:22px 24px;font-family:${FONT}">
                 <div class="pauoj-footer-name" style="font:600 12px/1.5 ${FONT};color:#334155">PrimeAsia University Online Judge</div>
                 <div class="pauoj-muted" style="margin-top:2px;font:400 12px/1.6 ${FONT};color:${COLOR.muted}">This is a transactional email about your account.</div>
                 ${note}
+                ${socials}
                 ${appLink}
               </td>
             </tr>
@@ -126,6 +189,7 @@ function footerMarkup(input: EmailShellInput): string {
 }
 
 export function renderEmailShell(input: EmailShellInput): string {
+  const assetOrigin = assetOriginFor(input);
   const preheader = input.preheader
     ? `<div aria-hidden="true" data-pauoj-preheader="1" style="display:none;max-height:0;max-width:0;overflow:hidden;opacity:0;mso-hide:all;font-size:1px;line-height:1px;color:${COLOR.page}">${escapeHtml(input.preheader)}${"&nbsp;&zwnj;".repeat(16)}</div>`
     : "";
@@ -162,7 +226,7 @@ export function renderEmailShell(input: EmailShellInput): string {
     .pauoj-rule { border-top-color:#23342d !important; }
     .pauoj-badge { background:#12312b !important; border-color:#1f4a40 !important; color:#8fd8c8 !important; }
     .pauoj-softbox { background:#0f1a16 !important; border-color:#23342d !important; }
-    .pauoj-footerbox { background:#0d1714 !important; border-top-color:#23342d !important; }
+    .pauoj-footerbox { background:#0d1714 !important; border-color:#23342d !important; }
     .pauoj-footer-name { color:#e2e8f0 !important; }
     .pauoj-link { color:#5eead4 !important; }
     .pauoj-cta td { background:#14b8a6 !important; }
@@ -187,10 +251,10 @@ ${preheader}
                 <td style="padding-top:18px">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                     <tr>
-                      <td width="42" height="42" align="center" valign="middle" bgcolor="${COLOR.teal}" style="width:42px;height:42px;background:${COLOR.teal};border-radius:11px;font:800 11px/1 ${FONT};letter-spacing:0.06em;color:#ffffff">PAU</td>
-                      <td valign="middle" style="padding-left:12px">
-                        <div style="font:700 17px/1.2 ${FONT};color:${COLOR.wordmark};letter-spacing:-0.01em">PAU OJ</div>
-                        <div style="margin-top:3px;font:600 10px/1.3 ${FONT};letter-spacing:0.12em;text-transform:uppercase;color:${COLOR.eyebrow}">PrimeAsia University</div>
+                      ${brandMarkMarkup(assetOrigin)}
+                      <td valign="middle" style="padding-left:14px">
+                        <div style="font:700 18px/1.2 ${FONT};color:${COLOR.wordmark};letter-spacing:-0.01em">PAU OJ</div>
+                        <div style="margin-top:4px;font:600 9px/1.35 ${FONT};letter-spacing:0.16em;text-transform:uppercase;color:${COLOR.eyebrow}">PrimeAsia University &middot; Online Judge</div>
                       </td>
                     </tr>
                   </table>
@@ -215,7 +279,7 @@ ${preheader}
         </tr>
 
         <tr>
-          <td style="padding:18px 0 0">${footerMarkup(input)}</td>
+          <td style="padding:18px 0 0">${footerMarkup(input, assetOrigin)}</td>
         </tr>
 
       </table>

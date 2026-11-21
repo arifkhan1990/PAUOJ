@@ -111,8 +111,14 @@ Transactional mail uses the shared 600px table-based shell in
 `src/server/mail-template.ts` — dark brand header, badge, CTA, fallback-link
 box, hidden preheader, mobile media query and a refined footer. Verification,
 password reset, assessment invite, review digest and notification builders all
-use it, with plain-text alternatives. The shell uses no images, web fonts or
-external CSS, so it stays readable when a client blocks remote content.
+use it, with plain-text alternatives. The shell deliberately loads only two
+same-origin brand asset families — the PAU OJ logo mark
+(`/brand/pauoj-mark.png`) and four footer social icons
+(`/brand/social/{facebook,x,linkedin,github}.png`) — referenced with absolute
+app-origin URLs and alt text beside a text wordmark fallback. It uses no web
+fonts, external CSS or remote/tracking images, so it stays readable when a
+client blocks images. Social links are placeholders (`href="#"`) until real
+accounts exist.
 
 ## Problem extras, study plans and daily challenge
 

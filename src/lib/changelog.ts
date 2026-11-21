@@ -22,6 +22,11 @@ const RELEASE_META: Record<string, { title: string; summary: string }> = {
     summary:
       "Three role workspaces, a shared standalone dashboard shell, teacher-owned content and a version/changelog footer in every panel.",
   },
+  "0.6.4": {
+    title: "Email Brand Finish",
+    summary:
+      "The real PAU OJ mark and social links in every transactional email.",
+  },
   "0.6.3": {
     title: "Email Client Hardening",
     summary:

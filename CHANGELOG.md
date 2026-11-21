@@ -3,6 +3,17 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.6.4] - 2026-11-21
+
+### Changed
+- Transactional emails now show the real PAU OJ mark in the header instead of a `PAU` text
+  monogram, placed on a light tile so the teal/green artwork stays visible on the dark brand
+  header.
+- The footer now carries Facebook, X, LinkedIn and GitHub icon links. They are placeholders
+  (`href="#"`) until the official accounts exist, and load from same-origin `/brand` assets with
+  absolute app URLs; there are no third-party image or tracking requests, and blocked images
+  fall back to the text wordmark.
+
 ## [0.6.3] - 2026-11-21
 
 ### Fixed

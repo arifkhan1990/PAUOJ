@@ -11,6 +11,14 @@ import { sanitizeSubject } from "./mail-template";
 const APP_URL = "https://oj.primeasia.edu.bd";
 const SHELL_MARKER = 'data-pauoj-email="v1"';
 
+const BRAND_PATHS = [
+  "/brand/pauoj-mark.png",
+  "/brand/social/facebook.png",
+  "/brand/social/x.png",
+  "/brand/social/linkedin.png",
+  "/brand/social/github.png",
+];
+
 /** Counts URL occurrences that are neither an href value nor visible link text. */
 function unstyledUrlOccurrences(html: string, url: string): number {
   const total = html.split(url).length - 1;
@@ -19,7 +27,25 @@ function unstyledUrlOccurrences(html: string, url: string): number {
   return total - inHref - asLinkText;
 }
 
-function expectEmailSafeHtml(html: string) {
+/** Asserts only the five same-origin brand images are present. */
+function expectSameOriginBrandImages(html: string, origin: string) {
+  const tags = html.match(/<img\b[^>]*>/g) ?? [];
+  const srcs = tags.map((tag) => /src="([^"]+)"/.exec(tag)?.[1] ?? "");
+
+  expect(srcs).toHaveLength(BRAND_PATHS.length);
+  expect(srcs.map((src) => new URL(src).pathname)).toEqual(BRAND_PATHS);
+  for (const src of srcs) {
+    expect(new URL(src).origin).toBe(origin);
+  }
+  for (const tag of tags) {
+    expect(tag).toContain('border="0"');
+    expect(tag).toContain("display:block");
+  }
+  expect(html).not.toContain("data:");
+  expect(html.split('href="#"').length - 1).toBe(4);
+}
+
+function expectEmailSafeHtml(html: string, origin: string) {
   expect(html).toContain(SHELL_MARKER);
   expect(html).toContain('role="presentation"');
   expect(html).toContain("max-width:600px");
@@ -28,12 +54,12 @@ function expectEmailSafeHtml(html: string) {
   expect(html).toContain('<meta name="color-scheme" content="light dark">');
   expect(html).not.toContain("display:flex");
   expect(html).not.toContain("display:grid");
-  expect(html).not.toContain("<img");
   expect(html).not.toContain("<script");
   expect(html).not.toContain("<link");
+  expectSameOriginBrandImages(html, origin);
 }
 
-const URL = "http://localhost:3000/assessments/midterm/invite/raw-token-123";
+const INVITE_URL = "http://localhost:3000/assessments/midterm/invite/raw-token-123";
 
 function build(overrides: Partial<Parameters<typeof buildAssessmentInviteEmail>[0]> = {}) {
   return buildAssessmentInviteEmail({
@@ -42,7 +68,7 @@ function build(overrides: Partial<Parameters<typeof buildAssessmentInviteEmail>[
     startAt: "2026-11-21T10:00:00.000Z",
     endAt: "2026-11-21T12:00:00.000Z",
     durationMinutes: 60,
-    url: URL,
+    url: INVITE_URL,
     ...overrides,
   });
 }
@@ -52,8 +78,8 @@ describe("buildAssessmentInviteEmail", () => {
     const email = build();
 
     expect(email.subject).toBe("Assessment invite: CSE-3B Midterm");
-    expect(email.text).toContain(URL);
-    expect(email.html).toContain(URL);
+    expect(email.text).toContain(INVITE_URL);
+    expect(email.html).toContain(INVITE_URL);
     expect(email.text).toContain("This link is personal; do not forward it.");
     expect(email.html).toContain("This link is personal; do not forward it.");
   });
@@ -111,7 +137,7 @@ describe("buildAssessmentInviteEmail", () => {
   it("renders the invite inside the shared shell with a badge and fallback link", () => {
     const email = build();
 
-    expectEmailSafeHtml(email.html);
+    expectEmailSafeHtml(email.html, "http://localhost:3000");
     expect(email.html).toContain("ASSESSMENT INVITE");
     expect(email.html).toContain("You have an assessment invite");
     expect(email.html).toContain("BUTTON NOT WORKING?");
@@ -155,7 +181,7 @@ describe("buildVerificationEmail", () => {
   it("uses the shared shell, badge, preheader and expiry note", () => {
     const email = buildVerification();
 
-    expectEmailSafeHtml(email.html);
+    expectEmailSafeHtml(email.html, APP_URL);
     expect(email.subject).toBe("Verify your PAU OJ email");
     expect(email.html).toContain("ACCOUNT SECURITY");
     expect(email.html).toContain("data-pauoj-preheader");
@@ -184,8 +210,9 @@ describe("buildVerificationEmail", () => {
       displayName: 'Rakib <img src=x onerror="alert(1)">',
     });
 
+    expectEmailSafeHtml(email.html, APP_URL);
     expect(email.html).toContain("Rakib &lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
-    expect(email.html).not.toContain("<img");
+    expect(email.html).not.toContain("<img src=x");
     expect(email.html).not.toContain('onerror="alert(1)"');
     expect(email.subject).not.toContain("img");
   });
@@ -212,7 +239,7 @@ describe("buildPasswordResetEmail", () => {
       appUrl: APP_URL,
     });
 
-    expectEmailSafeHtml(email.html);
+    expectEmailSafeHtml(email.html, APP_URL);
     expect(email.subject).toBe("Reset your PAU OJ password");
     expect(email.html).toContain("PASSWORD RESET");
     expect(email.html).toContain("Password reset");
@@ -246,7 +273,7 @@ describe("buildReviewDigestEmail", () => {
   it("uses the shared shell with a review badge and unsubscribe link", () => {
     const email = buildReviewDigestEmail(input);
 
-    expectEmailSafeHtml(email.html);
+    expectEmailSafeHtml(email.html, APP_URL);
     expect(email.html).toContain("REVIEW QUEUE");
     expect(email.html).toContain("1 review request is waiting");
     expect(email.html).toContain("Two sum &lt;script&gt;");
@@ -285,7 +312,7 @@ describe("buildNotificationEmail", () => {
   it("uses the shared shell, CTA, fallback and footer note", () => {
     const email = buildNotificationEmail(input);
 
-    expectEmailSafeHtml(email.html);
+    expectEmailSafeHtml(email.html, APP_URL);
     expect(email.subject).toBe(input.subject);
     expect(email.html).toContain("NOTIFICATION");
     expect(email.html).toContain("Someone replied to your discussion &lt;b&gt;post&lt;/b&gt;.");
@@ -334,7 +361,10 @@ describe("buildNotificationEmail", () => {
 
     expect(email.html).not.toContain(">Open PAU OJ</a>");
     expect(email.html).not.toContain("BUTTON NOT WORKING?");
-    expectEmailSafeHtml(email.html);
+    expectEmailSafeHtml(email.html, APP_URL);
+    // Brand assets still resolve from the absolute unsubscribe URL.
+    expect(email.html).toContain(`src="${APP_URL}/brand/pauoj-mark.png"`);
+    expect(email.html).toContain(`src="${APP_URL}/brand/social/github.png"`);
   });
 
   it("does not leak the unsubscribe token into the hidden preheader", () => {
