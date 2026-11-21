@@ -16,6 +16,7 @@ import {
   CONTRIBUTION_KIND_LABELS,
   type ProblemContributionKind,
 } from "@/lib/contribution-types";
+import { EDITORIAL_OUTLINE } from "@/lib/editorial-template";
 import { problemContributionInputSchema } from "@/lib/schemas/problem-contribution";
 import { cn } from "@/lib/utils";
 
@@ -32,7 +33,7 @@ const KIND_HINTS: Record<ProblemContributionKind, string> = {
   TESTS:
     "New tests are appended to the existing suite after the author approves. Existing hidden tests are never shown or replaced.",
   EDITORIAL:
-    "Write the approach, complexity and reference code. The author reviews it before it appears on the problem.",
+    "Write the approach, complexity and reference code. Use the toolbar for code fences, links and images (public URLs only); the author reviews it before it appears on the problem.",
 };
 
 export function ContributionForm({
@@ -41,12 +42,14 @@ export function ContributionForm({
   allowedKinds = [...PROBLEM_CONTRIBUTION_KINDS],
   initialStatement,
   initialEditorial,
+  redirectTo = "/dashboard/contributions",
 }: {
   slug: string;
   initialKind: ProblemContributionKind;
   allowedKinds?: ProblemContributionKind[];
   initialStatement: StatementValues;
   initialEditorial: string | null;
+  redirectTo?: string;
 }) {
   const [kind, setKind] = useState<ProblemContributionKind>(() =>
     allowedKinds.includes(initialKind)
@@ -101,7 +104,7 @@ export function ContributionForm({
         description: "The problem author will review it before it goes live.",
         variant: "success",
       });
-      router.push("/teacher/contributions");
+      router.push(redirectTo);
       router.refresh();
     } catch (submitError) {
       const message =
@@ -203,9 +206,10 @@ export function ContributionForm({
             label="Proposed editorial"
             value={editorial}
             onChange={setEditorial}
-            rows={12}
+            rows={14}
+            template={EDITORIAL_OUTLINE}
             placeholder={
-              "Explain the key idea, complexity and reference solution.\n\n```cpp\n// code\n```"
+              "Explain the key idea, complexity and reference solution.\n\nUse the toolbar for code fences, links and images (public URLs only)."
             }
           />
         </Card>

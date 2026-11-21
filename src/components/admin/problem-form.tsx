@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { ApiClientError, apiPost, apiPut } from "@/lib/api-client";
 import { DIFFICULTIES, difficultyMeta } from "@/lib/difficulty";
+import { EDITORIAL_OUTLINE } from "@/lib/editorial-template";
 import { problemInputSchema } from "@/lib/schemas/problem";
 import type {
   AdminProblemDetail,
@@ -345,7 +346,8 @@ export function ProblemForm({
             label="Editorial (unlocks after acceptance)"
             value={values.editorial}
             onChange={(value) => update("editorial", value)}
-            rows={6}
+            rows={10}
+            template={EDITORIAL_OUTLINE}
           />
         </Card>
 

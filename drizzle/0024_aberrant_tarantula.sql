@@ -1,0 +1,1 @@
+CREATE INDEX "problem_contributions_reviewed_idx" ON "problem_contributions" USING btree ("reviewed_at","reviewed_by_id") WHERE "problem_contributions"."status" in ('APPROVED', 'REJECTED') and "problem_contributions"."reviewed_by_id" is not null;

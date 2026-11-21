@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Sparkles, Trophy } from "lucide-react";
+import { ClipboardCheck, Sparkles, Trophy } from "lucide-react";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Pagination } from "@/components/shared/pagination";
 import { PageHeader } from "@/components/shared/page-header";
@@ -45,9 +45,17 @@ export default async function RankPage({
         title="Ranking"
         description="Every accepted problem earns points once. Rank is based on total points, then number of solved problems."
         actions={
-          <Link href="/problems" className={buttonVariants()}>
-            <Sparkles className="size-4" /> Solve a problem
-          </Link>
+          <>
+            <Link
+              href="/reviewers"
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <ClipboardCheck className="size-4" /> Reviewers
+            </Link>
+            <Link href="/problems" className={buttonVariants()}>
+              <Sparkles className="size-4" /> Solve a problem
+            </Link>
+          </>
         }
       />
 

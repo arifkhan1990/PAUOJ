@@ -3,6 +3,29 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.6.5] - 2026-11-21
+
+### Added
+- Added a public contribution reviewer leaderboard at `/reviewers`. Reviewers
+  are ranked by approved + rejected contribution decisions, with
+  all-time/7-day/30-day filters, approval rate, average review turnaround, a
+  top-three podium, last activity and a mobile-safe table. Reviewers link from
+  `/rank` and the footer.
+
+### Changed
+- Markdown authoring for problems, editorials, contests and assessments now uses
+  a toolbar editor: headings, bold/italic, inline and fenced code with a language
+  picker, links, images by public URL, lists, quotes, tables and dividers, plus
+  Write/Split/Preview modes, keyboard shortcuts and a character count. Editorial
+  fields add an "Insert outline" scaffold (approach, complexity, reference
+  solution, edge cases).
+- Rendered Markdown now scales images to the editorial width, wraps long links,
+  and keeps wide code blocks and tables inside their own scroll area.
+
+### Fixed
+- Community editorial submissions now return solvers to
+  `/dashboard/contributions`; they previously landed on the teacher-only inbox.
+
 ## [0.6.4] - 2026-11-21
 
 ### Changed

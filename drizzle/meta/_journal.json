@@ -169,6 +169,13 @@
       "when": 1795216611194,
       "tag": "0023_square_fallen_one",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795251991043,
+      "tag": "0024_aberrant_tarantula",
+      "breakpoints": true
     }
   ]
 }

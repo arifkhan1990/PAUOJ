@@ -207,6 +207,9 @@ export default async function ContributePage({
           allowedKinds={allowedKinds}
           initialStatement={initialStatement}
           initialEditorial={problem.editorial}
+          redirectTo={
+            isStaff ? "/teacher/contributions" : "/dashboard/contributions"
+          }
         />
       </div>
     </div>

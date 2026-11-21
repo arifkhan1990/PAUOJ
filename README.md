@@ -27,10 +27,15 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Live updates & custom tests** — verdicts stream over SSE; run sample input without a submission.
 
 ### Practice & community
-- **Problems** — Markdown statements, samples, tags, difficulty, points, post-accept editorial
-  unlocking, community ratings, verified resources, related practice, search and solved status.
+- **Problems** — Markdown statements with a toolbar editor (headings, code, links, images, live
+  preview), samples, tags, difficulty, points, post-accept editorial unlocking, community ratings,
+  verified resources, related practice, search and solved status.
 - **Problem contributions** — author-reviewed proposals for statements, tests and editorials, with
-  private drafts, an audit log, CSV export and optional rejudge of practice submissions.
+  the same Markdown editor and an editorial outline, private drafts, an audit log, CSV export and
+  optional rejudge of practice submissions.
+- **Reviewer leaderboard** — a public `/reviewers` board ranks reviewers by completed
+  contribution decisions, with 7/30/all-time filters, approval rate, turnaround time, a top-3
+  podium and a mobile-safe table.
 - **Study plans and daily practice** — curated lists with progress, a deterministic daily challenge
   with a streak, and category/subcategory/company filters.
 - **Discussions** — one-level threads with votes, moderation and auto-lock during live contests or

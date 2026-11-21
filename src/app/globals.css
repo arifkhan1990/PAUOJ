@@ -494,6 +494,7 @@
 }
 
 .prose-pauoj {
+  overflow-wrap: anywhere;
   color: var(--foreground);
   font-size: 0.9375rem;
   line-height: 1.75;
@@ -501,6 +502,12 @@
 
 .prose-pauoj > * + * {
   margin-top: 0.9rem;
+}
+
+.prose-pauoj h1 {
+  margin-top: 2rem;
+  font-size: 1.45rem;
+  font-weight: 700;
 }
 
 .prose-pauoj h2 {
@@ -515,6 +522,12 @@
   font-weight: 600;
 }
 
+.prose-pauoj h4 {
+  margin-top: 1.15rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
 .prose-pauoj p,
 .prose-pauoj li {
   color: color-mix(in srgb, var(--foreground) 88%, transparent);
@@ -522,6 +535,7 @@
 
 .prose-pauoj a {
   color: var(--primary);
+  overflow-wrap: anywhere;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -559,10 +573,13 @@
 
 .prose-pauoj pre {
   overflow-x: auto;
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--muted);
   padding: 0.9rem 1rem;
+  line-height: 1.65;
+  tab-size: 2;
 }
 
 .prose-pauoj pre code {
@@ -570,6 +587,7 @@
   background: transparent;
   padding: 0;
   font-size: 0.82rem;
+  tab-size: 2;
 }
 
 .prose-pauoj blockquote {
@@ -580,6 +598,7 @@
 
 .prose-pauoj table {
   width: 100%;
+  min-width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
 }
@@ -594,6 +613,7 @@
 .prose-pauoj th {
   background: var(--muted);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .prose-pauoj hr {
@@ -601,8 +621,14 @@
 }
 
 .prose-pauoj img {
+  display: block;
+  box-sizing: border-box;
   max-width: 100%;
+  height: auto;
+  margin-block: 0.5rem;
+  border: 1px solid var(--border);
   border-radius: 0.5rem;
+  background: var(--muted);
 }
 
 .shiki {

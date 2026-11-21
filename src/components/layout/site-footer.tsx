@@ -54,6 +54,11 @@ export function SiteFooter() {
                 Ranking
               </Link>
             </li>
+            <li>
+              <Link href="/reviewers" className="hover:text-primary">
+                Reviewers
+              </Link>
+            </li>
           </ul>
         </div>
         <div>

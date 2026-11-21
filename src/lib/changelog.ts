@@ -17,10 +17,10 @@ export type ChangelogRelease = {
 };
 
 const RELEASE_META: Record<string, { title: string; summary: string }> = {
-  unreleased: {
-    title: "Role Dashboards & Teacher Workspace",
+  "0.6.5": {
+    title: "Reviewer Leaderboard & Markdown Editor",
     summary:
-      "Three role workspaces, a shared standalone dashboard shell, teacher-owned content and a version/changelog footer in every panel.",
+      "A public reviewer leaderboard plus a toolbar Markdown editor for problems and editorials.",
   },
   "0.6.4": {
     title: "Email Brand Finish",

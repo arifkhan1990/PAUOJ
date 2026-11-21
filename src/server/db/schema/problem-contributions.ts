@@ -62,6 +62,11 @@ export const problemContributions = pgTable(
       table.contributorId,
       table.createdAt,
     ),
+    index("problem_contributions_reviewed_idx")
+      .on(table.reviewedAt, table.reviewedById)
+      .where(
+        sql`${table.status} in ('APPROVED', 'REJECTED') and ${table.reviewedById} is not null`,
+      ),
   ],
 );
 
