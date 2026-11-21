@@ -20,6 +20,7 @@ import {
 } from "./activity";
 import { getUserRank } from "./rank";
 import { getProfileEditorials } from "./profile-editorials";
+import { practiceSubmissionCondition } from "./submission-filters";
 import { listSubmissions } from "./submissions";
 
 export async function getProfile(
@@ -46,19 +47,20 @@ export async function getProfile(
   const user = rows[0];
   if (!user || user.isBanned) return null;
 
+  // Public practice aggregates only: invigilated assessment and
+  // virtual-contest submissions never count toward profile stats (E6).
+  const practiceSubmissions = and(
+    eq(submissions.userId, user.id),
+    practiceSubmissionCondition(),
+  )!;
   const [submissionRow] = await db
     .select({ value: count() })
     .from(submissions)
-    .where(eq(submissions.userId, user.id));
+    .where(practiceSubmissions);
   const [acceptedRow] = await db
     .select({ value: count() })
     .from(submissions)
-    .where(
-      and(
-        eq(submissions.userId, user.id),
-        eq(submissions.status, "ACCEPTED"),
-      ),
-    );
+    .where(and(practiceSubmissions, eq(submissions.status, "ACCEPTED")));
 
   const solvedRows = await db
     .selectDistinct({
@@ -68,12 +70,7 @@ export async function getProfile(
     })
     .from(submissions)
     .innerJoin(problems, eq(problems.id, submissions.problemId))
-    .where(
-      and(
-        eq(submissions.userId, user.id),
-        eq(submissions.status, "ACCEPTED"),
-      ),
-    );
+    .where(and(practiceSubmissions, eq(submissions.status, "ACCEPTED")));
 
   const difficultySolved: Record<Difficulty, number> = {
     EASY: 0,
@@ -108,12 +105,12 @@ export async function getProfile(
           accepted: sql<number>`(count(*) filter (where ${submissions.status} = 'ACCEPTED'))::int`,
         })
         .from(submissions)
-        .where(eq(submissions.userId, user.id))
+        .where(practiceSubmissions)
         .groupBy(submissions.language),
       db
         .select({ status: submissions.status, value: count() })
         .from(submissions)
-        .where(eq(submissions.userId, user.id))
+        .where(practiceSubmissions)
         .groupBy(submissions.status),
       (() => {
         const problemActivity = db
@@ -128,7 +125,7 @@ export async function getProfile(
             ),
           })
           .from(submissions)
-          .where(eq(submissions.userId, user.id))
+          .where(practiceSubmissions)
           .groupBy(submissions.problemId)
           .as("problem_activity");
         return db
@@ -164,9 +161,7 @@ export async function getProfile(
         )
         .innerJoin(tags, eq(tags.id, problemTags.tagId))
         .innerJoin(problems, eq(problems.id, submissions.problemId))
-        .where(
-          and(eq(submissions.userId, user.id), eq(problems.isPublic, true)),
-        )
+        .where(and(practiceSubmissions, eq(problems.isPublic, true)))
         .groupBy(tags.name, tags.slug),
       db
         .select({
@@ -227,12 +222,7 @@ export async function getProfile(
       accepted: sql<number>`(count(*) filter (where ${submissions.status} = 'ACCEPTED'))::int`,
     })
     .from(submissions)
-    .where(
-      and(
-        eq(submissions.userId, user.id),
-        gte(submissions.createdAt, start),
-      ),
-    )
+    .where(and(practiceSubmissions, gte(submissions.createdAt, start)))
     .groupBy(sql`1`)
     .orderBy(sql`1`);
 
@@ -240,6 +230,8 @@ export async function getProfile(
   const submissionCount = Number(submissionRow?.value ?? 0);
   const acceptedCount = Number(acceptedRow?.value ?? 0);
   const rank = await getUserRank(user.id);
+  // Deliberately not practice-filtered: the recent list keeps the existing
+  // source-visibility rules and may show assessment attempts (E6).
   const recent = await listSubmissions(
     { page: 1, pageSize: 10, user: user.username },
     viewer,

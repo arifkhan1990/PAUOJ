@@ -1,4 +1,4 @@
-import { isNull, type SQL } from "drizzle-orm";
+import { and, isNull, type SQL } from "drizzle-orm";
 import { submissions } from "@/server/db/schema";
 
 /**
@@ -8,4 +8,12 @@ import { submissions } from "@/server/db/schema";
  */
 export function countedSubmission(): SQL {
   return isNull(submissions.assessmentId);
+}
+
+/**
+ * Practice-only guard: public practice aggregates exclude both invigilated
+ * assessments and virtual-contest submissions (PRD v0.6.0, E6).
+ */
+export function practiceSubmissionCondition(): SQL {
+  return and(countedSubmission(), isNull(submissions.virtualContestId))!;
 }

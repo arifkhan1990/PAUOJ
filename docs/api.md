@@ -547,10 +547,53 @@ one bad row never aborts the rest. Re-importing the same paste is an `unchanged`
 
 Same staff scoping. Issues a fresh token, invalidates the previous link and resets the invite to
 `UNSENT`. Returns `{ data: { invite, token } }` with `Cache-Control: no-store` and
-`Pragma: no-cache` — the raw token appears only in this response (roster import never returns
-tokens; only its SHA-256 hash is stored). Refused with `INVITE_CLAIMED` or `INVITE_REVOKED` (409),
-`INVITE_NOT_ROTATABLE` (409), or `404` when the invite belongs to another assessment. Audit:
-`assessment.invite.rotate`.
+`Pragma: no-cache` — this response is the only place the API returns a raw token. A send also
+rotates the token, but puts it only in the email body; roster import never returns tokens, and
+the database stores only the SHA-256 hash. Refused with `INVITE_CLAIMED` or `INVITE_REVOKED`
+(409), `INVITE_NOT_ROTATABLE` (409), or `404` when the invite belongs to another assessment.
+Audit: `assessment.invite.rotate`.
+
+### POST `/admin/assessments/:id/invites/:inviteId/send`
+
+Same staff scoping; no request body. Sends one invite email to the address stored on the invite,
+one candidate at a time — there is no send-all, sweep or scheduled retry. Requires a published
+assessment that has not ended, an invite with an email, and a non-terminal invite state.
+
+Each send acquires a per-invite lock (120 s, so a concurrent second request gets
+`INVITE_SEND_LOCKED`) and consumes one slot of a three-per-hour window on that invite
+(`INVITE_SEND_RATE_LIMITED`), then rotates the token — the previous link stops working — and puts
+the new URL in the email body only. On success the invite is recorded as `SENT` (`sent_at`,
+`last_sent_at`, `send_count`) and the lock is released:
+
+```json
+{ "data": { "invite": { "id": "…", "email": null, "status": "SENT" }, "sent": true } }
+```
+
+Responses use `Cache-Control: no-store` and `Pragma: no-cache`, never contain the token or the
+URL, and return `email: null` so a stored response cannot leak the recipient.
+
+| Code | Status | Meaning |
+| --- | --- | --- |
+| `INVITE_NO_EMAIL` | 409 | No address on file; copy the personal link instead |
+| `INVITE_NOT_SENDABLE` | 409 | Invite is claimed, revoked or expired |
+| `INVITE_SEND_LOCKED` | 409 | Another send for this invite is in progress (120 s) |
+| `INVITE_SEND_RATE_LIMITED` | 429 | Three sends already used on this invite in the last hour |
+| `INVITE_SEND_FAILED` | 502 | SMTP rejected the message or is not configured; copy the link instead |
+| `ASSESSMENT_NOT_PUBLISHED` | 409 | Publish the assessment before sending invites |
+| `ASSESSMENT_ENDED` | 410 | The assessment window has closed |
+| `NOT_FOUND` | 404 | Unknown invite or another teacher's assessment |
+
+A failed send releases the lock but keeps the consumed window slot, so a retry storm cannot hammer
+SMTP. Audit: `assessment.invite.send`.
+
+### POST `/admin/assessments/:id/invites/:inviteId/revoke`
+
+Same staff scoping; no request body. Sets the invite to `REVOKED` and clears its send lock.
+Idempotent: revoking an already-revoked invite returns the same row. Read-only resolve then
+reports `status: "REVOKED"` and a claim fails with `INVITE_REVOKED` (410), so the personal link
+stops working while a claimed attempt keeps its participant row — the participant status wins in
+the results export instead of the invite's. Returns `{ data: { invite } }`. Audit:
+`assessment.invite.revoke`.
 
 ### GET `/admin/assessments/:id/results.csv`
 

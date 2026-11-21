@@ -1,6 +1,7 @@
 import nodemailer, { type Transporter } from "nodemailer";
 import { getEnv } from "@/server/env";
 import { logger } from "@/server/logger";
+import { formatDateTime } from "@/lib/utils";
 
 type MailCache = {
   transporter: Transporter | null;
@@ -59,7 +60,9 @@ async function sendMail(input: {
       logger.info("Email not sent (SMTP not configured); development fallback", {
         to: input.to,
         subject: input.subject,
-        text: input.text,
+        // Never log the body: verification, reset and invite mails carry
+        // single-use tokens in their URLs.
+        body: "[omitted]",
       });
     } else {
       logger.error("Email not sent: SMTP is not configured", {
@@ -104,6 +107,69 @@ function shell(title: string, body: string): string {
 
 function button(href: string, label: string): string {
   return `<p style="margin:24px 0"><a href="${href}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px">${label}</a></p>`;
+}
+
+export type AssessmentInviteEmailInput = {
+  candidateName: string | null;
+  assessmentTitle: string;
+  startAt: Date | string;
+  endAt: Date | string;
+  durationMinutes: number | null;
+  url: string;
+};
+
+/**
+ * Pure template builder: no SMTP, no env. The caller supplies the personal
+ * URL, so the raw token never reaches this module's logs.
+ */
+export function buildAssessmentInviteEmail(input: AssessmentInviteEmailInput): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const greetingName = input.candidateName?.trim() || "there";
+  const window = `${formatDateTime(input.startAt)} to ${formatDateTime(input.endAt)}`;
+  const duration = input.durationMinutes
+    ? `${input.durationMinutes} minutes`
+    : "the full window";
+  // Header-injection guard: subject values must not contain CR/LF.
+  const safeTitle = input.assessmentTitle.replace(/[\r\n]+/g, " ").trim();
+  const subject = `Assessment invite: ${safeTitle}`;
+  const title = escapeHtml(safeTitle);
+  const link = escapeHtml(input.url);
+
+  const text = [
+    `Hi ${greetingName},`,
+    "",
+    "You have been invited to an assessment on PAU OJ.",
+    "",
+    `Assessment: ${input.assessmentTitle}`,
+    `Window: ${window}`,
+    `Duration: ${duration}`,
+    "",
+    "Open your personal link:",
+    input.url,
+    "",
+    "This link is personal; do not forward it.",
+  ].join("\n");
+
+  const html = shell(
+    "You have an assessment invite",
+    `<p style="margin:0;color:#4d5b52;font-size:14px;line-height:1.7">Hi ${escapeHtml(greetingName)},</p>
+     <p style="margin:12px 0 0;color:#4d5b52;font-size:14px;line-height:1.7">You have been invited to an assessment on PAU OJ.</p>
+     <p style="margin:12px 0 0;color:#4d5b52;font-size:14px;line-height:1.7"><strong>${title}</strong><br>Window: ${window}<br>Duration: ${duration}</p>
+     ${button(link, "Open assessment")}
+     <p style="margin:0;color:#65736a;font-size:12px;line-height:1.6">This link is personal; do not forward it. If the button does not work, copy this URL:<br><span style="word-break:break-all">${link}</span></p>`,
+  );
+
+  return { subject, text, html };
+}
+
+export async function sendAssessmentInviteEmail(
+  input: AssessmentInviteEmailInput & { to: string },
+): Promise<boolean> {
+  const { subject, text, html } = buildAssessmentInviteEmail(input);
+  return sendMail({ to: input.to, subject, text, html });
 }
 
 export async function sendVerificationEmail(input: {

@@ -372,3 +372,26 @@ export async function rotateInviteToken(
   return { invite: toDetail(row, assessment), token };
 }
 
+/** Revokes an invite; a claimed participant row is never deleted. */
+export async function revokeInvite(
+  inviteId: string,
+  options: { ownerId?: string } = {},
+): Promise<AssessmentInviteDetail> {
+  const [existing] = await getDb()
+    .select()
+    .from(assessmentInvites)
+    .where(eq(assessmentInvites.id, inviteId))
+    .limit(1);
+  if (!existing) throw errors.notFound("Invite not found.");
+  const assessment = await loadOwnedAssessment(
+    existing.assessmentId,
+    options.ownerId,
+  );
+  if (existing.status === "REVOKED") return toDetail(existing, assessment);
+  const [row] = await getDb()
+    .update(assessmentInvites)
+    .set({ status: "REVOKED", sendLockAt: null, updatedAt: new Date() })
+    .where(eq(assessmentInvites.id, inviteId))
+    .returning();
+  return toDetail(row ?? existing, assessment);
+}

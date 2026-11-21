@@ -28,6 +28,13 @@ All notable changes to PAU OJ are documented here. The format follows
   invalidates the previous link) and a results CSV button. The assessment editor gained the
   join-mode select, and invite-only assessments replace the access-code card with an invite-only
   notice.
+- Invite email can be sent from the roster panel, one candidate at a time: `POST
+  /admin/assessments/:id/invites/:inviteId/send` mails the stored address (resend uses the same
+  endpoint) and `.../revoke` invalidates one link, both owner/admin only and audit logged. Every
+  send rotates the personal link so the previous one stops working, a 120-second per-invite lock
+  and a three-per-hour send window stop double sends, a failed delivery returns a "copy the link
+  instead" error without losing the link, and revoking keeps a claimed attempt. Candidates without
+  an email stay copy-link only; verified end to end against the Compose Mailpit inbox.
 - Profiles now show approved community-editorial credits with the problem list
   and approval dates, linking back to each editorial tab.
 - Admins now receive one weekly review backlog report (pending proposals,
@@ -181,6 +188,10 @@ All notable changes to PAU OJ are documented here. The format follows
   daily challenge and the denormalized problem counters exclude assessment submissions too. Rank
   points are derived on read, so some existing public totals drop immediately and need no
   backfill.
+- Profile points, solved counts, language/verdict charts, difficulty and tag stats and the
+  activity heatmap now use the same practice-only guard, excluding assessment and virtual-contest
+  submissions; the recent submissions list still shows them subject to the existing source
+  visibility rules.
 - CSV exports are safe to open in a spreadsheet: `toCsv` prefixes a `'` to string cells starting
   with `=`, `+`, `-`, `@`, tab or CR (OWASP CSV-injection guard). This also hardens the existing
   contribution export.
@@ -219,23 +230,27 @@ All notable changes to PAU OJ are documented here. The format follows
   dedicated editorial unlock state. Data-heavy tabs use the full content width.
 
 ### Security
-- Invite links carry a bearer token in the path: only its SHA-256 hash is stored, the raw token
-  leaves the server once (the rotate/copy response, sent with `Cache-Control: no-store`), the
-  resolve route returns no email and only a three-character reference hint, wrong-account and
-  wrong-reference claims are refused instead of being accepted, and each invite throttles after
-  five failed claims per 15 minutes. The invite page and API send `Referrer-Policy: no-referrer`,
-  `Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow`. Residual risk: reverse proxies
-  commonly log request paths, so an invite URL can still reach an access log — strip path logging
-  for invite URLs at the proxy or rotate the link.
+- Invite links carry a bearer token in the path: only its SHA-256 hash is stored, and the raw
+  token leaves the server in exactly two places — the rotate/copy response (sent with
+  `Cache-Control: no-store`) and the body of the invite email; the send response returns
+  `email: null` with no URL, and the development mail fallback logs `body: "[omitted]"` so
+  token-bearing message bodies never reach the logs. The resolve route returns no email and only
+  a three-character reference hint, wrong-account and wrong-reference claims are refused instead
+  of being accepted, and each invite throttles after five failed claims per 15 minutes. The
+  invite page and API send `Referrer-Policy: no-referrer`, `Cache-Control: no-store` and
+  `X-Robots-Tag: noindex, nofollow`. Residual risk: reverse proxies commonly log request paths,
+  so an invite URL can still reach an access log — strip path logging for invite URLs at the
+  proxy or rotate the link.
+- Invite email delivery depends on the deployment sender record: a dedicated `notify.<app-domain>`
+  subdomain, Amazon SES SMTP in `ap-southeast-1` with Easy DKIM, a custom MAIL FROM and a phased
+  DMARC rollout — see `docs/deployment.md` (Transactional email). With SMTP unconfigured the app
+  logs the fact instead of the message, and link-only invites keep working.
 - Assessment roster and export data stays owner/admin scoped, every roster import and results
   export writes an audit row (`assessment.invites.import`, `assessment.export`), and exported
   cells are formula-escaped.
 
 ### Not included
-- Automated invite email send, resend and revoke (E3): links are copied by hand from the roster
-  panel, and no mail is sent for invites yet.
-- Excluding assessment solves from profile aggregates (points, solved and activity still count
-  them) — tracked for v0.6.1, together with per-problem solved/attempt export columns.
+- Per-problem solved/attempt columns in the results export (CSV is roster-level).
 
 ## [0.5.0] - 2026-11-17
 

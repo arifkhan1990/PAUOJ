@@ -285,7 +285,8 @@ penalty.
 ## Assessment invites and join modes
 
 Candidate-level delivery on top of the shared code (unreleased, 0.6.0 — see `CHANGELOG.md`).
-Automated invite email send/resend/revoke is not part of this work; owners copy links by hand.
+Invite email is manual and one candidate at a time: there is no send-all, no worker sweep and no
+scheduled retry or reminder.
 
 **Data model.**
 
@@ -301,11 +302,28 @@ Automated invite email send/resend/revoke is not part of this work; owners copy 
   Presence of `invite_id` is the identity source; existing rows are untouched and no backfill
   runs.
 
-**Tokens.** 32 CSPRNG bytes in base64url; only the SHA-256 hash is stored, and the raw token
-leaves the server exactly once — in the rotate response that the roster panel copies into a URL.
-The invite page and the resolve API send `Referrer-Policy: no-referrer`, `Cache-Control:
-no-store` and `X-Robots-Tag: noindex, nofollow` (a `next.config.ts` header rule plus route
-headers) so the token cannot leak through a `Referer` header, a cache or a crawler.
+**Tokens.** 32 CSPRNG bytes in base64url; only the SHA-256 hash is stored. The raw token leaves
+the server in exactly two places: the rotate response the roster panel copies into a URL, and the
+body of an invite email. The invite page and the resolve API send `Referrer-Policy: no-referrer`,
+`Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow` (a `next.config.ts` header rule
+plus route headers) so the token cannot leak through a `Referer` header, a cache or a crawler.
+
+**Manual send and revoke.** `sendInviteEmail` (`POST .../invites/:inviteId/send`, one invite at a
+time) loads the owned assessment and invite, refuses a missing email (`INVITE_NO_EMAIL`), an
+unpublished or ended assessment, and a claimed/revoked/expired invite (`INVITE_NOT_SENDABLE`),
+then acquires a per-invite send lock (120 s, so a concurrent request gets `INVITE_SEND_LOCKED`)
+and consumes one slot of a three-per-hour DB window on that invite
+(`INVITE_SEND_RATE_LIMITED`) in a single conditional statement. It rotates the token — the
+previous link stops working — sends through `sendMail` with the URL in the message body only, and
+records `SENT` (`sent_at`, `last_sent_at`, `send_count`, lock released). A failed send releases
+the lock but keeps the consumed window slot and returns `INVITE_SEND_FAILED` (502) so the
+organiser copies the link instead; the API response carries `email: null` and no URL. Nothing in
+this path runs in the worker: there is no sweep, no retry and no reminder. With SMTP unconfigured
+the mail layer returns false, and its development fallback logs the recipient and subject with
+`body: "[omitted]"` — invite, verification and reset bodies carry tokens and are never written to
+logs. `revokeInvite` (`POST .../invites/:inviteId/revoke`) sets `REVOKED` idempotently and clears
+the send lock; a claimed attempt keeps its participant row and its results-export row, while the
+link stops being claimable.
 
 **Claim matrix.** `POST /assessments/:slug/join` with `{ token, candidateRef? }`; `GET` on the
 invite route is read-only and never starts a timer or creates a participant.
@@ -350,13 +368,14 @@ per-user submission aggregate, the problem verdict/language statistics, site sta
 14-day activity chart, and the daily challenge. The rankboard and problem insights already
 excluded virtual contests, and `/rank` excludes `virtual_contest_id` as well. The denormalized
 `problems.accepted_count` / `submission_count` counters are recomputed in the judge with both
-filters. `toCsv` prefixes a `'` to string cells that start with `=`, `+`, `-`, `@`, tab or CR,
-which also hardens the contribution export. Rank points are derived on read, so excluding
-assessment acceptances lowers some public totals immediately and needs no backfill.
+filters. Profile points, solved counts, language/verdict charts, difficulty and tag stats and the
+activity heatmap use the same `practiceSubmissionCondition()` (assessment + virtual excluded);
+the recent submissions list is deliberately unfiltered. `toCsv` prefixes a `'` to string cells
+that start with `=`, `+`, `-`, `@`, tab or CR, which also hardens the contribution export. Rank
+points are derived on read, so excluding assessment acceptances lowers some public totals
+immediately and needs no backfill.
 
-**Deferred.** Automated invite email send/resend/revoke (E3), exclusion of assessment solves from
-profile aggregates (profile points, solved and activity still count them — tracked for v0.6.1),
-and per-problem solved/attempt export columns.
+**Deferred.** Per-problem solved/attempt export columns for the results CSV.
 
 ## ICPC scoring
 

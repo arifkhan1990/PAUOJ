@@ -82,6 +82,35 @@ origin; secure cookies are enabled automatically when `APP_URL` starts with
 checks continue to work. Recommended headers are already sent by the app; the
 proxy should also enforce HSTS and request-size limits.
 
+## Transactional email
+
+Verification, password reset, review notifications and assessment invite emails all go through
+the existing SMTP settings (`SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
+`SMTP_PASSWORD`, `MAIL_FROM` — see `.env.example`). Nothing blocks on mail: assessment invites
+fall back to copy-the-link, and link-only candidates never need SMTP.
+
+Sending requires an authenticated sender record (deployment prerequisite, not a code change):
+
+| Item | Value |
+| --- | --- |
+| Sending domain | Dedicated transactional subdomain `notify.<app-domain>` — never the root domain. If the university cannot delegate a subdomain, use a dedicated domain you control for transactional mail only. |
+| Provider | Amazon SES SMTP, region `ap-southeast-1` |
+| DKIM | Easy DKIM, 2048-bit, all three CNAMEs verified |
+| SPF / MAIL FROM | Custom MAIL FROM `bounce.notify.<app-domain>` so SPF aligns with the From domain; set `MAIL_FROM` to `PAU OJ <no-reply@notify.<app-domain>>` |
+| DMARC | `p=none` → `quarantine` → `reject`, phased after monitoring; `rua`/`ruf` to the bounce owner |
+| Reply-To | A monitored mailbox owned by the operator |
+| Transport | TLS required; no Gmail or personal SMTP |
+| Pilot fallback | Brevo free tier (300/day) with the same domain authentication, if SES cannot be provisioned in time |
+
+A dedicated subdomain isolates the judge's mail reputation from the university's main domain.
+Google's sender guidelines require SPF or DKIM for all senders and SPF + DKIM + DMARC for bulk
+senders, with DMARC alignment matching the From address
+(<https://support.google.com/a/answer/81126>); AWS documents Easy DKIM, a custom MAIL FROM and a
+phased DMARC rollout as the standard SES path
+(<https://docs.aws.amazon.com/ses/latest/dg/email-authentication-dmarc.html>) — both accessed
+2026-11-21. Check the local Mailpit inbox (<http://localhost:8025>) before trusting production
+delivery.
+
 ## Backups
 
 - PostgreSQL: schedule `pg_dump -Fc` and retain off-host copies.

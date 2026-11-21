@@ -54,9 +54,10 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   candidates only through a personal link.
 - **Candidate invites and roster import** *(unreleased, 0.6.0)* — paste a roster CSV to create one
   invite per candidate: `candidate_ref` is required, email/name/group are optional, and rows
-  without an email are delivered by link only. Owners copy each personal link from the results
-  page, and the roster-complete results CSV lists every candidate, including those who never
-  started.
+  without an email are delivered by link only. Email-bearing invites can be sent, resent or
+  revoked one at a time from the results page when SMTP is configured — each send or copy rotates
+  the personal link so the previous one stops working — while no-email rows stay copy-link only.
+  The roster-complete results CSV lists every candidate, including those who never started.
 - **Accounts** — Argon2id passwords, opaque database sessions, email verification, password reset,
   profile settings, session-revoking password changes and admin moderation.
 - **Teacher workspace** — own problems, contests and assessments, scoped to created content; admins
@@ -210,6 +211,8 @@ All app routes are under `/api/v1`. Success: `{ "data": ..., "meta": { "page": 1
 | GET | `/assessments/:slug/invites/:token` | public | Read-only invite metadata |
 | GET/POST | `/admin/assessments/:id/invites` | admin/teacher | Roster list and CSV import |
 | POST | `/admin/assessments/:id/invites/:inviteId/rotate` | admin/teacher | Re-issue a personal link |
+| POST | `/admin/assessments/:id/invites/:inviteId/send` | admin/teacher | Send or resend one invite email |
+| POST | `/admin/assessments/:id/invites/:inviteId/revoke` | admin/teacher | Revoke one invite link |
 | GET | `/admin/assessments/:id/results.csv` | admin/teacher | Roster-complete results export |
 | POST/PUT | `/admin/problems`, `/admin/contests`, `/admin/assessments` | admin/teacher | Content management |
 | GET | `/rank`, `/health` | public | Ranking and health |
@@ -262,10 +265,9 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 - Scoreboard is computed on demand; very large contests will want a cache.
 - Similarity signals are advisory only; there is no automatic penalty or disqualification.
 - Assessments fall back to one shared access code. Personal invite links are implemented but
-  unreleased (0.6.0), and there is no automated invite email send, resend or revoke — owners copy
-  each link by hand.
-- Profile aggregates (points, solved counts, activity) still include assessment solves; `/rank` and
-  problem statistics already exclude them. Tracked for v0.6.1.
+  unreleased (0.6.0); invite email goes out one candidate at a time — no send-all, no scheduled
+  retry or reminder — and needs SMTP with an authenticated sending domain (SPF/DKIM/DMARC) at
+  deployment. Link-only invites work without SMTP.
 - The results export is roster-level; per-problem solved/attempt columns are not exported.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.

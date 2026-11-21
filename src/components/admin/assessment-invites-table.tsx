@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, Loader2, Users } from "lucide-react";
+import { Ban, Check, Copy, Loader2, Mail, Users } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge, type BadgeProps } from "@/components/ui/badge";
@@ -65,6 +65,41 @@ async function writeClipboard(value: string): Promise<boolean> {
   }
 }
 
+const SENDABLE_STATUSES: ReadonlySet<AssessmentInviteStatus> = new Set([
+  "UNSENT",
+  "SENT",
+  "OPENED",
+]);
+
+function canSend(invite: AssessmentInviteSummary): boolean {
+  return Boolean(invite.email) && SENDABLE_STATUSES.has(invite.status);
+}
+
+function isResend(invite: AssessmentInviteSummary): boolean {
+  return (
+    Boolean(invite.sentAt) ||
+    invite.status === "SENT" ||
+    invite.status === "OPENED"
+  );
+}
+
+function actionErrorMessage(
+  error: unknown,
+  action: "send" | "revoke",
+): string {
+  const fallback =
+    action === "send"
+      ? "The invite could not be sent. Please try again."
+      : "The invite could not be revoked. Please try again.";
+  if (!(error instanceof ApiClientError)) return fallback;
+  // A 502 means the fresh token could not be delivered; the previous link is
+  // already invalid, so point the organiser at Copy link.
+  if (error.status === 502) {
+    return `${error.message} Use Copy link to hand over a fresh link.`;
+  }
+  return error.message;
+}
+
 function disabledReason(invite: AssessmentInviteSummary): string | null {
   if (invite.status === "CLAIMED") {
     return "This invite is claimed and cannot be re-issued.";
@@ -88,12 +123,62 @@ export function AssessmentInvitesTable({
 }) {
   const [rotatingId, setRotatingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+
+  const sendInvite = async (invite: AssessmentInviteSummary) => {
+    if (sendingId || revokingId) return;
+    const resent = isResend(invite);
+    setSendingId(invite.id);
+    setActionError(null);
+    try {
+      await apiPost<{ sent: boolean }>(
+        `/api/v1/admin/assessments/${assessmentId}/invites/${invite.id}/send`,
+        {},
+      );
+      toast({
+        title: resent ? "Invite resent" : "Invite sent",
+        variant: "success",
+      });
+      router.refresh();
+    } catch (error) {
+      setActionError(actionErrorMessage(error, "send"));
+    } finally {
+      setSendingId(null);
+    }
+  };
+
+  const revokeInvite = async (invite: AssessmentInviteSummary) => {
+    if (sendingId || revokingId) return;
+    const confirmed = window.confirm(
+      invite.status === "CLAIMED"
+        ? "Revoke this invite? The candidate's attempt is kept, but the invite link stops working."
+        : "Revoke this invite? Its link stops working immediately.",
+    );
+    if (!confirmed) return;
+    setRevokingId(invite.id);
+    setActionError(null);
+    try {
+      await apiPost(
+        `/api/v1/admin/assessments/${assessmentId}/invites/${invite.id}/revoke`,
+        {},
+      );
+      toast({ title: "Invite revoked", variant: "success" });
+      router.refresh();
+    } catch (error) {
+      setActionError(actionErrorMessage(error, "revoke"));
+    } finally {
+      setRevokingId(null);
+    }
+  };
 
   const copyLink = async (invite: AssessmentInviteSummary) => {
     if (rotatingId) return;
     setRotatingId(invite.id);
+    setActionError(null);
     try {
       const { token } = await apiPost<{ token: string }>(
         `/api/v1/admin/assessments/${assessmentId}/invites/${invite.id}/rotate`,
@@ -139,6 +224,15 @@ export function AssessmentInvitesTable({
         <Badge variant="muted">{invites.length}</Badge>
       </div>
 
+      {actionError ? (
+        <div
+          role="alert"
+          className="mt-3 rounded-md border border-rose-300 bg-rose-50 p-3 text-xs leading-relaxed text-rose-900 dark:border-rose-800 dark:bg-rose-950 dark:text-rose-100"
+        >
+          {actionError}
+        </div>
+      ) : null}
+
       {joinMode === "OPEN_CODE" ? (
         <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
           Candidates can still use the shared code. Switch to Personal invite
@@ -147,8 +241,8 @@ export function AssessmentInvitesTable({
       ) : null}
 
       <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-        Copying issues a fresh link and invalidates the old one. Send it straight
-        to the candidate — tokens are never listed here.
+        Sending or copying issues a fresh personal link; the previous link stops
+        working. Revoking keeps a claimed attempt.
       </p>
 
       {invites.length === 0 ? (
@@ -160,7 +254,7 @@ export function AssessmentInvitesTable({
         />
       ) : (
         <div className="mt-4">
-          <Table className="min-w-[760px]">
+          <Table className="min-w-[900px]">
             <caption className="sr-only">Assessment candidate invites</caption>
             <TableHeader>
               <TableRow>
@@ -170,7 +264,7 @@ export function AssessmentInvitesTable({
                 <TableHead>Email</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Claimed assurance</TableHead>
-                <TableHead className="text-right">Link</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -181,7 +275,12 @@ export function AssessmentInvitesTable({
                   : null;
                 const rotating = rotatingId === invite.id;
                 const copied = copiedId === invite.id;
+                const sending = sendingId === invite.id;
+                const revoking = revokingId === invite.id;
                 const blocked = disabledReason(invite);
+                const showSend = canSend(invite);
+                const resend = isResend(invite);
+                const rowBusy = rotating || sending || revoking;
                 return (
                   <TableRow key={invite.id}>
                     <TableCell className="whitespace-nowrap font-mono text-xs">
@@ -218,20 +317,57 @@ export function AssessmentInvitesTable({
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      {blocked ? (
-                        <span
-                          className="text-xs text-muted-foreground"
-                          title={blocked}
-                        >
-                          —
-                        </span>
-                      ) : (
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        {showSend ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={rowBusy}
+                            aria-label={`${resend ? "Resend" : "Send"} invite email for ${invite.candidateRef}`}
+                            onClick={() => void sendInvite(invite)}
+                          >
+                            {sending ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Mail className="size-3.5" />
+                            )}
+                            {resend ? "Resend" : "Send"}
+                          </Button>
+                        ) : !invite.email && SENDABLE_STATUSES.has(invite.status) ? (
+                          <span className="text-[11px] text-muted-foreground">
+                            Link only
+                          </span>
+                        ) : null}
+                        {invite.status !== "REVOKED" ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            disabled={rowBusy}
+                            className="text-destructive hover:text-destructive"
+                            aria-label={`Revoke invite for ${invite.candidateRef}`}
+                            onClick={() => void revokeInvite(invite)}
+                          >
+                            {revoking ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : (
+                              <Ban className="size-3.5" />
+                            )}
+                            Revoke
+                          </Button>
+                        ) : null}
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={rotating}
-                          aria-label={`Copy invite link for ${invite.candidateRef}`}
+                          disabled={rowBusy || Boolean(blocked)}
+                          title={blocked ?? undefined}
+                          aria-label={
+                            blocked
+                              ? `Copy invite link unavailable for ${invite.candidateRef}: ${blocked}`
+                              : `Copy invite link for ${invite.candidateRef}`
+                          }
                           onClick={() => void copyLink(invite)}
                         >
                           {rotating ? (
@@ -247,7 +383,7 @@ export function AssessmentInvitesTable({
                               ? "Copied"
                               : "Copy link"}
                         </Button>
-                      )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
