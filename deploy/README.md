@@ -78,6 +78,51 @@ curl -fsS https://oj.example.edu/health
 
 The health response must show `"status":"ok"` and `"workers":1` (or more).
 
+## 3b. Shared host with an existing Caddy / Cloudflare Tunnel
+
+Use this when the machine already runs another product on `:3000` and owns
+ports 80/443 (for example `pauoj.nabasolution.tech` next to a `nabacare`
+deployment). Do **not** use `deploy.sh` or the prod Compose file here: its app
+port and Caddy service collide with the existing stack.
+
+`deploy/deploy-shared.sh` keeps PAU OJ in its own Compose project (`pauoj`) and:
+
+- publishes the app on `127.0.0.1:8081` (override with `APP_PORT`),
+- joins the external `srv-edge` proxy network as `pauoj-app`,
+- adds one Caddy site (`pauoj.nabasolution.tech` → `pauoj-app:3000`),
+- uses the existing Cloudflare Tunnel catch-all (no DNS or port changes),
+- keeps the other product's containers, volumes and ports untouched.
+
+Run it on the server from the repository:
+
+```bash
+cd /home/naba/server/pauoj/app
+git pull --ff-only
+bash deploy/deploy-shared.sh
+```
+
+The first run prompts for the SMTP password and writes
+`/home/naba/server/pauoj/deploy/.env` (mode 600) with generated database and
+admin passwords. It builds the app and judge images, starts `db`, `redis`, `app`
+and `worker` (no PAU OJ Caddy), seeds once with `SEED_DEMO_DATA=false`, and
+checks the host/Caddy/HTTPS health. The admin password is
+`SEED_ADMIN_PASSWORD` in that env file; it is never printed.
+
+Overrides (environment variables): `APP_DIR`, `REPO_DIR`, `ENV_FILE`,
+`APP_HOST`, `APP_PORT`, `EDGE_NETWORK`, `CADDY_SITES_DIR`, `CADDY_CONTAINER`,
+`CADDY_CONFIG`, `SMTP_USER_VALUE`, `ADMIN_EMAIL_VALUE`, `BUILD_SWIFT=0` to skip
+the Swift image.
+
+Memory: the script defaults to `APP_MEM_LIMIT=768m`, `WORKER_MEM_LIMIT=768m`,
+`DB_MEM_LIMIT=384m`, `REDIS_MEM_LIMIT=192m` and `JUDGE_CONCURRENCY=1`, because a
+shared host may have little free RAM. Raise them only after checking `free -h`.
+
+Rollback: `docker compose --env-file /home/naba/server/pauoj/deploy/.env -f
+deploy/docker-compose.shared.yml -p pauoj down` (keeps volumes), remove the
+Caddy site file and reload the proxy. `deploy-shared.sh` also tags
+`pauoj/app:previous` and recreates the app/worker from it if health fails. Never
+stop the other product's project to free a port.
+
 ## 4. Backups
 
 Manual backup:

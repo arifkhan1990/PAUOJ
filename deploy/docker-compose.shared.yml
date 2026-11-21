@@ -1,0 +1,182 @@
+# Shared-host deployment for a server that already runs another product.
+#
+# Differences from docker-compose.prod.yml:
+# - no Caddy service; an existing reverse proxy (Caddy/Cloudflare Tunnel) fronts
+#   the app on the shared edge network
+# - the app publishes 127.0.0.1:${APP_PORT:-8081}:3000 instead of :3000
+# - the app joins the external ${EDGE_NETWORK:-srv-edge} network so the existing
+#   proxy can reach it by container name (`pauoj-app`)
+# - memory limits are lower by default for a busy host
+#
+# Usage: see deploy/deploy-shared.sh and the "Shared host" section in
+# deploy/README.md. Never start this file together with the prod Caddy service.
+
+name: pauoj
+
+x-app-environment: &app-environment
+  NODE_ENV: production
+  HOSTNAME: 0.0.0.0
+  APP_URL: ${APP_URL:?Set APP_URL in deploy/.env}
+  DATABASE_URL: postgres://${POSTGRES_USER:-pauoj}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}@db:5432/${POSTGRES_DB:-pauoj}
+  REDIS_URL: redis://redis:6379
+  JUDGE_IMAGE: ${JUDGE_IMAGE:-pauoj/judge:latest}
+  JUDGE_SWIFT_IMAGE: ${JUDGE_SWIFT_IMAGE:-pauoj/judge-swift:latest}
+  JUDGE_WORK_DIR: /var/lib/pauoj/judge
+  JUDGE_CONCURRENCY: ${JUDGE_CONCURRENCY:-1}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_SECURE: ${SMTP_SECURE:-false}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-PAU OJ <noreply@pauoj.local>}
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pauoj}
+      POSTGRES_USER: ${POSTGRES_USER:-pauoj}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pauoj} -d ${POSTGRES_DB:-pauoj}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: ${DB_MEM_LIMIT:-384m}
+    cpus: 1.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:8-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "noeviction"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    mem_limit: ${REDIS_MEM_LIMIT:-192m}
+    cpus: 1.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    build:
+      context: ..
+      target: web
+    image: pauoj/app:latest
+    container_name: pauoj-app
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:${APP_PORT:-8081}:3000"
+    networks:
+      - default
+      - edge
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ["sh", "-c", "node dist/migrate.js && node server.js"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/health').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${APP_MEM_LIMIT:-768m}
+    cpus: 2.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  worker:
+    image: pauoj/app:latest
+    environment:
+      <<: *app-environment
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
+    command: ["node", "dist/worker.js"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${JUDGE_HOST_DIR:-/home/naba/server/pauoj/judge}:/var/lib/pauoj/judge
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: ${WORKER_MEM_LIMIT:-768m}
+    cpus: 2.0
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  seed:
+    profiles: ["seed"]
+    image: pauoj/app:latest
+    environment:
+      <<: *app-environment
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@example.edu}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Set SEED_ADMIN_PASSWORD in deploy/.env}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["node", "dist/seed.js"]
+
+  judge-image:
+    profiles: ["build"]
+    build:
+      context: ../judge
+    image: ${JUDGE_IMAGE:-pauoj/judge:latest}
+    entrypoint: ["/bin/true"]
+    restart: "no"
+
+  judge-swift-image:
+    profiles: ["build"]
+    build:
+      context: ../judge
+      dockerfile: Dockerfile.swift
+    image: ${JUDGE_SWIFT_IMAGE:-pauoj/judge-swift:latest}
+    entrypoint: ["/bin/true"]
+    restart: "no"
+
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-srv-edge}
+
+volumes:
+  pgdata:
+  redisdata:
