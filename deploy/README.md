@@ -80,6 +80,12 @@ The health response must show `"status":"ok"` and `"workers":1` (or more).
 
 ## 3b. Shared host with an existing Caddy / Cloudflare Tunnel
 
+> If the host runs the `srv` CLI (the naba server does), use
+> `srv init nextjs <name>` + `srv deploy <name>` instead of this script. `srv`
+> owns `core/caddy/sites` and regenerates the site on every deploy; a directly
+> written site file is overwritten. This section is for shared hosts without
+> `srv`.
+
 Use this when the machine already runs another product on `:3000` and owns
 ports 80/443 (for example `pauoj.nabasolution.tech` next to a `nabacare`
 deployment). Do **not** use `deploy.sh` or the prod Compose file here: its app
