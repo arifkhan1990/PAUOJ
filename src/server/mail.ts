@@ -8,6 +8,7 @@ import {
   fallbackLink,
   footerAppUrl,
   renderEmailShell,
+  sanitizeSubject,
   toPreheader,
   withTextFooter,
 } from "@/server/mail-template";
@@ -55,18 +56,20 @@ async function sendMail(input: {
   html: string;
 }): Promise<boolean> {
   const env = getEnv();
+  // Single choke point: fold the subject before it reaches the SMTP header.
+  const subject = sanitizeSubject(input.subject);
   if (!env.SMTP_HOST) {
     if (env.NODE_ENV !== "production") {
       logger.info("Email not sent (SMTP not configured); development fallback", {
         to: input.to,
-        subject: input.subject,
+        subject,
         // Never log the body: verification, reset and invite mails carry
         // single-use tokens in their URLs.
         body: "[omitted]",
       });
     } else {
       logger.error("Email not sent: SMTP is not configured", {
-        subject: input.subject,
+        subject,
       });
     }
     return false;
@@ -75,14 +78,14 @@ async function sendMail(input: {
     await getTransporter().sendMail({
       from: env.MAIL_FROM,
       to: input.to,
-      subject: input.subject,
+      subject,
       text: input.text,
       html: input.html,
     });
     return true;
   } catch (error) {
     logger.error("Email delivery failed", {
-      subject: input.subject,
+      subject,
       error: error instanceof Error ? error.message : String(error),
     });
     return false;
@@ -116,7 +119,7 @@ This link expires in 24 hours. If you didn't create a PAU OJ account, you can sa
         <p style="margin:12px 0 0">Confirm your email address to secure your account and receive password-reset links.</p>
         ${emailButton(url, "Verify email")}
         ${fallbackLink(url)}
-        <p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link expires in 24 hours. If you didn't create a PAU OJ account, you can safely ignore this email.</p>`;
+        <p class="pauoj-muted" style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link expires in 24 hours. If you didn't create a PAU OJ account, you can safely ignore this email.</p>`;
 
   const html = renderEmailShell({
     title: `Welcome, ${input.displayName}`,
@@ -167,7 +170,7 @@ This link expires in 1 hour. If you did not request it, ignore this email and yo
   const body = `<p style="margin:0">Hi ${name}, we received a request to reset your PAU OJ password.</p>
         ${emailButton(url, "Choose a new password")}
         ${fallbackLink(url)}
-        <p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link expires in 1 hour. If you did not request it, ignore this email and your password will stay the same.</p>`;
+        <p class="pauoj-muted" style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link expires in 1 hour. If you did not request it, ignore this email and your password will stay the same.</p>`;
 
   const html = renderEmailShell({
     title: "Password reset",
@@ -235,10 +238,10 @@ This link is personal; do not forward it.`);
 
   const body = `<p style="margin:0">Hi ${escapeHtml(greetingName)},</p>
         <p style="margin:12px 0 0">You have been invited to an assessment on PAU OJ.</p>
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f7faf8" style="width:100%;margin:18px 0 0;background:#f7faf8;border:1px solid #e3ebe6;border-radius:8px">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="pauoj-softbox" bgcolor="#f7faf8" style="width:100%;margin:18px 0 0;background:#f7faf8;border:1px solid #e3ebe6;border-radius:8px">
           <tr>
-            <td style="padding:14px 16px;font-size:14px;line-height:1.7;color:#475569">
-              <strong style="color:#0f172a">${title}</strong><br>
+            <td class="pauoj-body" style="padding:14px 16px;font-size:14px;line-height:1.7;color:#475569">
+              <strong class="pauoj-ink" style="color:#0f172a">${title}</strong><br>
               Window: ${escapeHtml(window)}<br>
               Duration: ${escapeHtml(duration)}
             </td>
@@ -246,7 +249,7 @@ This link is personal; do not forward it.`);
         </table>
         ${emailButton(input.url, "Open assessment")}
         ${fallbackLink(input.url)}
-        <p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link is personal; do not forward it.</p>`;
+        <p class="pauoj-muted" style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link is personal; do not forward it.</p>`;
 
   const html = renderEmailShell({
     title: "You have an assessment invite",
@@ -288,7 +291,7 @@ export function buildReviewDigestEmail(input: ReviewDigestEmailInput): {
   const listHtml = input.items
     .map(
       (item) =>
-        `<li style="margin:0 0 14px"><strong style="display:block;font-size:14px;color:#0f172a">${escapeHtml(item.title)}</strong><span style="font-size:13px;line-height:1.6;color:#475569">${escapeHtml(item.body)}</span></li>`,
+        `<li style="margin:0 0 14px"><strong class="pauoj-ink" style="display:block;font-size:14px;color:#0f172a">${escapeHtml(item.title)}</strong><span class="pauoj-body" style="font-size:13px;line-height:1.6;color:#475569">${escapeHtml(item.body)}</span></li>`,
     )
     .join("");
   const listText = input.items
@@ -306,11 +309,11 @@ Open your review queue: ${input.href}
 Manage email preferences or unsubscribe: ${input.unsubscribeUrl}`);
 
   const body = `<p style="margin:0">Hi ${name},</p>
-        <ul style="margin:16px 0 0;padding-left:18px;color:#475569">${listHtml}</ul>
+        <ul class="pauoj-body" style="margin:16px 0 0;padding-left:18px;color:#475569">${listHtml}</ul>
         ${emailButton(input.href, "Open review queue")}
         ${fallbackLink(input.href)}
-        <p style="margin:22px 0 0;border-top:1px solid #dbe5df;padding-top:16px;font-size:12px;line-height:1.6;color:#64748b">
-          <a href="${unsubscribe}" target="_blank" rel="noopener" style="color:#0f766e;text-decoration:underline">Unsubscribe</a> from review emails.
+        <p class="pauoj-muted pauoj-rule" style="margin:22px 0 0;border-top:1px solid #dbe5df;padding-top:16px;font-size:12px;line-height:1.6;color:#64748b">
+          <a class="pauoj-link" href="${unsubscribe}" target="_blank" rel="noopener" style="color:#0f766e;text-decoration:underline">Unsubscribe</a> from review emails.
         </p>`;
 
   const html = renderEmailShell({
@@ -367,8 +370,8 @@ Manage email preferences or unsubscribe: ${input.unsubscribeUrl}`);
   const body = `<p style="margin:0">Hi ${name},</p>
         <p style="margin:12px 0 0">${message}</p>
         ${linkBlock}
-        <p style="margin:22px 0 0;border-top:1px solid #dbe5df;padding-top:16px;font-size:12px;line-height:1.6;color:#64748b">
-          <a href="${unsubscribe}" target="_blank" rel="noopener" style="color:#0f766e;text-decoration:underline">Unsubscribe</a> from these emails.
+        <p class="pauoj-muted pauoj-rule" style="margin:22px 0 0;border-top:1px solid #dbe5df;padding-top:16px;font-size:12px;line-height:1.6;color:#64748b">
+          <a class="pauoj-link" href="${unsubscribe}" target="_blank" rel="noopener" style="color:#0f766e;text-decoration:underline">Unsubscribe</a> from these emails.
         </p>`;
 
   const html = renderEmailShell({

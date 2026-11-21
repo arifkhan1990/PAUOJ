@@ -22,6 +22,11 @@ const RELEASE_META: Record<string, { title: string; summary: string }> = {
     summary:
       "Three role workspaces, a shared standalone dashboard shell, teacher-owned content and a version/changelog footer in every panel.",
   },
+  "0.6.3": {
+    title: "Email Client Hardening",
+    summary:
+      "Safer subjects, a 599px breakpoint and a tuned dark mode for every transactional email.",
+  },
   "0.6.2": {
     title: "Transactional Email Refresh",
     summary:

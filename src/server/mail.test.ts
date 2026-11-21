@@ -6,6 +6,7 @@ import {
   buildReviewDigestEmail,
   buildVerificationEmail,
 } from "./mail";
+import { sanitizeSubject } from "./mail-template";
 
 const APP_URL = "https://oj.primeasia.edu.bd";
 const SHELL_MARKER = 'data-pauoj-email="v1"';
@@ -22,6 +23,9 @@ function expectEmailSafeHtml(html: string) {
   expect(html).toContain(SHELL_MARKER);
   expect(html).toContain('role="presentation"');
   expect(html).toContain("max-width:600px");
+  expect(html).toContain("@media only screen and (max-width:599px)");
+  expect(html).toContain("@media (prefers-color-scheme: dark)");
+  expect(html).toContain('<meta name="color-scheme" content="light dark">');
   expect(html).not.toContain("display:flex");
   expect(html).not.toContain("display:grid");
   expect(html).not.toContain("<img");
@@ -302,6 +306,27 @@ describe("buildNotificationEmail", () => {
 
     expect(email.html).toContain(`href="${href.replace("&", "&amp;")}"`);
     expect(email.html).not.toContain("&amp;amp;");
+  });
+
+  it("folds a CRLF notification subject and leaves normal subjects untouched", () => {
+    const injected = buildNotificationEmail({
+      ...input,
+      subject: "New reply on your thread\r\nBcc: victim@example.com",
+    });
+    const sent = sanitizeSubject(injected.subject);
+
+    expect(sent).toBe("New reply on your thread Bcc: victim@example.com");
+    expect(sent).not.toMatch(/[\r\n]/);
+    // Builders keep their raw value; sendMail sanitises centrally.
+    expect(injected.subject).toBe("New reply on your thread\r\nBcc: victim@example.com");
+    expect(sanitizeSubject(input.subject)).toBe(input.subject);
+  });
+
+  it("exposes dark-mode hooks for the body copy and unsubscribe row", () => {
+    const email = buildNotificationEmail(input);
+
+    expect(email.html).toContain('class="pauoj-muted pauoj-rule"');
+    expect(email.html).toContain('class="pauoj-link"');
   });
 
   it("omits the CTA and app link when no href is provided", () => {

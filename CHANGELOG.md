@@ -3,6 +3,20 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.6.3] - 2026-11-21
+
+### Fixed
+- Transactional email subjects are sanitized centrally before both logging and SMTP, folding
+  CR/LF into a space so a notification title cannot inject a header.
+- The responsive breakpoint is now 599px: a 600px desktop preview keeps the inline CTA while
+  mobile keeps the full-width CTA.
+
+### Changed
+- The transactional email shell has a deliberate dark-mode palette (`prefers-color-scheme: dark`)
+  across the header, card, badge, body text, fallback box, CTA and footer, with light mode as the
+  default. Outlook keeps its documented square CTA/light palette; Gmail mobile may apply its own
+  inversion instead of the tuned dark theme.
+
 ## [0.6.2] - 2026-11-21
 
 ### Changed

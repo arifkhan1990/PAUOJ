@@ -5,6 +5,7 @@ import {
   escapeHtml,
   fallbackLink,
   renderEmailShell,
+  sanitizeSubject,
 } from "./mail-template";
 
 const LONG_URL = `https://oj.primeasia.edu.bd/verify-email?token=${"a".repeat(180)}`;
@@ -31,8 +32,55 @@ describe("renderEmailShell", () => {
     expect(html).toContain('cellpadding="0"');
     expect(html).toContain('cellspacing="0"');
     expect(html).toContain("background:#eef3f0");
-    expect(html).toContain("@media only screen and (max-width:600px)");
+    expect(html).toContain("@media only screen and (max-width:599px)");
+    expect(html).not.toContain("@media only screen and (max-width:600px)");
     expect(html).toContain("data-pauoj-email=\"v1\"");
+  });
+
+  it("keeps the inline CTA at exactly 600px and only collapses below it", () => {
+    const html = buildShell();
+
+    // 600px still matches the fixed-width desktop table, so the mobile rules
+    // (full-width CTA) must not fire there; 599px and down do.
+    expect(html).toContain("max-width:600px");
+    expect(html.split("max-width:599px").length - 1).toBe(1);
+    expect(html).toContain(".pauoj-cta { width: 100% !important; }");
+  });
+
+  it("declares light and dark support and ships a dark-mode shell block", () => {
+    const html = buildShell({
+      body: `${emailButton("https://oj.primeasia.edu.bd/verify", "Verify email")}${fallbackLink("https://oj.primeasia.edu.bd/verify")}`,
+    });
+
+    expect(html).toContain('<meta name="color-scheme" content="light dark">');
+    expect(html).toContain('<meta name="supported-color-schemes" content="light dark">');
+    expect(html).toContain("@media (prefers-color-scheme: dark)");
+    // Inline light styles stay the default.
+    expect(html).toContain("background:#ffffff");
+    expect(html).toContain("color:#0f172a");
+    // Every component the dark block themes is reachable through a class hook.
+    for (const hook of [
+      "pauoj-page",
+      "pauoj-header",
+      "pauoj-card-box",
+      "pauoj-h1",
+      "pauoj-body",
+      "pauoj-muted",
+      "pauoj-badge",
+      "pauoj-softbox",
+      "pauoj-footerbox",
+      "pauoj-footer-name",
+      "pauoj-link",
+      "pauoj-cta",
+    ]) {
+      expect(html).toContain(`class="${hook}"`);
+    }
+    // Dark palette overrides are !important so they beat the inline defaults.
+    expect(html).toContain("background:#0b1411 !important");
+    expect(html).toContain("background:#111c18 !important");
+    expect(html).toContain("color:#cbd5e1 !important");
+    expect(html).toContain("background:#14b8a6 !important");
+    expect(html).toContain("color:#04211c !important");
   });
 
   it("hides the preheader text at the top of the email", () => {
@@ -41,6 +89,7 @@ describe("renderEmailShell", () => {
     expect(html).toContain("data-pauoj-preheader");
     expect(html).toContain("display:none");
     expect(html).toContain("max-height:0");
+    expect(html).toContain('aria-hidden="true"');
     expect(html).toContain("Confirm your email address to activate your PAU OJ account.");
     expect(html).not.toContain("mso-hide:all;display:block");
   });
@@ -170,5 +219,25 @@ describe("appOriginFromUrl", () => {
 describe("escapeHtml", () => {
   it("escapes the five HTML-significant characters", () => {
     expect(escapeHtml(`<>&"'`)).toBe("&lt;&gt;&amp;&quot;&#39;");
+  });
+});
+
+describe("sanitizeSubject", () => {
+  it("folds CRLF and lone newlines into a single space", () => {
+    const subject = sanitizeSubject("Assessment invite: CSE-3B\r\nBcc: victim@example.com");
+    expect(subject).toBe("Assessment invite: CSE-3B Bcc: victim@example.com");
+    expect(subject).not.toMatch(/[\r\n]/);
+  });
+
+  it("trims surrounding whitespace but leaves normal subjects unchanged", () => {
+    expect(sanitizeSubject("  Verify your PAU OJ email \n")).toBe("Verify your PAU OJ email");
+    expect(sanitizeSubject("Assessment invite: CSE-3B Midterm")).toBe(
+      "Assessment invite: CSE-3B Midterm",
+    );
+  });
+
+  it("handles repeated and trailing line breaks", () => {
+    expect(sanitizeSubject("Reset\n\r\n\r\npassword\r\n")).toBe("Reset password");
+    expect(sanitizeSubject("\r\n")).toBe("");
   });
 });
