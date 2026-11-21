@@ -2,7 +2,7 @@
 
 ![PAU OJ — PrimeAsia University Online Judge](public/brand/pauoj-logo.png)
 
-**Version 0.5.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
+**Version 0.6.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
 the browser, get sandboxed verdicts, compete in ICPC-style contests, run timed assessments and track
 progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 
@@ -52,7 +52,7 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   problems and submissions, and admin results. Each assessment picks a join mode: `OPEN_CODE`
   keeps one shared access code as the fallback, while `INVITE` disables the code and admits
   candidates only through a personal link.
-- **Candidate invites and roster import** *(unreleased, 0.6.0)* — paste a roster CSV to create one
+- **Candidate invites and roster import** — paste a roster CSV to create one
   invite per candidate: `candidate_ref` is required, email/name/group are optional, and rows
   without an email are delivered by link only. Email-bearing invites can be sent, resent or
   revoked one at a time from the results page when SMTP is configured — each send or copy rotates
@@ -264,10 +264,9 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 
 - Scoreboard is computed on demand; very large contests will want a cache.
 - Similarity signals are advisory only; there is no automatic penalty or disqualification.
-- Assessments fall back to one shared access code. Personal invite links are implemented but
-  unreleased (0.6.0); invite email goes out one candidate at a time — no send-all, no scheduled
-  retry or reminder — and needs SMTP with an authenticated sending domain (SPF/DKIM/DMARC) at
-  deployment. Link-only invites work without SMTP.
+- Assessments fall back to one shared access code. Invite email goes out one candidate at a time —
+  no send-all, no scheduled retry or reminder — and needs SMTP with an authenticated sending
+  domain (SPF/DKIM/DMARC) at deployment. Link-only invites work without SMTP.
 - The results export is roster-level; per-problem solved/attempt columns are not exported.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.

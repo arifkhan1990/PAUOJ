@@ -3,7 +3,7 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
-## [Unreleased]
+## [0.6.0] - 2026-11-21
 
 ### Added
 - Assessments gained join modes: `OPEN_CODE` (default) keeps the shared access code, while

@@ -22,6 +22,11 @@ const RELEASE_META: Record<string, { title: string; summary: string }> = {
     summary:
       "Three role workspaces, a shared standalone dashboard shell, teacher-owned content and a version/changelog footer in every panel.",
   },
+  "0.6.0": {
+    title: "Assessment Invites & Roster Delivery",
+    summary:
+      "Per-candidate invite links, roster import, manual email send/revoke and roster-complete results, with practice-only rank and profile statistics.",
+  },
   "0.5.0": {
     title: "Judge Polish & Profile Experience",
     summary:

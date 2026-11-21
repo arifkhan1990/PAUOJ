@@ -211,8 +211,8 @@ the public site header and footer while keeping a link back to the public site.
 `/changelog` is generated from `CHANGELOG.md` at request time. The parser in
 `src/lib/changelog.ts` turns `##` release headings into release cards and `###`
 headings into grouped change sections (Added, Changed, Fixed, Security and so
-on). The page marks the package version as the current release, treats the
-`Unreleased` block as the next release, and shows every section with an icon,
+on). The page marks the package version as the current release with a `Current`
+marker, labels older releases as previous, and shows every section with an icon,
 count and inline code formatting. The dashboard footer links here, and the
 production image copies `CHANGELOG.md` so the page works in the standalone
 container.
@@ -284,7 +284,7 @@ penalty.
 
 ## Assessment invites and join modes
 
-Candidate-level delivery on top of the shared code (unreleased, 0.6.0 — see `CHANGELOG.md`).
+Candidate-level delivery on top of the shared code (v0.6.0 — see `CHANGELOG.md`).
 Invite email is manual and one candidate at a time: there is no send-all, no worker sweep and no
 scheduled retry or reminder.
 
