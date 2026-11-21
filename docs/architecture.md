@@ -78,6 +78,15 @@ Problem counters (`accepted_count`, `submission_count`) are denormalized for the
 problem list and recomputed transactionally after every judged submission or
 rejudge.
 
+## Problem detail 404s
+
+Unknown problem slugs are rejected in `src/proxy.ts` with a lightweight existence
+query before the route renders. The page's own `notFound()` runs after the
+`(app)/loading.tsx` boundary has started streaming, so it can render the not-found
+UI but cannot change the response status; the proxy keeps that UI and sets a real
+`404`. Existing slugs, including private, contest-locked and assessment-locked
+problems, pass through to the page's own access and lock rules.
+
 ## Problem insights
 
 The problem page aggregates verdict and language counts directly from

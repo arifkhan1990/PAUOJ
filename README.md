@@ -2,7 +2,7 @@
 
 ![PAU OJ — PrimeAsia University Online Judge](public/brand/pauoj-logo.png)
 
-**Version 0.7.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
+**Version 0.7.1.** A full-stack online judge for PrimeAsia University: browse problems, write code in
 the browser, get sandboxed verdicts, compete in ICPC-style contests, run timed assessments and track
 progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 

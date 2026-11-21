@@ -155,6 +155,18 @@ stream it with `docker save | ssh ... 'gunzip | docker load'`, tag it
 check for up to a minute; Cloudflare can briefly return 502/530 while the tunnel
 reconnects.
 
+### Post-deploy checks and rollback
+
+- `/health` must report the package version and `workers >= 1`.
+- `/problems/<unknown-slug>` must return `404`; a `200` not-found shell means the
+  proxy check is missing.
+- Retry the public URL for up to a minute after a restart (Cloudflare 502/530).
+- After migration `0025`, an image-only rollback to 0.6.5 is unsafe: drop
+  `problems_publication_public_check` first, because 0.6.5 problem creation inserts
+  `is_public = true` with `publication_status = 'DRAFT'`. Then retag
+  `srv-pauoj-web:pre-0.7.0` as `srv-pauoj-web:latest` and recreate web/worker. Keep
+  the pre-deploy dump for a full restore.
+
 ## 4. Backups
 
 Manual backup:

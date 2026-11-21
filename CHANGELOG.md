@@ -3,6 +3,18 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.7.1] - 2026-11-22
+
+### Fixed
+- Unknown problem slugs now return a real `404` instead of a `200` not-found shell. The
+  route's `notFound()` runs after the `(app)/loading.tsx` skeleton starts streaming, so a
+  lightweight existence check in `src/proxy.ts` rejects missing slugs before rendering while
+  existing private, contest-locked and assessment-locked problems still reach the page's own
+  access rules.
+- `srv deploy` now builds with a checked status before starting the stack, retries a network
+  failure once, and aborts without touching the running containers or marking the deploy `ok`
+  when the image build fails. The runbook documents the host-network/off-host image fallback.
+
 ## [0.7.0] - 2026-11-22
 
 ### Added
