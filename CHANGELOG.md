@@ -38,8 +38,8 @@ All notable changes to PAU OJ are documented here. The format follows
   editorial proposals only). The author asks for a hold when a fix is needed. Problem and review
   test payloads also carry combined size caps, and problem creation is rate-limited.
 - Choice fields across the app now use one custom searchable select. Search appears above five
-  options, the menu is keyboard accessible and portal-positioned, long labels wrap, and GET filters
-  keep a native no-JS fallback while the hydrated UI submits through a hidden input.
+  options, the menu is keyboard accessible and portal-positioned, long labels wrap, and named GET
+  filters submit through a hidden input.
 
 ## [0.6.5] - 2026-11-21
 

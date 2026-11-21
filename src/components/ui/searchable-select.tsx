@@ -3,7 +3,6 @@
 import * as React from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Search } from "lucide-react";
-import { SearchableSelectFallback } from "@/components/ui/searchable-select-fallback";
 import { SearchableSelectOptions } from "@/components/ui/searchable-select-options";
 import {
   computeSelectMenuPosition,
@@ -56,7 +55,6 @@ export function SearchableSelect({
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [activeIndex, setActiveIndex] = React.useState(0);
-  const [hydrated, setHydrated] = React.useState(false);
   const [position, setPosition] =
     React.useState<SelectMenuPosition | null>(null);
 
@@ -74,10 +72,6 @@ export function SearchableSelect({
   const visibleOptions = canSearch
     ? filterSelectOptions(options, query)
     : [...options];
-
-  React.useEffect(() => {
-    setHydrated(true);
-  }, []);
 
   React.useEffect(() => {
     if (value !== undefined || defaultValue === lastDefaultValue.current) {
@@ -224,7 +218,7 @@ export function SearchableSelect({
         closeMenu(true);
         break;
       case "Tab":
-        closeMenu();
+        closeMenu(true);
         break;
       default:
         break;
@@ -255,15 +249,7 @@ export function SearchableSelect({
   return (
     <>
       {name ? (
-        <SearchableSelectFallback
-          name={name}
-          id={id}
-          ariaLabel={ariaLabel}
-          value={selectedValue}
-          options={options}
-          hydrated={hydrated}
-          className={className}
-        />
+        <input type="hidden" name={name} value={selectedValue} />
       ) : null}
       <button
         ref={triggerRef}

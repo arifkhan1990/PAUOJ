@@ -19,36 +19,23 @@ function render(
 }
 
 describe("SearchableSelect server rendering", () => {
-  it("renders the custom combobox with a no-JS native fallback", () => {
-    const html = render({
-      name: "status",
-      defaultValue: "WA",
-      "aria-label": "Verdict",
-    });
-
+  it("renders the custom combobox instead of a native select", () => {
+    const html = render();
     expect(html).toContain('role="combobox"');
     expect(html).toContain('aria-haspopup="listbox"');
     expect(html).toContain('aria-expanded="false"');
-    expect(html).toContain("searchable-select-js");
-    expect(html).toContain("searchable-select-fallback");
-
-    const fallback = html.match(/<select[^>]*name="status"[^>]*>/)?.[0];
-    expect(fallback).toBeDefined();
-    expect(fallback).not.toContain("disabled");
-    expect(html).toMatch(/<option[^>]*value="WA"[^>]*selected/);
+    expect(html).not.toContain("<select");
   });
 
-  it("keeps GET form submission working through a hidden input after hydration", () => {
+  it("keeps GET form submission working through a hidden input", () => {
     const html = render({
       name: "status",
       defaultValue: "AC",
       "aria-label": "Verdict",
     });
-
-    const hidden = html.match(/<input[^>]*type="hidden"[^>]*>/)?.[0];
-    expect(hidden).toContain('name="status"');
-    expect(hidden).toContain('value="AC"');
-    expect(hidden).toContain("disabled");
+    expect(html).toContain('type="hidden"');
+    expect(html).toContain('name="status"');
+    expect(html).toContain('value="AC"');
     expect(html).toContain('aria-label="Verdict"');
   });
 

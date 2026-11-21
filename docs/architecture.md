@@ -575,10 +575,10 @@ tables or cards. Search appears automatically when a field has more than five
 options (`src/lib/select-options.ts`), matches labels, descriptions and values,
 and supports arrow keys, Home/End, Enter and Escape. Long option labels wrap to
 two lines; the closed trigger truncates with a tooltip. When a `name` is supplied
-the component also renders a hidden input for server-rendered GET filters. Those
-forms stay usable without JavaScript: a native select is hidden and disabled once
-the app hydrates, and a `<noscript>` style in the root layout reveals it while
-hiding the custom trigger, so exactly one control submits.
+the component also renders a hidden input so server-rendered GET filters submit
+the selected value. Like the rest of the interactive UI, these controls require
+JavaScript: route content is streamed into a hidden segment that only the React
+runtime reveals, so a `<noscript>` native fallback cannot become visible.
 
 ## Failure and recovery
 
