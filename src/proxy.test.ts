@@ -7,8 +7,10 @@ vi.mock("@/server/db", () => ({ getSql: () => sql }));
 
 const { proxy } = await import("./proxy");
 
-function request(path: string): NextRequest {
-  return new NextRequest(`http://localhost${path}`);
+function request(path: string, cookie?: string): NextRequest {
+  return new NextRequest(`http://localhost${path}`, {
+    headers: cookie ? { cookie } : undefined,
+  });
 }
 
 describe("problem slug proxy", () => {
@@ -33,6 +35,33 @@ describe("problem slug proxy", () => {
     const response = await proxy(request("/problems"));
     expect(response.status).toBe(200);
     expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("leaves anonymous contribute pages to the sign-in gate", async () => {
+    const response = await proxy(
+      request("/problems/this-slug-does-not-exist/contribute"),
+    );
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for a signed-in unknown contribute slug", async () => {
+    sql.mockResolvedValue([]);
+    const response = await proxy(
+      request(
+        "/problems/this-slug-does-not-exist/contribute",
+        "pauoj_session=test",
+      ),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("passes a signed-in existing contribute slug", async () => {
+    sql.mockResolvedValue([{ "?column?": 1 }]);
+    const response = await proxy(
+      request("/problems/a-plus-b/contribute", "pauoj_session=test"),
+    );
+    expect(response.status).toBe(200);
   });
 
   it("does not 404 every problem when the lookup fails", async () => {

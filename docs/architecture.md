@@ -85,7 +85,9 @@ query before the route renders. The page's own `notFound()` runs after the
 `(app)/loading.tsx` boundary has started streaming, so it can render the not-found
 UI but cannot change the response status; the proxy keeps that UI and sets a real
 `404`. Existing slugs, including private, contest-locked and assessment-locked
-problems, pass through to the page's own access and lock rules.
+problems, pass through to the page's own access and lock rules. Anonymous
+`/contribute` requests also pass through to the sign-in gate; a signed-in request
+for an unknown problem's contribute page gets the same `404`.
 
 ## Problem insights
 

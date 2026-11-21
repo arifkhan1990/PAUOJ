@@ -1,15 +1,26 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSql } from "@/server/db";
+import { SESSION_COOKIE } from "@/lib/auth-cookie";
 
 /**
  * `notFound()` inside the page runs after the `(app)/loading.tsx` boundary has
  * started streaming, so the response keeps a 200 status. This pre-render check
  * returns a real 404 for unknown slugs while leaving the page's own access and
  * lock handling untouched for every existing row.
+ *
+ * Anonymous `/contribute` requests still go to the page's sign-in gate; a
+ * signed-in request for an unknown slug gets the 404 here.
  */
 export async function proxy(request: NextRequest) {
-  const match = /^\/problems\/([^/]+)\/?$/.exec(request.nextUrl.pathname);
+  const match = /^\/problems\/([^/]+)(\/contribute)?\/?$/.exec(
+    request.nextUrl.pathname,
+  );
   if (!match) return NextResponse.next();
+
+  const isContribute = Boolean(match[2]);
+  if (isContribute && !request.cookies.has(SESSION_COOKIE)) {
+    return NextResponse.next();
+  }
 
   let slug: string;
   try {
@@ -33,5 +44,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/problems/:slug"],
+  matcher: ["/problems/:slug", "/problems/:slug/contribute"],
 };

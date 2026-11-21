@@ -4,8 +4,9 @@ import { and, eq, gt } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { sessions, users } from "@/server/db/schema";
 import { getEnv } from "@/server/env";
+import { SESSION_COOKIE } from "@/lib/auth-cookie";
 
-export const SESSION_COOKIE = "pauoj_session";
+export { SESSION_COOKIE };
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
 export type SafeUser = {

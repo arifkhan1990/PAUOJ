@@ -10,7 +10,8 @@ All notable changes to PAU OJ are documented here. The format follows
   route's `notFound()` runs after the `(app)/loading.tsx` skeleton starts streaming, so a
   lightweight existence check in `src/proxy.ts` rejects missing slugs before rendering while
   existing private, contest-locked and assessment-locked problems still reach the page's own
-  access rules.
+  access rules. Anonymous `/contribute` links keep the sign-in gate; a signed-in request for an
+  unknown problem's contribute page also returns `404`.
 - `srv deploy` now builds with a checked status before starting the stack, retries a network
   failure once, and aborts without touching the running containers or marking the deploy `ok`
   when the image build fails. The runbook documents the host-network/off-host image fallback.
