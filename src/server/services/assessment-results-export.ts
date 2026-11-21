@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
   assessmentInvites,
@@ -45,11 +45,14 @@ export async function exportAssessmentResults(
     db
       .select({
         problemId: assessmentProblems.problemId,
+        label: assessmentProblems.label,
+        position: assessmentProblems.position,
         points: problems.points,
       })
       .from(assessmentProblems)
       .innerJoin(problems, eq(problems.id, assessmentProblems.problemId))
-      .where(eq(assessmentProblems.assessmentId, assessmentId)),
+      .where(eq(assessmentProblems.assessmentId, assessmentId))
+      .orderBy(asc(assessmentProblems.position)),
     db
       .select({
         userId: submissions.userId,
@@ -64,10 +67,15 @@ export async function exportAssessmentResults(
   const problemPoints = new Map(
     problemRows.map((row) => [row.problemId, row.points]),
   );
+  const assessmentProblemsInOrder = problemRows.map((row) => ({
+    id: row.problemId,
+    label: row.label,
+  }));
   const rows = buildAssessmentExportRows({
     invites,
     participants,
     submissions: submissionRows,
+    problems: assessmentProblemsInOrder,
     problemPoints,
     now,
   });
@@ -79,6 +87,9 @@ export async function exportAssessmentResults(
       joinMode: assessment.joinMode,
     },
     rows,
-    csv: assessmentResultsCsv(rows),
+    csv: assessmentResultsCsv(
+      rows,
+      assessmentProblemsInOrder.map((problem) => problem.label),
+    ),
   };
 }

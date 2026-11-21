@@ -2,7 +2,7 @@
 
 ![PAU OJ — PrimeAsia University Online Judge](public/brand/pauoj-logo.png)
 
-**Version 0.6.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
+**Version 0.6.1.** A full-stack online judge for PrimeAsia University: browse problems, write code in
 the browser, get sandboxed verdicts, compete in ICPC-style contests, run timed assessments and track
 progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 
@@ -267,7 +267,6 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 - Assessments fall back to one shared access code. Invite email goes out one candidate at a time —
   no send-all, no scheduled retry or reminder — and needs SMTP with an authenticated sending
   domain (SPF/DKIM/DMARC) at deployment. Link-only invites work without SMTP.
-- The results export is roster-level; per-problem solved/attempt columns are not exported.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.
 

@@ -27,6 +27,17 @@ export type AssessmentExportSubmission = {
   createdAt: Date;
 };
 
+export type AssessmentExportProblemCell = {
+  solved: boolean;
+  attempts: number;
+};
+
+/** One ordered assessment problem: its id, label and (implicit) position. */
+export type AssessmentExportProblem = {
+  id: string;
+  label: string;
+};
+
 export type AssessmentExportRow = {
   candidateRef: string;
   candidateName: string;
@@ -41,12 +52,16 @@ export type AssessmentExportRow = {
   solved: number;
   points: number;
   submissions: number;
+  /** problem label -> per-problem cell; every assessment label is present. */
+  problems: Record<string, AssessmentExportProblemCell>;
 };
 
 export type BuildAssessmentExportRowsInput = {
   invites: AssessmentInvite[];
   participants: AssessmentParticipant[];
   submissions: AssessmentExportSubmission[];
+  /** assessment problems ordered by position, from assessment_problems ⋈ problems */
+  problems: AssessmentExportProblem[];
   /** assessment problem id -> problem points, from assessment_problems ⋈ problems */
   problemPoints: Map<string, number>;
   now?: Date;
@@ -57,12 +72,36 @@ type UserStats = {
   points: number;
   submissions: number;
   lastSubmissionAt: Date | null;
+  problems: Record<string, AssessmentExportProblemCell>;
 };
+
+/** Every row carries a cell for every assessment label, absent rows included. */
+function emptyCells(labels: string[]): Record<string, AssessmentExportProblemCell> {
+  const cells: Record<string, AssessmentExportProblemCell> = {};
+  for (const label of labels) cells[label] = { solved: false, attempts: 0 };
+  return cells;
+}
+
+/** Copy so roster and participant-only rows never alias the same cell objects. */
+function copyCells(
+  cells: Record<string, AssessmentExportProblemCell>,
+): Record<string, AssessmentExportProblemCell> {
+  const copy: Record<string, AssessmentExportProblemCell> = {};
+  for (const [label, cell] of Object.entries(cells)) {
+    copy[label] = { solved: cell.solved, attempts: cell.attempts };
+  }
+  return copy;
+}
 
 function collectUserStats(
   submissions: AssessmentExportSubmission[],
+  problems: AssessmentExportProblem[],
   problemPoints: Map<string, number>,
 ): Map<string, UserStats> {
+  const labels = problems.map((problem) => problem.label);
+  const labelByProblem = new Map(
+    problems.map((problem) => [problem.id, problem.label]),
+  );
   const stats = new Map<string, UserStats>();
   for (const submission of submissions) {
     let entry = stats.get(submission.userId);
@@ -72,6 +111,7 @@ function collectUserStats(
         points: 0,
         submissions: 0,
         lastSubmissionAt: null,
+        problems: emptyCells(labels),
       };
       stats.set(submission.userId, entry);
     }
@@ -82,13 +122,19 @@ function collectUserStats(
     ) {
       entry.lastSubmissionAt = submission.createdAt;
     }
-    // Problems detached from the assessment carry no points and are not
-    // "solved" for this export, matching the on-screen results view.
-    if (submission.status !== "ACCEPTED") continue;
-    if (!problemPoints.has(submission.problemId)) continue;
-    if (entry.solvedProblemIds.has(submission.problemId)) continue;
-    entry.solvedProblemIds.add(submission.problemId);
-    entry.points += problemPoints.get(submission.problemId) ?? 0;
+    // Problems detached from the assessment stay out of points and cells,
+    // matching the on-screen results view; the submission still counts.
+    const label = labelByProblem.get(submission.problemId);
+    if (!label) continue;
+    const cell = entry.problems[label];
+    if (!cell || cell.solved) continue;
+    if (submission.status === "ACCEPTED") {
+      cell.solved = true;
+      entry.solvedProblemIds.add(submission.problemId);
+      entry.points += problemPoints.get(submission.problemId) ?? 0;
+    } else {
+      cell.attempts += 1;
+    }
   }
   return stats;
 }
@@ -107,6 +153,7 @@ function buildRow(
   participant: AssessmentParticipant | null,
   stats: UserStats | undefined,
   now: Date,
+  labels: string[],
 ): AssessmentExportRow {
   return {
     candidateRef: invite?.candidateRef ?? "",
@@ -122,6 +169,7 @@ function buildRow(
     solved: stats?.solvedProblemIds.size ?? 0,
     points: stats?.points ?? 0,
     submissions: stats?.submissions ?? 0,
+    problems: stats ? copyCells(stats.problems) : emptyCells(labels),
   };
 }
 
@@ -159,7 +207,12 @@ export function buildAssessmentExportRows(
   input: BuildAssessmentExportRowsInput,
 ): AssessmentExportRow[] {
   const now = input.now ?? new Date();
-  const statsByUser = collectUserStats(input.submissions, input.problemPoints);
+  const labels = input.problems.map((problem) => problem.label);
+  const statsByUser = collectUserStats(
+    input.submissions,
+    input.problems,
+    input.problemPoints,
+  );
   const inviteIds = new Set(input.invites.map((invite) => invite.id));
   const participantByInvite = new Map<string, AssessmentParticipant>();
   const participantOnly: AssessmentParticipant[] = [];
@@ -179,12 +232,13 @@ export function buildAssessmentExportRows(
       participant,
       participant ? statsByUser.get(participant.userId) : undefined,
       now,
+      labels,
     );
   });
 
   for (const participant of participantOnly) {
     rows.push(
-      buildRow(null, participant, statsByUser.get(participant.userId), now),
+      buildRow(null, participant, statsByUser.get(participant.userId), now, labels),
     );
   }
 
@@ -211,7 +265,18 @@ function iso(value: Date | null): string {
   return value?.toISOString() ?? "";
 }
 
-export function assessmentResultsCsv(rows: AssessmentExportRow[]): string {
+/**
+ * Appends two columns per assessment problem in the given label order, so the
+ * header stays deterministic regardless of object key insertion.
+ */
+export function assessmentResultsCsv(
+  rows: AssessmentExportRow[],
+  labels: string[] = [],
+): string {
+  const header = [
+    ...CSV_HEADER,
+    ...labels.flatMap((label) => [`${label}_solved`, `${label}_attempts`]),
+  ];
   const body = rows.map((row) => [
     row.candidateRef,
     row.candidateName,
@@ -226,6 +291,10 @@ export function assessmentResultsCsv(rows: AssessmentExportRow[]): string {
     row.solved,
     row.points,
     row.submissions,
+    ...labels.flatMap((label) => {
+      const cell = row.problems[label] ?? { solved: false, attempts: 0 };
+      return [cell.solved ? 1 : 0, cell.attempts];
+    }),
   ]);
-  return toCsv([CSV_HEADER, ...body]);
+  return toCsv([header, ...body]);
 }

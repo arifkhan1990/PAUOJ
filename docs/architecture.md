@@ -357,10 +357,11 @@ aborts its neighbours. Owner (`created_by`) and admins only; audit `assessment.i
 including `NOT_STARTED` candidates, which is the point of the file — plus participants with no
 surviving invite (open-code joins). Columns: `candidate_ref`, `candidate_name`, `group_label`,
 `email`, `status`, `assurance`, `failed_claims`, `started_at`, `finished_at`,
-`last_submission_at`, `solved`, `points`, `submissions`. Rows sort by group label (nulls first),
-then roster rows before participant-only rows, points descending, then `candidate_ref`.
-Owner/admin only, audit `assessment.export`, `Cache-Control: no-store`, cells formula-escaped by
-`toCsv`.
+`last_submission_at`, `solved`, `points`, `submissions`, then `<label>_solved`/`<label>_attempts`
+for every assessment problem in position order (zeros for absent and participant-only rows).
+Rows sort by group label (nulls first), then roster rows before participant-only rows, points
+descending, then `candidate_ref`. Owner/admin only, audit `assessment.export`,
+`Cache-Control: no-store`, cells formula-escaped by `toCsv`.
 
 **E6 attribution fixes.** Public aggregates now exclude assessment submissions through the shared
 `countedSubmission()` helper (`submissions.assessment_id IS NULL`): the `/rank` totals and its

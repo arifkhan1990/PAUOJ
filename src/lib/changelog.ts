@@ -22,6 +22,11 @@ const RELEASE_META: Record<string, { title: string; summary: string }> = {
     summary:
       "Three role workspaces, a shared standalone dashboard shell, teacher-owned content and a version/changelog footer in every panel.",
   },
+  "0.6.1": {
+    title: "Per-problem Results Columns",
+    summary:
+      "The roster results CSV now carries solved/attempt columns for every assessment problem, in position order.",
+  },
   "0.6.0": {
     title: "Assessment Invites & Roster Delivery",
     summary:

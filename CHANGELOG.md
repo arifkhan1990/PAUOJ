@@ -3,6 +3,14 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.6.1] - 2026-11-21
+
+### Added
+- The assessment results CSV now appends `<label>_solved` and `<label>_attempts` for
+  every problem in the assessment's position order, after the roster columns. Absent
+  candidates and participant-only rows export zeros; detached problems stay excluded.
+  The base columns and their order are unchanged.
+
 ## [0.6.0] - 2026-11-21
 
 ### Added

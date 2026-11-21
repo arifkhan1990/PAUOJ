@@ -605,7 +605,9 @@ started appear as `NOT_STARTED` — plus participants without a surviving invite
 Columns:
 
 `candidate_ref, candidate_name, group_label, email, status, assurance, failed_claims,
-started_at, finished_at, last_submission_at, solved, points, submissions`
+started_at, finished_at, last_submission_at, solved, points, submissions`, then two columns per
+assessment problem in position order: `<label>_solved` (1/0) and `<label>_attempts` (number).
+Absent and participant-only rows carry zeros; problems detached from the assessment are excluded.
 
 `status` is `NOT_STARTED`, `ACTIVE`, `FINISHED`, `EXPIRED` or `REVOKED`; `assurance` is blank
 until the candidate claims. Rows sort by group label (nulls first), then roster rows before

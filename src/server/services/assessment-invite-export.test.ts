@@ -72,6 +72,16 @@ function makeSubmission(
   return { userId, problemId, status, createdAt: new Date(createdAt) };
 }
 
+const PROBLEMS_AB = [
+  { id: "p-a", label: "A" },
+  { id: "p-b", label: "B" },
+];
+
+const POINTS_AB = new Map([
+  ["p-a", 100],
+  ["p-b", 200],
+]);
+
 function byRef(rows: AssessmentExportRow[], ref: string): AssessmentExportRow {
   const row = rows.find((candidate) => candidate.candidateRef === ref);
   if (!row) throw new Error(`No export row for ref ${ref}`);
@@ -92,6 +102,7 @@ describe("buildAssessmentExportRows", () => {
       invites: [attended, absent, revoked],
       participants: [participant],
       submissions: [],
+      problems: [],
       problemPoints: new Map(),
       now: NOW,
     });
@@ -117,6 +128,7 @@ describe("buildAssessmentExportRows", () => {
       invites: [],
       participants: [alice, bob],
       submissions: [],
+      problems: [],
       problemPoints: new Map(),
       now: NOW,
     });
@@ -146,6 +158,7 @@ describe("buildAssessmentExportRows", () => {
       invites: [],
       participants: [orphan],
       submissions: [],
+      problems: [],
       problemPoints: new Map(),
       now: NOW,
     });
@@ -168,6 +181,7 @@ describe("buildAssessmentExportRows", () => {
       invites: [invite],
       participants: [participant],
       submissions: [],
+      problems: [{ id: "problem-1", label: "A" }],
       problemPoints: new Map([["problem-1", 100]]),
       now: NOW,
     });
@@ -178,6 +192,7 @@ describe("buildAssessmentExportRows", () => {
     expect(row.points).toBe(0);
     expect(row.submissions).toBe(0);
     expect(row.lastSubmissionAt).toBeNull();
+    expect(row.problems).toEqual({ A: { solved: false, attempts: 0 } });
   });
 
   it("prefers the participant's assurance snapshot and falls back to the invite", () => {
@@ -200,6 +215,7 @@ describe("buildAssessmentExportRows", () => {
         makeParticipant({ inviteId: reffed.id, assurance: null }),
       ],
       submissions: [],
+      problems: [],
       problemPoints: new Map(),
       now: NOW,
     });
@@ -227,6 +243,10 @@ describe("buildAssessmentExportRows", () => {
         makeSubmission("user-1", "problem-2", "WRONG_ANSWER", "2026-11-21T09:30:00.000Z"),
         makeSubmission("user-1", "problem-9", "ACCEPTED", "2026-11-21T09:45:00.000Z"),
       ],
+      problems: [
+        { id: "problem-1", label: "A" },
+        { id: "problem-2", label: "B" },
+      ],
       problemPoints: new Map([
         ["problem-1", 100],
         ["problem-2", 200],
@@ -238,9 +258,62 @@ describe("buildAssessmentExportRows", () => {
     expect(row.solved).toBe(1);
     expect(row.points).toBe(100);
     expect(row.submissions).toBe(4);
-    expect(row.lastSubmissionAt?.toISOString()).toBe(
-      "2026-11-21T09:45:00.000Z",
-    );
+    expect(row.problems).toEqual({ A: { solved: true, attempts: 0 }, B: { solved: false, attempts: 1 } });
+    expect(row.lastSubmissionAt?.toISOString()).toBe("2026-11-21T09:45:00.000Z");
+  });
+
+  it("tracks per-problem solved/attempts cells like the results view", () => {
+    const invite = makeInvite({ candidateRef: "R-2" });
+    const participant = makeParticipant({ inviteId: invite.id, userId: "user-cells" });
+
+    const rows = buildAssessmentExportRows({
+      invites: [invite],
+      participants: [participant],
+      submissions: [
+        makeSubmission("user-cells", "p-a", "WRONG_ANSWER", "2026-11-21T09:05:00.000Z"),
+        makeSubmission("user-cells", "p-a", "ACCEPTED", "2026-11-21T09:10:00.000Z"),
+        makeSubmission("user-cells", "p-a", "WRONG_ANSWER", "2026-11-21T09:15:00.000Z"),
+        makeSubmission("user-cells", "p-b", "WRONG_ANSWER", "2026-11-21T09:20:00.000Z"),
+        makeSubmission("user-cells", "p-b", "TIME_LIMIT_EXCEEDED", "2026-11-21T09:25:00.000Z"),
+      ],
+      problems: PROBLEMS_AB,
+      problemPoints: POINTS_AB,
+      now: NOW,
+    });
+
+    const row = byRef(rows, "R-2");
+    // The attempt after acceptance is ignored, matching getAssessmentResults;
+    // B stays unsolved with both failures counted.
+    expect(row.problems).toEqual({
+      A: { solved: true, attempts: 1 },
+      B: { solved: false, attempts: 2 },
+    });
+    expect(row.solved).toBe(1);
+    expect(row.points).toBe(100);
+    expect(row.submissions).toBe(5);
+  });
+
+  it("initialises every problem cell for absent and participant-only rows", () => {
+    const absent = makeInvite({ candidateRef: "R-ABSENT" });
+    const orphan = makeParticipant({ userId: "user-orphan", inviteId: "gone" });
+
+    const rows = buildAssessmentExportRows({
+      invites: [absent],
+      participants: [orphan],
+      submissions: [],
+      problems: PROBLEMS_AB,
+      problemPoints: POINTS_AB,
+      now: NOW,
+    });
+
+    const zeroes = {
+      A: { solved: false, attempts: 0 },
+      B: { solved: false, attempts: 0 },
+    };
+    expect(byRef(rows, "R-ABSENT").problems).toEqual(zeroes);
+    const participantOnly = rows.find((row) => row.candidateRef === "");
+    expect(participantOnly?.problems).toEqual(zeroes);
+    expect(assessmentResultsCsv(rows, ["A", "B"])).toContain(",0,0,0,0\r\n");
   });
 
   it("orders by group, then points, then ref, with participant-only rows last", () => {
@@ -263,6 +336,10 @@ describe("buildAssessmentExportRows", () => {
         makeSubmission("user-open", "p1", "ACCEPTED", "2026-11-21T09:10:00.000Z"),
         makeSubmission("user-open", "p2", "ACCEPTED", "2026-11-21T09:10:00.000Z"),
       ],
+      problems: [
+        { id: "p1", label: "A" },
+        { id: "p2", label: "B" },
+      ],
       problemPoints: new Map([
         ["p1", 100],
         ["p2", 50],
@@ -270,13 +347,7 @@ describe("buildAssessmentExportRows", () => {
       now: NOW,
     });
 
-    expect(rows.map((row) => row.candidateRef)).toEqual([
-      "R-3",
-      "",
-      "R-2",
-      "R-1",
-      "R-4",
-    ]);
+    expect(rows.map((row) => row.candidateRef)).toEqual(["R-3", "", "R-2", "R-1", "R-4"]);
   });
 });
 
@@ -287,6 +358,7 @@ describe("assessmentResultsCsv", () => {
       invites: [invite],
       participants: [],
       submissions: [],
+      problems: [],
       problemPoints: new Map(),
       now: NOW,
     });
@@ -311,6 +383,7 @@ describe("assessmentResultsCsv", () => {
         invites: [invite],
         participants: [],
         submissions: [],
+        problems: [],
         problemPoints: new Map(),
         now: NOW,
       }),
@@ -318,5 +391,55 @@ describe("assessmentResultsCsv", () => {
 
     expect(csv).toContain(`"'=1+1"`);
     expect(csv).toContain(`"'=cmd()"`);
+  });
+
+  it("orders problem columns by the supplied labels, not cell insertion", () => {
+    const invite = makeInvite({ candidateRef: "R-3" });
+    const participant = makeParticipant({
+      inviteId: invite.id,
+      userId: "user-detached",
+    });
+
+    const rows = buildAssessmentExportRows({
+      invites: [invite],
+      participants: [participant],
+      submissions: [
+        makeSubmission("user-detached", "p-b", "WRONG_ANSWER", "2026-11-21T09:10:00.000Z"),
+        makeSubmission("user-detached", "detached", "ACCEPTED", "2026-11-21T09:20:00.000Z"),
+      ],
+      problems: PROBLEMS_AB,
+      problemPoints: POINTS_AB,
+      now: NOW,
+    });
+
+    const row = byRef(rows, "R-3");
+    expect(Object.keys(row.problems)).toEqual(["A", "B"]);
+    expect(row.problems.detached).toBeUndefined();
+    expect(row.solved).toBe(0);
+    expect(row.points).toBe(0);
+    // The detached submission still counts in the total.
+    expect(row.submissions).toBe(2);
+
+    const [header] = assessmentResultsCsv(rows, ["B", "A"]).split("\r\n");
+    expect(header?.endsWith("B_solved,B_attempts,A_solved,A_attempts")).toBe(
+      true,
+    );
+    expect(header).not.toContain("detached");
+  });
+
+  it("quotes comma-bearing problem labels through toCsv", () => {
+    const invite = makeInvite({ candidateRef: "R-4" });
+    const rows = buildAssessmentExportRows({
+      invites: [invite],
+      participants: [],
+      submissions: [],
+      problems: [{ id: "p", label: "A,B" }],
+      problemPoints: new Map([["p", 10]]),
+      now: NOW,
+    });
+
+    const [header, line] = assessmentResultsCsv(rows, ["A,B"]).split("\r\n");
+    expect(header).toContain(`"A,B_solved","A,B_attempts"`);
+    expect(line?.endsWith(",0,0")).toBe(true);
   });
 });
