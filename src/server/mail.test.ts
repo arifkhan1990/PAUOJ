@@ -1,5 +1,33 @@
 import { describe, expect, it } from "vitest";
-import { buildAssessmentInviteEmail } from "./mail";
+import {
+  buildAssessmentInviteEmail,
+  buildNotificationEmail,
+  buildPasswordResetEmail,
+  buildReviewDigestEmail,
+  buildVerificationEmail,
+} from "./mail";
+
+const APP_URL = "https://oj.primeasia.edu.bd";
+const SHELL_MARKER = 'data-pauoj-email="v1"';
+
+/** Counts URL occurrences that are neither an href value nor visible link text. */
+function unstyledUrlOccurrences(html: string, url: string): number {
+  const total = html.split(url).length - 1;
+  const inHref = html.split(`href="${url}"`).length - 1;
+  const asLinkText = html.split(`>${url}</a>`).length - 1;
+  return total - inHref - asLinkText;
+}
+
+function expectEmailSafeHtml(html: string) {
+  expect(html).toContain(SHELL_MARKER);
+  expect(html).toContain('role="presentation"');
+  expect(html).toContain("max-width:600px");
+  expect(html).not.toContain("display:flex");
+  expect(html).not.toContain("display:grid");
+  expect(html).not.toContain("<img");
+  expect(html).not.toContain("<script");
+  expect(html).not.toContain("<link");
+}
 
 const URL = "http://localhost:3000/assessments/midterm/invite/raw-token-123";
 
@@ -74,5 +102,225 @@ describe("buildAssessmentInviteEmail", () => {
     expect(build({ candidateName: null }).text.startsWith("Hi there,")).toBe(
       true,
     );
+  });
+
+  it("renders the invite inside the shared shell with a badge and fallback link", () => {
+    const email = build();
+
+    expectEmailSafeHtml(email.html);
+    expect(email.html).toContain("ASSESSMENT INVITE");
+    expect(email.html).toContain("You have an assessment invite");
+    expect(email.html).toContain("BUTTON NOT WORKING?");
+    expect(email.html).toContain("word-break:break-all");
+    expect(email.html).toContain("Open assessment");
+    expect(email.html).not.toContain("data-pauoj-preheader=\"1\" style=\"display:block");
+  });
+
+  it("derives the footer app link from the invite URL origin", () => {
+    const email = build();
+
+    expect(email.html).toContain('href="http://localhost:3000"');
+    expect(email.html).toContain(">Open PAU OJ</a>");
+  });
+
+  it("wraps long personal links without leaving an unstyled URL", () => {
+    const longUrl = `${APP_URL}/assessments/cse-3b-midterm/invite/${"z".repeat(200)}`;
+    const email = build({ url: longUrl });
+
+    expect(unstyledUrlOccurrences(email.html, longUrl)).toBe(0);
+    expect(email.html).toContain("word-break:break-all");
+    expect(Buffer.byteLength(email.html, "utf8")).toBeLessThan(30_000);
+  });
+});
+
+describe("buildVerificationEmail", () => {
+  const token = "tok-123";
+  const url = `${APP_URL}/verify-email?token=${token}`;
+
+  function buildVerification(
+    overrides: Partial<Parameters<typeof buildVerificationEmail>[0]> = {},
+  ) {
+    return buildVerificationEmail({
+      displayName: "Md. Rakib Hasan",
+      token,
+      appUrl: `${APP_URL}/`,
+      ...overrides,
+    });
+  }
+
+  it("uses the shared shell, badge, preheader and expiry note", () => {
+    const email = buildVerification();
+
+    expectEmailSafeHtml(email.html);
+    expect(email.subject).toBe("Verify your PAU OJ email");
+    expect(email.html).toContain("ACCOUNT SECURITY");
+    expect(email.html).toContain("data-pauoj-preheader");
+    expect(email.html).toContain("This link expires in 24 hours");
+    expect(email.html).toContain(
+      "If you didn't create a PAU OJ account, you can safely ignore this email.",
+    );
+    expect(email.html).toContain(`href="${APP_URL}"`);
+    expect(email.text).toContain(url);
+    expect(email.text).toContain("This link expires in 24 hours.");
+    expect(email.text).toContain("PrimeAsia University Online Judge");
+  });
+
+  it("renders the CTA and fallback box with no raw unstyled URL", () => {
+    const email = buildVerification();
+
+    expect(email.html).toContain(">Verify email</a>");
+    expect(email.html).toContain("BUTTON NOT WORKING?");
+    expect(email.html).toContain("word-break:break-all");
+    expect(unstyledUrlOccurrences(email.html, url)).toBe(0);
+    expect(email.html.split(url).length - 1).toBe(3);
+  });
+
+  it("escapes the display name in the heading and greeting", () => {
+    const email = buildVerification({
+      displayName: 'Rakib <img src=x onerror="alert(1)">',
+    });
+
+    expect(email.html).toContain("Rakib &lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    expect(email.html).not.toContain("<img");
+    expect(email.html).not.toContain('onerror="alert(1)"');
+    expect(email.subject).not.toContain("img");
+  });
+
+  it("keeps long tokens wrapped and the email under 30KB", () => {
+    const longToken = "x".repeat(240);
+    const longUrl = `${APP_URL}/verify-email?token=${longToken}`;
+    const email = buildVerification({ token: longToken });
+
+    expect(unstyledUrlOccurrences(email.html, longUrl)).toBe(0);
+    expect(email.html).toContain("word-break:break-all");
+    expect(Buffer.byteLength(email.html, "utf8")).toBeLessThan(30_000);
+    expect(email.subject).not.toContain(longToken);
+  });
+});
+
+describe("buildPasswordResetEmail", () => {
+  const url = `${APP_URL}/reset-password?token=reset-1`;
+
+  it("uses the shared shell, badge, expiry note and fallback link", () => {
+    const email = buildPasswordResetEmail({
+      displayName: "Md. Rakib Hasan",
+      token: "reset-1",
+      appUrl: APP_URL,
+    });
+
+    expectEmailSafeHtml(email.html);
+    expect(email.subject).toBe("Reset your PAU OJ password");
+    expect(email.html).toContain("PASSWORD RESET");
+    expect(email.html).toContain("Password reset");
+    expect(email.html).toContain("This link expires in 1 hour");
+    expect(email.html).toContain(">Choose a new password</a>");
+    expect(email.html).toContain("BUTTON NOT WORKING?");
+    expect(unstyledUrlOccurrences(email.html, url)).toBe(0);
+    expect(email.text).toContain(url);
+  });
+
+  it("escapes the display name", () => {
+    const email = buildPasswordResetEmail({
+      displayName: "<b>Rakib</b>",
+      token: "reset-1",
+      appUrl: APP_URL,
+    });
+
+    expect(email.html).toContain("&lt;b&gt;Rakib&lt;/b&gt;");
+    expect(email.html).not.toContain("<b>Rakib</b>");
+  });
+});
+
+describe("buildReviewDigestEmail", () => {
+  const input = {
+    displayName: "Reviewer",
+    items: [{ title: "Two sum <script>", body: "Please review & approve." }],
+    href: `${APP_URL}/review/queue`,
+    unsubscribeUrl: `${APP_URL}/unsubscribe?token=u&scope=reviews`,
+  };
+
+  it("uses the shared shell with a review badge and unsubscribe link", () => {
+    const email = buildReviewDigestEmail(input);
+
+    expectEmailSafeHtml(email.html);
+    expect(email.html).toContain("REVIEW QUEUE");
+    expect(email.html).toContain("1 review request is waiting");
+    expect(email.html).toContain("Two sum &lt;script&gt;");
+    expect(email.html).toContain("Please review &amp; approve.");
+    expect(email.html).toContain(">Open review queue</a>");
+    expect(email.html).toContain("BUTTON NOT WORKING?");
+    expect(email.html).toContain(
+      `href="${APP_URL}/unsubscribe?token=u&amp;scope=reviews"`,
+    );
+    expect(email.html).toContain(
+      "You received this because review email notifications are enabled on PAU OJ.",
+    );
+    expect(email.text).toContain("Manage email preferences or unsubscribe");
+  });
+
+  it("handles multiple items and keeps the count in the subject", () => {
+    const email = buildReviewDigestEmail({
+      ...input,
+      items: [input.items[0], { title: "Second", body: "And another." }],
+    });
+
+    expect(email.subject).toBe("2 review requests are waiting");
+    expect(email.text).toContain("2. Second");
+  });
+});
+
+describe("buildNotificationEmail", () => {
+  const input = {
+    displayName: "Md. Rakib Hasan",
+    subject: "New reply on your thread",
+    message: "Someone replied to your discussion <b>post</b>.",
+    href: `${APP_URL}/community/threads/1`,
+    unsubscribeUrl: `${APP_URL}/unsubscribe?token=n1&scope=all`,
+  };
+
+  it("uses the shared shell, CTA, fallback and footer note", () => {
+    const email = buildNotificationEmail(input);
+
+    expectEmailSafeHtml(email.html);
+    expect(email.subject).toBe(input.subject);
+    expect(email.html).toContain("NOTIFICATION");
+    expect(email.html).toContain("Someone replied to your discussion &lt;b&gt;post&lt;/b&gt;.");
+    expect(email.html).toContain(">Open PAU OJ</a>");
+    expect(email.html).toContain("BUTTON NOT WORKING?");
+    expect(email.html).toContain(
+      "You received this because email notifications are enabled on PAU OJ.",
+    );
+    expect(email.text).toContain(input.href);
+    expect(email.text).toContain("Manage email preferences or unsubscribe");
+    expect(email.text.startsWith("Hi Md. Rakib Hasan,\n\nSomeone replied")).toBe(true);
+    expect(email.subject).not.toContain("token");
+  });
+
+  it("escapes query separators in links exactly once", () => {
+    const href = `${APP_URL}/community/threads/1?tab=replies&page=2`;
+    const email = buildNotificationEmail({ ...input, href });
+
+    expect(email.html).toContain(`href="${href.replace("&", "&amp;")}"`);
+    expect(email.html).not.toContain("&amp;amp;");
+  });
+
+  it("omits the CTA and app link when no href is provided", () => {
+    const email = buildNotificationEmail({ ...input, href: null });
+
+    expect(email.html).not.toContain(">Open PAU OJ</a>");
+    expect(email.html).not.toContain("BUTTON NOT WORKING?");
+    expectEmailSafeHtml(email.html);
+  });
+
+  it("does not leak the unsubscribe token into the hidden preheader", () => {
+    const email = buildNotificationEmail(input);
+    const preheader = email.html.slice(
+      email.html.indexOf("data-pauoj-preheader"),
+      email.html.indexOf("</div>", email.html.indexOf("data-pauoj-preheader")),
+    );
+
+    expect(preheader).toContain("Someone replied to your discussion");
+    expect(preheader).not.toContain("n1");
+    expect(preheader).not.toContain("unsubscribe");
   });
 });

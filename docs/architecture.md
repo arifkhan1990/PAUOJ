@@ -107,6 +107,13 @@ to `/unsubscribe?token=…`; the token is a per-user random value stored on the
 user row, and the unsubscribe endpoint disables the requested category without
 requiring a session.
 
+Transactional mail uses the shared 600px table-based shell in
+`src/server/mail-template.ts` — dark brand header, badge, CTA, fallback-link
+box, hidden preheader, mobile media query and a refined footer. Verification,
+password reset, assessment invite, review digest and notification builders all
+use it, with plain-text alternatives. The shell uses no images, web fonts or
+external CSS, so it stays readable when a client blocks remote content.
+
 ## Problem extras, study plans and daily challenge
 
 Community ratings store half-star values as integers `1..10` in

@@ -2,6 +2,15 @@ import nodemailer, { type Transporter } from "nodemailer";
 import { getEnv } from "@/server/env";
 import { logger } from "@/server/logger";
 import { formatDateTime } from "@/lib/utils";
+import {
+  emailButton,
+  escapeHtml,
+  fallbackLink,
+  footerAppUrl,
+  renderEmailShell,
+  toPreheader,
+  withTextFooter,
+} from "@/server/mail-template";
 
 type MailCache = {
   transporter: Transporter | null;
@@ -10,15 +19,6 @@ type MailCache = {
 const globalForMail = globalThis as typeof globalThis & {
   __pauojMail?: MailCache;
 };
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
 
 function createTransporter(): Transporter {
   const env = getEnv();
@@ -89,24 +89,107 @@ async function sendMail(input: {
   }
 }
 
-function shell(title: string, body: string): string {
-  return `<!doctype html><html><body style="margin:0;background:#f6f7f4;font-family:system-ui,Segoe UI,Arial,sans-serif;color:#101613">
-  <div style="max-width:560px;margin:0 auto;padding:32px 20px">
-    <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:24px">
-      <span style="display:inline-grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#0f766e;color:#fff;font:700 10px monospace">PAU</span>
-      <strong style="font-size:15px">PAU OJ</strong>
-    </div>
-    <div style="background:#fff;border:1px solid #dfe4de;border-radius:12px;padding:28px">
-      <h1 style="margin:0 0 14px;font-size:22px;line-height:1.25">${title}</h1>
-      ${body}
-    </div>
-    <p style="margin:18px 0 0;font-size:11px;line-height:1.6;color:#65736a">PrimeAsia University Online Judge. If you did not request this email, you can ignore it.</p>
-  </div>
-  </body></html>`;
+export type VerificationEmailInput = {
+  displayName: string;
+  token: string;
+  appUrl: string;
+};
+
+/** Pure builder so the rendered HTML can be tested without SMTP or env. */
+export function buildVerificationEmail(input: VerificationEmailInput): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const base = input.appUrl.replace(/\/$/, "");
+  const url = `${base}/verify-email?token=${encodeURIComponent(input.token)}`;
+  const name = escapeHtml(input.displayName);
+
+  const text = withTextFooter(`Hi ${input.displayName},
+
+Verify your email for PAU OJ:
+${url}
+
+This link expires in 24 hours. If you didn't create a PAU OJ account, you can safely ignore this email.`);
+
+  const body = `<p style="margin:0">Hi ${name},</p>
+        <p style="margin:12px 0 0">Confirm your email address to secure your account and receive password-reset links.</p>
+        ${emailButton(url, "Verify email")}
+        ${fallbackLink(url)}
+        <p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link expires in 24 hours. If you didn't create a PAU OJ account, you can safely ignore this email.</p>`;
+
+  const html = renderEmailShell({
+    title: `Welcome, ${input.displayName}`,
+    badge: "ACCOUNT SECURITY",
+    preheader: "Confirm your email address to activate your PAU OJ account.",
+    appUrl: footerAppUrl(input.appUrl),
+    body,
+  });
+
+  return { subject: "Verify your PAU OJ email", text, html };
 }
 
-function button(href: string, label: string): string {
-  return `<p style="margin:24px 0"><a href="${href}" style="display:inline-block;background:#0f766e;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px">${label}</a></p>`;
+export async function sendVerificationEmail(input: {
+  to: string;
+  displayName: string;
+  token: string;
+}): Promise<boolean> {
+  const env = getEnv();
+  return sendMail({
+    to: input.to,
+    ...buildVerificationEmail({ ...input, appUrl: env.APP_URL }),
+  });
+}
+
+export type PasswordResetEmailInput = {
+  displayName: string;
+  token: string;
+  appUrl: string;
+};
+
+/** Pure builder so the rendered HTML can be tested without SMTP or env. */
+export function buildPasswordResetEmail(input: PasswordResetEmailInput): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const base = input.appUrl.replace(/\/$/, "");
+  const url = `${base}/reset-password?token=${encodeURIComponent(input.token)}`;
+  const name = escapeHtml(input.displayName);
+
+  const text = withTextFooter(`Hi ${input.displayName},
+
+Reset your PAU OJ password:
+${url}
+
+This link expires in 1 hour. If you did not request it, ignore this email and your password will stay the same.`);
+
+  const body = `<p style="margin:0">Hi ${name}, we received a request to reset your PAU OJ password.</p>
+        ${emailButton(url, "Choose a new password")}
+        ${fallbackLink(url)}
+        <p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link expires in 1 hour. If you did not request it, ignore this email and your password will stay the same.</p>`;
+
+  const html = renderEmailShell({
+    title: "Password reset",
+    badge: "PASSWORD RESET",
+    preheader: "Choose a new password for your PAU OJ account. The link expires in 1 hour.",
+    appUrl: footerAppUrl(input.appUrl),
+    body,
+  });
+
+  return { subject: "Reset your PAU OJ password", text, html };
+}
+
+export async function sendPasswordResetEmail(input: {
+  to: string;
+  displayName: string;
+  token: string;
+}): Promise<boolean> {
+  const env = getEnv();
+  return sendMail({
+    to: input.to,
+    ...buildPasswordResetEmail({ ...input, appUrl: env.APP_URL }),
+  });
 }
 
 export type AssessmentInviteEmailInput = {
@@ -136,31 +219,42 @@ export function buildAssessmentInviteEmail(input: AssessmentInviteEmailInput): {
   const safeTitle = input.assessmentTitle.replace(/[\r\n]+/g, " ").trim();
   const subject = `Assessment invite: ${safeTitle}`;
   const title = escapeHtml(safeTitle);
-  const link = escapeHtml(input.url);
 
-  const text = [
-    `Hi ${greetingName},`,
-    "",
-    "You have been invited to an assessment on PAU OJ.",
-    "",
-    `Assessment: ${input.assessmentTitle}`,
-    `Window: ${window}`,
-    `Duration: ${duration}`,
-    "",
-    "Open your personal link:",
-    input.url,
-    "",
-    "This link is personal; do not forward it.",
-  ].join("\n");
+  const text = withTextFooter(`Hi ${greetingName},
 
-  const html = shell(
-    "You have an assessment invite",
-    `<p style="margin:0;color:#4d5b52;font-size:14px;line-height:1.7">Hi ${escapeHtml(greetingName)},</p>
-     <p style="margin:12px 0 0;color:#4d5b52;font-size:14px;line-height:1.7">You have been invited to an assessment on PAU OJ.</p>
-     <p style="margin:12px 0 0;color:#4d5b52;font-size:14px;line-height:1.7"><strong>${title}</strong><br>Window: ${window}<br>Duration: ${duration}</p>
-     ${button(link, "Open assessment")}
-     <p style="margin:0;color:#65736a;font-size:12px;line-height:1.6">This link is personal; do not forward it. If the button does not work, copy this URL:<br><span style="word-break:break-all">${link}</span></p>`,
-  );
+You have been invited to an assessment on PAU OJ.
+
+Assessment: ${input.assessmentTitle}
+Window: ${window}
+Duration: ${duration}
+
+Open your personal link:
+${input.url}
+
+This link is personal; do not forward it.`);
+
+  const body = `<p style="margin:0">Hi ${escapeHtml(greetingName)},</p>
+        <p style="margin:12px 0 0">You have been invited to an assessment on PAU OJ.</p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f7faf8" style="width:100%;margin:18px 0 0;background:#f7faf8;border:1px solid #e3ebe6;border-radius:8px">
+          <tr>
+            <td style="padding:14px 16px;font-size:14px;line-height:1.7;color:#475569">
+              <strong style="color:#0f172a">${title}</strong><br>
+              Window: ${escapeHtml(window)}<br>
+              Duration: ${escapeHtml(duration)}
+            </td>
+          </tr>
+        </table>
+        ${emailButton(input.url, "Open assessment")}
+        ${fallbackLink(input.url)}
+        <p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:#64748b">This link is personal; do not forward it.</p>`;
+
+  const html = renderEmailShell({
+    title: "You have an assessment invite",
+    badge: "ASSESSMENT INVITE",
+    preheader: `Your assessment window for ${safeTitle} is ready.`,
+    appUrl: footerAppUrl(input.url),
+    body,
+  });
 
   return { subject, text, html };
 }
@@ -172,46 +266,63 @@ export async function sendAssessmentInviteEmail(
   return sendMail({ to: input.to, subject, text, html });
 }
 
-export async function sendVerificationEmail(input: {
-  to: string;
+export type ReviewDigestEmailInput = {
   displayName: string;
-  token: string;
-}): Promise<boolean> {
-  const env = getEnv();
-  const url = `${env.APP_URL.replace(/\/$/, "")}/verify-email?token=${encodeURIComponent(input.token)}`;
-  const name = escapeHtml(input.displayName);
-  return sendMail({
-    to: input.to,
-    subject: "Verify your PAU OJ email",
-    text: `Hi ${input.displayName},\n\nVerify your email for PAU OJ:\n${url}\n\nThis link expires in 24 hours.`,
-    html: shell(
-      `Welcome, ${name}`,
-      `<p style="margin:0;color:#4d5b52;font-size:14px;line-height:1.7">Confirm your email address to secure your account and receive password-reset links.</p>
-       ${button(url, "Verify email")}
-       <p style="margin:0;color:#65736a;font-size:12px;line-height:1.6">This link expires in 24 hours. If the button does not work, copy this URL:<br><span style="word-break:break-all">${url}</span></p>`,
-    ),
-  });
-}
+  items: { title: string; body: string }[];
+  href: string;
+  unsubscribeUrl: string;
+};
 
-export async function sendPasswordResetEmail(input: {
-  to: string;
-  displayName: string;
-  token: string;
-}): Promise<boolean> {
-  const env = getEnv();
-  const url = `${env.APP_URL.replace(/\/$/, "")}/reset-password?token=${encodeURIComponent(input.token)}`;
+export function buildReviewDigestEmail(input: ReviewDigestEmailInput): {
+  subject: string;
+  text: string;
+  html: string;
+} {
   const name = escapeHtml(input.displayName);
-  return sendMail({
-    to: input.to,
-    subject: "Reset your PAU OJ password",
-    text: `Hi ${input.displayName},\n\nReset your PAU OJ password:\n${url}\n\nThis link expires in 1 hour. If you did not request it, ignore this email.`,
-    html: shell(
-      `Password reset`,
-      `<p style="margin:0;color:#4d5b52;font-size:14px;line-height:1.7">Hi ${name}, we received a request to reset your PAU OJ password.</p>
-       ${button(url, "Choose a new password")}
-       <p style="margin:0;color:#65736a;font-size:12px;line-height:1.6">This link expires in 1 hour. If you did not request it, ignore this email and your password will stay the same.</p>`,
-    ),
+  const count = input.items.length;
+  const heading =
+    count === 1
+      ? "1 review request is waiting"
+      : `${count} review requests are waiting`;
+  const unsubscribe = escapeHtml(input.unsubscribeUrl);
+  const listHtml = input.items
+    .map(
+      (item) =>
+        `<li style="margin:0 0 14px"><strong style="display:block;font-size:14px;color:#0f172a">${escapeHtml(item.title)}</strong><span style="font-size:13px;line-height:1.6;color:#475569">${escapeHtml(item.body)}</span></li>`,
+    )
+    .join("");
+  const listText = input.items
+    .map((item, index) => `${index + 1}. ${item.title}\n   ${item.body}`)
+    .join("\n\n");
+
+  const text = withTextFooter(`Hi ${input.displayName},
+
+${heading}:
+
+${listText}
+
+Open your review queue: ${input.href}
+
+Manage email preferences or unsubscribe: ${input.unsubscribeUrl}`);
+
+  const body = `<p style="margin:0">Hi ${name},</p>
+        <ul style="margin:16px 0 0;padding-left:18px;color:#475569">${listHtml}</ul>
+        ${emailButton(input.href, "Open review queue")}
+        ${fallbackLink(input.href)}
+        <p style="margin:22px 0 0;border-top:1px solid #dbe5df;padding-top:16px;font-size:12px;line-height:1.6;color:#64748b">
+          <a href="${unsubscribe}" target="_blank" rel="noopener" style="color:#0f766e;text-decoration:underline">Unsubscribe</a> from review emails.
+        </p>`;
+
+  const html = renderEmailShell({
+    title: heading,
+    badge: "REVIEW QUEUE",
+    preheader: heading,
+    appUrl: footerAppUrl(input.href),
+    footerNote: "You received this because review email notifications are enabled on PAU OJ.",
+    body,
   });
+
+  return { subject: heading, text, html };
 }
 
 export async function sendReviewDigestEmail(input: {
@@ -221,34 +332,55 @@ export async function sendReviewDigestEmail(input: {
   href: string;
   unsubscribeUrl: string;
 }): Promise<boolean> {
+  const { subject, text, html } = buildReviewDigestEmail(input);
+  return sendMail({ to: input.to, subject, text, html });
+}
+
+export type NotificationEmailInput = {
+  displayName: string;
+  subject: string;
+  message: string;
+  href?: string | null;
+  unsubscribeUrl: string;
+};
+
+export function buildNotificationEmail(input: NotificationEmailInput): {
+  subject: string;
+  text: string;
+  html: string;
+} {
   const name = escapeHtml(input.displayName);
-  const count = input.items.length;
-  const heading =
-    count === 1 ? "1 review request is waiting" : `${count} review requests are waiting`;
-  const listHtml = input.items
-    .map(
-      (item) =>
-        `<li style="margin:0 0 14px"><strong style="display:block;font-size:14px">${escapeHtml(item.title)}</strong><span style="color:#4d5b52;font-size:13px;line-height:1.6">${escapeHtml(item.body)}</span></li>`,
-    )
-    .join("");
-  const listText = input.items
-    .map((item, index) => `${index + 1}. ${item.title}\n   ${item.body}`)
-    .join("\n\n");
-  return sendMail({
-    to: input.to,
-    subject: heading,
-    text: `Hi ${input.displayName},\n\n${heading}:\n\n${listText}\n\nOpen your review queue: ${input.href}\n\nManage email preferences or unsubscribe: ${input.unsubscribeUrl}`,
-    html: shell(
-      heading,
-      `<p style="margin:0;color:#4d5b52;font-size:14px;line-height:1.7">Hi ${name},</p>
-       <ul style="margin:16px 0 0;padding-left:18px;color:#4d5b52">${listHtml}</ul>
-       ${button(input.href, "Open review queue")}
-       <p style="margin:24px 0 0;border-top:1px solid #dfe4de;padding-top:16px;color:#65736a;font-size:11px;line-height:1.6">
-         You received this because review email notifications are enabled on PAU OJ.
-         <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#0f766e">Unsubscribe</a>.
-       </p>`,
-    ),
+  const message = escapeHtml(input.message);
+  const unsubscribe = escapeHtml(input.unsubscribeUrl);
+  const href = input.href ?? null;
+  const linkBlock = href
+    ? `${emailButton(href, "Open PAU OJ")}
+        ${fallbackLink(href)}`
+    : "";
+
+  const text = withTextFooter(`Hi ${input.displayName},
+
+${input.message}
+${input.href ? `\n${input.href}\n` : ""}
+Manage email preferences or unsubscribe: ${input.unsubscribeUrl}`);
+
+  const body = `<p style="margin:0">Hi ${name},</p>
+        <p style="margin:12px 0 0">${message}</p>
+        ${linkBlock}
+        <p style="margin:22px 0 0;border-top:1px solid #dbe5df;padding-top:16px;font-size:12px;line-height:1.6;color:#64748b">
+          <a href="${unsubscribe}" target="_blank" rel="noopener" style="color:#0f766e;text-decoration:underline">Unsubscribe</a> from these emails.
+        </p>`;
+
+  const html = renderEmailShell({
+    title: input.subject,
+    badge: "NOTIFICATION",
+    preheader: toPreheader(input.message),
+    appUrl: input.href ? footerAppUrl(input.href) : null,
+    footerNote: "You received this because email notifications are enabled on PAU OJ.",
+    body,
   });
+
+  return { subject: input.subject, text, html };
 }
 
 export async function sendNotificationEmail(input: {
@@ -259,25 +391,6 @@ export async function sendNotificationEmail(input: {
   href?: string | null;
   unsubscribeUrl: string;
 }): Promise<boolean> {
-  const name = escapeHtml(input.displayName);
-  const message = escapeHtml(input.message);
-  const link = input.href
-    ? `<p style="margin:18px 0 0"><a href="${escapeHtml(input.href)}" style="color:#0f766e;font-size:14px">Open PAU OJ</a></p>`
-    : "";
-  return sendMail({
-    to: input.to,
-    subject: input.subject,
-    text: `Hi ${input.displayName},\n\n${input.message}\n${input.href ? `\n${input.href}\n` : ""}\nManage email preferences or unsubscribe: ${input.unsubscribeUrl}`,
-    html: shell(
-      escapeHtml(input.subject),
-      `<p style="margin:0;color:#4d5b52;font-size:14px;line-height:1.7">Hi ${name},</p>
-       <p style="margin:12px 0 0;color:#4d5b52;font-size:14px;line-height:1.7">${message}</p>
-       ${link}
-       <p style="margin:24px 0 0;border-top:1px solid #dfe4de;padding-top:16px;color:#65736a;font-size:11px;line-height:1.6">
-         You received this because email notifications are enabled on PAU OJ.
-         <a href="${escapeHtml(input.unsubscribeUrl)}" style="color:#0f766e">Unsubscribe</a>.
-       </p>`,
-    ),
-  });
+  const { subject, text, html } = buildNotificationEmail(input);
+  return sendMail({ to: input.to, subject, text, html });
 }
-

@@ -22,6 +22,11 @@ const RELEASE_META: Record<string, { title: string; summary: string }> = {
     summary:
       "Three role workspaces, a shared standalone dashboard shell, teacher-owned content and a version/changelog footer in every panel.",
   },
+  "0.6.2": {
+    title: "Transactional Email Refresh",
+    summary:
+      "A cleaner, responsive email shell across every PAU OJ transactional message.",
+  },
   "0.6.1": {
     title: "Per-problem Results Columns",
     summary:

@@ -3,6 +3,15 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.6.2] - 2026-11-21
+
+### Changed
+- Transactional emails (verification, password reset, assessment invite, review digest and
+  notifications) now use a shared 600px table-based shell with a dark brand header, badge,
+  stronger CTA, styled fallback-link box, security/expiry notes, hidden preheader, responsive
+  mobile layout and a refined footer. The shell uses no images or external assets, so it survives
+  image blocking; existing copy, links, plain-text alternatives and SMTP behavior are unchanged.
+
 ## [0.6.1] - 2026-11-21
 
 ### Added
