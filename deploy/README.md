@@ -129,6 +129,32 @@ Caddy site file and reload the proxy. `deploy-shared.sh` also tags
 `pauoj/app:previous` and recreates the app/worker from it if health fails. Never
 stop the other product's project to free a port.
 
+### When `srv deploy` reports a false success (T-075)
+
+On the `srv`-managed host, `srv deploy pauoj` can print "deploy done" after the
+app image build failed (for example a pnpm `ECONNRESET`) and pass health through
+the old container. Verify the image tag and the version in `/health`, never the
+word "done". Build with host networking and recreate only the app services:
+
+```bash
+cd /home/naba/server/projects/pauoj/source
+git pull --ff-only
+docker tag srv-pauoj-web srv-pauoj-web:pre-deploy
+docker build --network host -t srv-pauoj-web -f Dockerfile .
+cd ..
+docker compose -p srv-pauoj -f compose.yml --env-file .env \
+  up -d --no-build --force-recreate web worker
+curl -fsS https://pauoj.nabasolution.tech/health
+```
+
+`-p srv-pauoj` is required: the running project name is `srv-pauoj`, even though
+`compose.yml` declares `name: pauoj`. Without it Compose targets a different
+volume set. If the server is low on memory, build the image on another machine,
+stream it with `docker save | ssh ... 'gunzip | docker load'`, tag it
+`srv-pauoj-web`, then run the same `up`. After a restart, retry the public health
+check for up to a minute; Cloudflare can briefly return 502/530 while the tunnel
+reconnects.
+
 ## 4. Backups
 
 Manual backup:
