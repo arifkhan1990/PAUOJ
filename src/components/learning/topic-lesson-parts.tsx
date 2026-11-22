@@ -97,7 +97,10 @@ export function LessonHeader({
   const showProgress = !locked && !isPlanned && topic.progress.total > 0;
 
   return (
-    <header className="border-b border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 lg:sticky lg:top-16 lg:z-30">
+    <header
+      id="lesson-header"
+      className="border-b border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 md:sticky md:top-16 md:z-30"
+    >
       <TopicBreadcrumb
         moduleSlug={definition.slug}
         moduleOrder={definition.order}

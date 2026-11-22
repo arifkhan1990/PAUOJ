@@ -15,6 +15,10 @@ import { Markdown } from "@/components/shared/markdown";
 import { Card } from "@/components/ui/card";
 import { LessonToc, type LessonTocItem } from "@/features/learning/lesson-toc";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
+import {
+  extractMarkdownHeadings,
+  type LessonOutlineHeading,
+} from "@/lib/learning/lesson-outline";
 import { getCurrentUser } from "@/server/auth/session";
 import { getLearningTopic } from "@/server/services/learning";
 
@@ -25,6 +29,25 @@ const LEVELS = [
   { key: "medium", label: "Medium" },
   { key: "hard", label: "Hard" },
 ] as const;
+
+/** Nests `###` under the preceding `##` so the concept note reads as a submenu. */
+function conceptChildren(headings: LessonOutlineHeading[]): LessonTocItem[] {
+  const items: LessonTocItem[] = [];
+  for (const heading of headings) {
+    const item: LessonTocItem = { id: heading.id, label: heading.label };
+    if (heading.level === 3 && items.length > 0) {
+      const parent = items[items.length - 1];
+      parent.children = [...(parent.children ?? []), item];
+      continue;
+    }
+    items.push(heading.level === 2 ? { ...item, children: [] } : item);
+  }
+  return items.map((item) =>
+    item.children && item.children.length > 0
+      ? item
+      : { id: item.id, label: item.label },
+  );
+}
 
 export async function generateMetadata({
   params,
@@ -72,8 +95,16 @@ export default async function LearningTopicPage({
     );
   }
 
+  const conceptOutline = conceptChildren(
+    extractMarkdownHeadings(topic.concept, "concept"),
+  );
+
   const tocItems: LessonTocItem[] = [
-    { id: "concept", label: "Concept note" },
+    {
+      id: "concept",
+      label: "Concept note",
+      ...(conceptOutline.length > 0 ? { children: conceptOutline } : {}),
+    },
     { id: "guided", label: "Guided practice" },
     {
       id: "tiered",
@@ -98,7 +129,7 @@ export default async function LearningTopicPage({
 
       <div className="pt-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="hidden lg:block" aria-label="Lesson contents">
-          <div className="sticky top-[13rem]">
+          <div className="sticky top-[calc(var(--lesson-header-bottom,0px)_+_0.5rem)]">
             <LessonToc items={tocItems} />
             <div className="mt-6 border-t border-border pt-4">
               <Link
@@ -138,7 +169,9 @@ export default async function LearningTopicPage({
             >
               <Card className="p-5 sm:p-6">
                 {topic.concept.trim() ? (
-                  <Markdown lang="bn">{topic.concept}</Markdown>
+                  <Markdown lang="bn" headingIdPrefix="concept">
+                    {topic.concept}
+                  </Markdown>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     The concept note is in production.

@@ -208,7 +208,7 @@ export function HeaderNav({
   }, [pathname]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+    <header id="site-header" className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Link href="/" className="mr-2 flex shrink-0 items-center gap-2.5">
           <Image

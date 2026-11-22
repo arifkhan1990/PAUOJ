@@ -29,7 +29,10 @@ export function ProblemGroup({
   const solved = problems.filter((problem) => problem.solved).length;
 
   return (
-    <div id={id} className={cn(id && "scroll-mt-24 lg:scroll-mt-52")}>
+    <div id={id} className={cn(
+        id &&
+          "scroll-mt-[calc(var(--lesson-header-bottom,0px)_+_1rem)]",
+      )}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <h3
           lang={titleLang}

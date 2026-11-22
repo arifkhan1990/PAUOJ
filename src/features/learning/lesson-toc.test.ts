@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
   LessonToc,
+  activeOffsetForPinnedHeader,
   flattenTocIds,
   type LessonTocItem,
 } from "@/features/learning/lesson-toc";
@@ -47,6 +48,17 @@ describe("flattenTocIds", () => {
 
   it("handles empty input", () => {
     expect(flattenTocIds([])).toEqual([]);
+  });
+});
+
+describe("activeOffsetForPinnedHeader", () => {
+  it("falls back to the unpinned offset when the header is not pinned", () => {
+    expect(activeOffsetForPinnedHeader(64, false)).toBe(120);
+  });
+
+  it("adds the reading gap below the measured sticky stack when pinned", () => {
+    expect(activeOffsetForPinnedHeader(187, true)).toBe(203);
+    expect(activeOffsetForPinnedHeader(211, true)).toBe(227);
   });
 });
 

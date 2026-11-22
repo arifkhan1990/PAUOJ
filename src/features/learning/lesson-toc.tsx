@@ -22,6 +22,19 @@ function childIds(item: LessonTocItem): string[] {
   return item.children ? flattenTocIds(item.children) : [];
 }
 
+const PINNED_GAP = 16;
+
+/**
+ * Reading offset for the scrollspy: just below the pinned header stack, or the
+ * plain 120px fallback when the lesson header is not pinned.
+ */
+export function activeOffsetForPinnedHeader(
+  stickyBottom: number,
+  pinned: boolean,
+): number {
+  return pinned ? stickyBottom + PINNED_GAP : 120;
+}
+
 /**
  * Docs-style lesson table of contents with submenu sections.
  * Stays put beside the scrolling lesson (positioned by the page layout) and
@@ -41,11 +54,44 @@ export function LessonToc({
   const active = useActiveSection(ids, null, offset);
 
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 1024px)");
-    const apply = () => setOffset(query.matches ? 210 : 120);
-    apply();
-    query.addEventListener("change", apply);
-    return () => query.removeEventListener("change", apply);
+    const siteHeader = document.getElementById("site-header");
+    const header = document.getElementById("lesson-header");
+    const pinnedQuery = window.matchMedia("(min-width: 768px)");
+    const root = document.documentElement;
+    let frame = 0;
+
+    const measure = () => {
+      frame = 0;
+      const siteBottom = siteHeader
+        ? Math.round(siteHeader.getBoundingClientRect().bottom)
+        : 0;
+      const pinned = pinnedQuery.matches && header !== null;
+      const lessonHeight = pinned && header
+        ? Math.round(header.getBoundingClientRect().height)
+        : 0;
+      const stickyBottom = siteBottom + lessonHeight;
+      root.style.setProperty("--lesson-header-bottom", `${stickyBottom}px`);
+      setOffset(activeOffsetForPinnedHeader(stickyBottom, pinned));
+    };
+    const schedule = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(measure);
+    };
+
+    measure();
+    const observer = new ResizeObserver(schedule);
+    if (header) observer.observe(header);
+    if (siteHeader) observer.observe(siteHeader);
+    pinnedQuery.addEventListener("change", schedule);
+    window.addEventListener("resize", schedule);
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      observer.disconnect();
+      pinnedQuery.removeEventListener("change", schedule);
+      window.removeEventListener("resize", schedule);
+      root.style.removeProperty("--lesson-header-bottom");
+    };
   }, []);
 
   const handleClick = (
