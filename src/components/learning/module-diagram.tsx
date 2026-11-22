@@ -24,22 +24,23 @@ export function ModuleDiagram({ src, alt, className }: ModuleDiagramProps) {
     >
       <div
         role="region"
-        aria-label={alt}
+        aria-label="Track concept map"
         tabIndex={0}
         className="overflow-x-auto bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <Image
           src={src}
-          alt=""
+          alt={alt}
           width={1200}
           height={320}
           unoptimized
+          loading="eager"
           className="h-auto w-full min-w-[720px] max-w-full sm:min-w-0"
         />
       </div>
       <figcaption className="flex items-center gap-1.5 border-t border-border bg-muted/30 px-4 py-2 text-[11px] text-muted-foreground sm:hidden">
         <ArrowLeftRight className="size-3.5 shrink-0" aria-hidden="true" />
-        Scroll the map sideways to see every topic
+        ম্যাপটি পাশে স্ক্রল করো
       </figcaption>
     </figure>
   );
