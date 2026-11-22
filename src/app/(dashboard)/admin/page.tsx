@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Code2,
+  Flag,
   ListChecks,
   Plus,
   Trophy,
@@ -64,6 +65,12 @@ const quickActions = [
     label: "Manage users",
     description: "Assign roles, review activity and suspend accounts.",
     icon: Users,
+  },
+  {
+    href: "/admin/lesson-reports",
+    label: "Review lesson reports",
+    description: "Resolve reported comments in the learning tracks.",
+    icon: Flag,
   },
 ];
 

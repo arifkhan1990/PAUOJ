@@ -77,6 +77,15 @@ curl -fsS https://oj.example.edu/health
 ```
 
 The health response must show `"status":"ok"` and `"workers":1` (or more).
+It also reports `migrations: { applied, expected, ok }`; a database that is
+behind the shipped drizzle journal returns `503` with `"status":"degraded"`, so
+a partial deploy cannot serve stale schema. The app container runs
+`node dist/migrate.js` before `server.js`, so the normal compose path migrates
+first. To check a database from the repo before shipping:
+
+```bash
+pnpm db:check
+```
 
 ## 3b. Shared host with an existing Caddy / Cloudflare Tunnel
 

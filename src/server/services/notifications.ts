@@ -28,6 +28,8 @@ type NotifyInput = {
   body: string;
   href?: string | null;
   dedupeKey?: string | null;
+  /** Send the email even when this category is not email-enabled by default. */
+  email?: boolean;
 };
 
 function emailEnabled(
@@ -110,6 +112,11 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
     const instant =
       user.emailReviews && user.reviewEmailFrequency === "INSTANT";
     if (!instant) return true;
+    await db
+      .update(notifications)
+      .set({ emailedAt: new Date(), updatedAt: new Date() })
+      .where(eq(notifications.id, created.id));
+  } else if (input.email) {
     await db
       .update(notifications)
       .set({ emailedAt: new Date(), updatedAt: new Date() })

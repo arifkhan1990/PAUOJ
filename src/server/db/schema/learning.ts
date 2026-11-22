@@ -142,6 +142,11 @@ export const lessonCommentReports = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     reason: text("reason").notNull(),
+    status: text("status").notNull().default("OPEN"),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedBy: uuid("resolved_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -153,6 +158,14 @@ export const lessonCommentReports = pgTable(
     ),
     index("lesson_comment_reports_comment_idx").on(table.commentId),
     index("lesson_comment_reports_reporter_idx").on(table.reporterId),
+    index("lesson_comment_reports_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    check(
+      "lesson_comment_reports_status_check",
+      sql`${table.status} in ('OPEN', 'RESOLVED')`,
+    ),
   ],
 );
 

@@ -127,10 +127,15 @@ Every live lesson has a like/dislike reaction and a content-based discussion:
   comment is `403`; an unknown track or topic is `404`.
 - Signed-in learners can report another user's comment (one report per user
   and comment). Reports are audit-logged and admins get an in-app `SYSTEM`
-  notification pointing at the lesson discussion.
+  notification (and an email when their address is verified) pointing at the
+  lesson discussion.
+- Admins resolve reports from `/admin/lesson-reports` (filters: open, resolved,
+  all; resolve is one-way and stamped with the admin and time).
 - If the social tables are missing (a deploy skipped migrations), the API
   answers `503` with a clear message and the lesson page renders a neutral
   "Discussion is being set up" panel instead of failing.
+- Reaction counts are cached in Redis for 30 seconds and invalidated on every
+  reaction write; a cache miss falls back to one aggregate query.
 - Reads are bounded: the reaction summary is one aggregate query, the first
   comment page fetches top-level rows with a window count and replies in a
   second indexed query.
@@ -138,7 +143,8 @@ Every live lesson has a like/dislike reaction and a content-based discussion:
 
 ## Release checklist
 
-1. `pnpm db:migrate` — applies the additive learning social migration (0027).
+1. `pnpm db:migrate && pnpm db:check` — applies every additive migration and
+   verifies the database matches the shipped drizzle journal.
 2. `pnpm learning:check && pnpm learning:audit` — validates every solution,
    editorial and difficulty label.
 3. `pnpm db:seed` — upserts the live curriculum problems and test cases. The

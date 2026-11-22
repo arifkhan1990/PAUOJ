@@ -21,6 +21,7 @@ import type { CommentVote } from "@/lib/types";
 import { getLearningModule } from "@/lib/learning/modules";
 import { isMissingMigrationError } from "@/lib/db-errors";
 import { logger } from "@/server/logger";
+import { getRedis } from "@/server/redis";
 import type { SafeUser } from "@/server/auth/session";
 import {
   assembleComments,
@@ -44,6 +45,59 @@ export function assertLessonTopic(moduleSlug: string, topicSlug: string) {
     throw errors.notFound("Lesson not found.");
   }
   return definition;
+}
+
+const REACTION_CACHE_TTL_SECONDS = 30;
+
+function reactionCountsKey(moduleSlug: string, topicSlug: string): string {
+  return `lesson:reactions:${moduleSlug}:${topicSlug}`;
+}
+
+type ReactionCounts = { likes: number; dislikes: number };
+
+async function readCachedReactionCounts(
+  moduleSlug: string,
+  topicSlug: string,
+): Promise<ReactionCounts | null> {
+  try {
+    const raw = await getRedis().get(reactionCountsKey(moduleSlug, topicSlug));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ReactionCounts>;
+    return {
+      likes: Number(parsed.likes ?? 0),
+      dislikes: Number(parsed.dislikes ?? 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function cacheReactionCounts(
+  moduleSlug: string,
+  topicSlug: string,
+  counts: ReactionCounts,
+): Promise<void> {
+  try {
+    await getRedis().set(
+      reactionCountsKey(moduleSlug, topicSlug),
+      JSON.stringify(counts),
+      "EX",
+      REACTION_CACHE_TTL_SECONDS,
+    );
+  } catch {
+    // Cache is best-effort; the aggregate query is always available.
+  }
+}
+
+async function clearReactionCounts(
+  moduleSlug: string,
+  topicSlug: string,
+): Promise<void> {
+  try {
+    await getRedis().del(reactionCountsKey(moduleSlug, topicSlug));
+  } catch {
+    // Invalidation is best-effort; the 30s TTL bounds staleness.
+  }
 }
 
 function scoreExpression() {
@@ -92,28 +146,42 @@ export async function getLessonReactionSummary(
     eq(lessonReactions.topicSlug, topicSlug),
   );
   const viewerId = viewer?.id ?? null;
-  const mine = viewerId
-    ? sql<number>`coalesce(max(case when ${lessonReactions.userId} = ${viewerId} then ${lessonReactions.value} end), 0)::int`
-    : sql<number>`0`;
+  const viewerRows = viewerId
+    ? await db
+        .select({ value: lessonReactions.value })
+        .from(lessonReactions)
+        .where(
+          and(
+            eq(lessonReactions.moduleSlug, moduleSlug),
+            eq(lessonReactions.topicSlug, topicSlug),
+            eq(lessonReactions.userId, viewerId),
+          ),
+        )
+        .limit(1)
+    : [];
+  const viewerValue = Number(viewerRows[0]?.value ?? 0);
+  const viewerReaction = (viewerValue === 1 || viewerValue === -1
+    ? viewerValue
+    : 0) as CommentVote;
+
+  const cached = await readCachedReactionCounts(moduleSlug, topicSlug);
+  if (cached) return { ...cached, viewer: viewerReaction };
 
   const [row] = await db
     .select({
       likes: sql<number>`count(*) filter (where ${lessonReactions.value} = 1)::int`,
       dislikes: sql<number>`count(*) filter (where ${lessonReactions.value} = -1)::int`,
-      mine,
     })
     .from(lessonReactions)
     .where(where);
 
-  const viewerValue = Number(row?.mine ?? 0);
-
-  return {
+  const counts = {
     likes: Number(row?.likes ?? 0),
     dislikes: Number(row?.dislikes ?? 0),
-    viewer: (viewerValue === 1 || viewerValue === -1
-      ? viewerValue
-      : 0) as CommentVote,
   };
+  await cacheReactionCounts(moduleSlug, topicSlug, counts);
+
+  return { ...counts, viewer: viewerReaction };
 }
 
 export async function setLessonReaction(
@@ -149,6 +217,7 @@ export async function setLessonReaction(
       });
   }
 
+  await clearReactionCounts(moduleSlug, topicSlug);
   return getLessonReactionSummary(moduleSlug, topicSlug, user);
 }
 
