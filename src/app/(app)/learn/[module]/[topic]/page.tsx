@@ -14,6 +14,7 @@ import {
 import { Markdown } from "@/components/shared/markdown";
 import { Card } from "@/components/ui/card";
 import { LessonToc, type LessonTocItem } from "@/features/learning/lesson-toc";
+import { LessonSocial } from "@/features/learning/lesson-social";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
 import {
   extractMarkdownHeadings,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/learning/lesson-outline";
 import { getCurrentUser } from "@/server/auth/session";
 import { getLearningTopic } from "@/server/services/learning";
+import { getLessonSocial } from "@/server/services/lesson-discussions";
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +75,10 @@ export default async function LearningTopicPage({
   }
 
   const user = await getCurrentUser();
-  const topic = await getLearningTopic(moduleSlug, topicSlug, user);
+  const [topic, social] = await Promise.all([
+    getLearningTopic(moduleSlug, topicSlug, user),
+    getLessonSocial(moduleSlug, topicSlug, user),
+  ]);
   if (!topic) notFound();
 
   const checkpoint = definition.checkpoint;
@@ -116,6 +121,7 @@ export default async function LearningTopicPage({
     },
     { id: "extra", label: "Extra practice" },
     ...(checkpoint ? [{ id: "checkpoint", label: "Checkpoint" }] : []),
+    { id: "discussion", label: "Discussion" },
   ];
 
   return (
@@ -218,7 +224,6 @@ export default async function LearningTopicPage({
               id="extra"
               title="Extra practice"
               description="Try these without hints before moving on."
-              isLast={!checkpoint}
             >
               <ProblemGroup
                 title="নিজে চেষ্টা করুন"
@@ -234,7 +239,6 @@ export default async function LearningTopicPage({
                 id="checkpoint"
                 title="Checkpoint"
                 description="One timed attempt. Solve every problem to earn the module badge."
-                isLast
               >
                 <CheckpointCta
                   checkpoint={checkpoint}
@@ -242,6 +246,31 @@ export default async function LearningTopicPage({
                 />
               </LearningSection>
             ) : null}
+
+            <LearningSection
+              step={checkpoint ? 6 : 5}
+              id="discussion"
+              title="Discussion"
+              description="Ask questions, share an approach or leave a study tip for this lesson."
+              isLast
+            >
+              <LessonSocial
+                moduleSlug={moduleSlug}
+                topicSlug={topicSlug}
+                viewer={
+                  user
+                    ? {
+                        id: user.id,
+                        username: user.username,
+                        displayName: user.displayName,
+                        role: user.role,
+                      }
+                    : null
+                }
+                reactions={social.reactions}
+                comments={social.comments}
+              />
+            </LearningSection>
           </div>
         </div>
       </div>

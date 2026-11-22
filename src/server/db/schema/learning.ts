@@ -1,8 +1,13 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   index,
+  integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
+  type AnyPgColumn,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -35,5 +40,93 @@ export const learningCheckpointAttempts = pgTable(
   ],
 );
 
+export const lessonReactions = pgTable(
+  "lesson_reactions",
+  {
+    moduleSlug: text("module_slug").notNull(),
+    topicSlug: text("topic_slug").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.moduleSlug, table.topicSlug, table.userId] }),
+    check(
+      "lesson_reactions_value_check",
+      sql`${table.value} in (-1, 1)`,
+    ),
+    index("lesson_reactions_topic_idx").on(table.moduleSlug, table.topicSlug),
+  ],
+);
+
+export const lessonComments = pgTable(
+  "lesson_comments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    moduleSlug: text("module_slug").notNull(),
+    topicSlug: text("topic_slug").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id").references((): AnyPgColumn => lessonComments.id, {
+      onDelete: "cascade",
+    }),
+    body: text("body").notNull(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("lesson_comments_topic_created_idx").on(
+      table.moduleSlug,
+      table.topicSlug,
+      table.createdAt,
+    ),
+    index("lesson_comments_parent_idx").on(table.parentId),
+    index("lesson_comments_user_idx").on(table.userId),
+  ],
+);
+
+export const lessonCommentVotes = pgTable(
+  "lesson_comment_votes",
+  {
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => lessonComments.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: integer("value").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.commentId, table.userId] }),
+    index("lesson_comment_votes_user_idx").on(table.userId),
+    check(
+      "lesson_comment_votes_value_check",
+      sql`${table.value} in (-1, 1)`,
+    ),
+  ],
+);
+
 export type LearningCheckpointAttempt =
   typeof learningCheckpointAttempts.$inferSelect;
+export type LessonReaction = typeof lessonReactions.$inferSelect;
+export type LessonComment = typeof lessonComments.$inferSelect;
+export type LessonCommentVote = typeof lessonCommentVotes.$inferSelect;

@@ -9,7 +9,7 @@ import {
   Flag,
   ListChecks,
 } from "lucide-react";
-import { LearningProgressBar } from "@/components/learning/learning-progress";
+import { LessonProgressDonut } from "@/components/learning/lesson-progress-donut";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -125,22 +125,24 @@ export function LessonHeader({
         ) : null}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
-          Topic {pad(topicPosition)} of {pad(definition.topics.length)}
-        </span>
-        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <FileCode2 className="size-3.5" aria-hidden="true" />
-          {topic.progress.total}{" "}
-          {topic.progress.total === 1 ? "problem" : "problems"}
-        </span>
+      <div className="mt-2 flex items-end justify-between gap-4">
+        <div className="min-w-0 space-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+              Topic {pad(topicPosition)} of {pad(definition.topics.length)}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <FileCode2 className="size-3.5" aria-hidden="true" />
+              {topic.progress.total}{" "}
+              {topic.progress.total === 1 ? "problem" : "problems"}
+            </span>
+          </div>
+        </div>
         {showProgress ? (
-          <LearningProgressBar
+          <LessonProgressDonut
             solved={topic.progress.solved}
             total={topic.progress.total}
             percent={topic.progress.percent}
-            className="min-w-40 max-w-sm flex-1"
-            label={`${topic.title}: ${topic.progress.solved} of ${topic.progress.total} problems solved`}
           />
         ) : null}
       </div>
@@ -149,10 +151,17 @@ export function LessonHeader({
 }
 
 /** Compact inline section nav used below `lg`, where the fixed aside is hidden. */
-export function LessonNav({ showCheckpoint }: { showCheckpoint: boolean }) {
+export function LessonNav({
+  showCheckpoint,
+  showDiscussion = true,
+}: {
+  showCheckpoint: boolean;
+  showDiscussion?: boolean;
+}) {
   const items = [
     ...LESSON_NAV_ITEMS,
     ...(showCheckpoint ? [{ id: "checkpoint", label: "Checkpoint" }] : []),
+    ...(showDiscussion ? [{ id: "discussion", label: "Discussion" }] : []),
   ];
 
   return (

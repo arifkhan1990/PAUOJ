@@ -19,6 +19,7 @@ export function CommentComposer({
   onCancel,
   autoFocus = false,
   compact = false,
+  commentsBase,
 }: {
   slug: string;
   parentId?: string | null;
@@ -27,8 +28,11 @@ export function CommentComposer({
   onCancel?: () => void;
   autoFocus?: boolean;
   compact?: boolean;
+  /** Overrides the default problem comment endpoint (used by lesson discussions). */
+  commentsBase?: string;
 }) {
   const router = useRouter();
+  const base = commentsBase ?? `/api/v1/problems/${slug}/comments`;
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +43,7 @@ export function CommentComposer({
     setSubmitting(true);
     setError(null);
     try {
-      await apiPost(`/api/v1/problems/${slug}/comments`, {
+      await apiPost(base, {
         body: value,
         parentId,
       });

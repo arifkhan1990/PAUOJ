@@ -31,13 +31,20 @@ export function CommentThread({
   comment,
   viewer,
   depth = 0,
+  commentsBase,
+  onChanged,
 }: {
   slug: string;
   comment: ProblemComment;
   viewer: ViewerView;
   depth?: number;
+  /** Overrides the default problem comment endpoint (used by lesson discussions). */
+  commentsBase?: string;
+  /** Runs after this thread changes the server state (used to refresh custom lists). */
+  onChanged?: () => void;
 }) {
   const router = useRouter();
+  const base = commentsBase ?? `/api/v1/problems/${slug}/comments`;
   const [score, setScore] = useState(comment.score);
   const [myVote, setMyVote] = useState<CommentVote>(comment.myVote);
   const [voting, setVoting] = useState(false);
@@ -52,7 +59,7 @@ export function CommentThread({
     setError(null);
     try {
       const result = await apiPost<{ score: number; myVote: CommentVote }>(
-        `/api/v1/problems/${slug}/comments/${comment.id}/vote`,
+        `${base}/${comment.id}/vote`,
         { value: next },
       );
       setScore(result.score);
@@ -78,7 +85,8 @@ export function CommentThread({
     setDeleting(true);
     setError(null);
     try {
-      await apiDelete(`/api/v1/problems/${slug}/comments/${comment.id}`);
+      await apiDelete(`${base}/${comment.id}`);
+      onChanged?.();
       router.refresh();
     } catch (requestError) {
       setError(
@@ -216,6 +224,7 @@ export function CommentThread({
             <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3">
               <CommentComposer
                 slug={slug}
+                commentsBase={base}
                 parentId={comment.id}
                 viewer={viewer}
                 compact
@@ -232,9 +241,11 @@ export function CommentThread({
                 <CommentThread
                   key={reply.id}
                   slug={slug}
+                  commentsBase={base}
                   comment={reply}
                   viewer={viewer}
                   depth={depth + 1}
+                  onChanged={onChanged}
                 />
               ))}
             </div>

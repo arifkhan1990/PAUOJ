@@ -84,3 +84,49 @@ export function apiPut<T>(path: string, body: unknown): Promise<T> {
 export function apiDelete<T>(path: string): Promise<T> {
   return apiRequest<T>(path, { method: "DELETE" });
 }
+
+/** GET a paginated list and keep the envelope meta (total/page/totalPages). */
+export async function apiGetPage<T>(
+  path: string,
+): Promise<{
+  items: T[];
+  meta: { total: number; page: number; totalPages: number };
+}> {
+  const response = await fetch(path, { credentials: "same-origin" });
+
+  let payload: (ApiEnvelope<T[]> & { meta?: Record<string, unknown> }) | null =
+    null;
+  try {
+    payload = (await response.json()) as ApiEnvelope<T[]> & {
+      meta?: Record<string, unknown>;
+    };
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    throw new ApiClientError(
+      payload?.error?.code ?? "REQUEST_FAILED",
+      payload?.error?.message ?? "Request failed. Please try again.",
+      response.status,
+      payload?.error?.details,
+    );
+  }
+  if (!payload) {
+    throw new ApiClientError(
+      "INVALID_RESPONSE",
+      "The server returned an unexpected response.",
+      response.status,
+    );
+  }
+
+  const meta = payload.meta ?? {};
+  return {
+    items: payload.data,
+    meta: {
+      total: Number(meta.total ?? payload.data.length),
+      page: Number(meta.page ?? 1),
+      totalPages: Number(meta.totalPages ?? 1),
+    },
+  };
+}

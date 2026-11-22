@@ -23,16 +23,18 @@ function childIds(item: LessonTocItem): string[] {
 }
 
 const PINNED_GAP = 16;
+const READING_TOLERANCE = 8;
 
 /**
- * Reading offset for the scrollspy: just below the pinned header stack, or the
- * plain 120px fallback when the lesson header is not pinned.
+ * Reading offset for the scrollspy: just below the pinned header stack with a
+ * small tolerance so anchors that land exactly on the scroll margin still count
+ * as active, or the plain 120px fallback when the header is not pinned.
  */
 export function activeOffsetForPinnedHeader(
   stickyBottom: number,
   pinned: boolean,
 ): number {
-  return pinned ? stickyBottom + PINNED_GAP : 120;
+  return pinned ? stickyBottom + PINNED_GAP + READING_TOLERANCE : 120;
 }
 
 /**

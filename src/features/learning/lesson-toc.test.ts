@@ -56,9 +56,9 @@ describe("activeOffsetForPinnedHeader", () => {
     expect(activeOffsetForPinnedHeader(64, false)).toBe(120);
   });
 
-  it("adds the reading gap below the measured sticky stack when pinned", () => {
-    expect(activeOffsetForPinnedHeader(187, true)).toBe(203);
-    expect(activeOffsetForPinnedHeader(211, true)).toBe(227);
+  it("adds the reading gap and tolerance below the measured stack when pinned", () => {
+    expect(activeOffsetForPinnedHeader(187, true)).toBe(211);
+    expect(activeOffsetForPinnedHeader(218, true)).toBe(242);
   });
 });
 

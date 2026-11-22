@@ -110,9 +110,26 @@ and fenced Python block; the tier/difficulty/points mapping; names, person and
 honorific forms; and it runs the editorial's full Python solution against every
 test. The release checklist runs both `learning:check` and `learning:audit`.
 
+## Lesson reactions and discussion
+
+Every live lesson has a like/dislike reaction and a content-based discussion:
+
+- `lesson_reactions` stores one reaction per user and lesson (`1` like,
+  `-1` dislike); clicking the active reaction clears it.
+- `lesson_comments` is a one-level thread per lesson. Soft deletes hide a
+  top-level comment together with its replies; `lesson_comment_votes` stores
+  one vote per user and comment, and authors cannot vote on their own comment.
+- The lesson page server-renders the reaction summary and the first page of
+  comments. The client then uses
+  `/api/v1/learning/topics/<module>/<topic>/reaction` and
+  `/api/v1/learning/topics/<module>/<topic>/comments` for updates. Posting
+  requires a signed-in session (`401` otherwise); deleting another user's
+  comment is `403`; an unknown track or topic is `404`.
+- The lesson header shows solved progress as a donut instead of a linear bar.
+
 ## Release checklist
 
-1. `pnpm db:migrate` — applies the additive checkpoint migration.
+1. `pnpm db:migrate` — applies the additive learning social migration (0027).
 2. `pnpm learning:check && pnpm learning:audit` — validates every solution,
    editorial and difficulty label.
 3. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
