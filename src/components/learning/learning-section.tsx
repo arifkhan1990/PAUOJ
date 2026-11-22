@@ -28,7 +28,7 @@ export function LearningSection({
       id={id}
       aria-labelledby={headingId}
       className={cn(
-        "scroll-mt-24 pb-8 sm:pb-10",
+        "scroll-mt-24 pb-8 sm:pb-10 lg:scroll-mt-52",
         isLast && "pb-0 sm:pb-0",
         className,
       )}

@@ -8,14 +8,12 @@ import { LearningSection } from "@/components/learning/learning-section";
 import { ProblemGroup } from "@/components/learning/problem-group";
 import {
   CheckpointCta,
-  LESSON_NAV_ITEMS,
+  LessonHeader,
   LessonNav,
-  TopicBreadcrumb,
-  TopicHeader,
 } from "@/components/learning/topic-lesson-parts";
 import { Markdown } from "@/components/shared/markdown";
 import { Card } from "@/components/ui/card";
-import { LessonToc } from "@/features/learning/lesson-toc";
+import { LessonToc, type LessonTocItem } from "@/features/learning/lesson-toc";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
 import { getCurrentUser } from "@/server/auth/session";
 import { getLearningTopic } from "@/server/services/learning";
@@ -60,42 +58,47 @@ export default async function LearningTopicPage({
   const topicPosition =
     definition.topics.findIndex((item) => item.slug === topicSlug) + 1;
 
-  const breadcrumb = (
-    <TopicBreadcrumb
-      moduleSlug={moduleSlug}
-      moduleOrder={definition.order}
-      moduleTitle={definition.title}
-      topicTitle={topic.title}
-    />
-  );
-
   if (topic.locked && definition.status === "LIVE") {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        {breadcrumb}
-        <div className="mt-4">
-          <TopicHeader
-            topic={topic}
-            definition={definition}
-            topicPosition={topicPosition}
-            locked
-          />
-        </div>
+        <LessonHeader
+          topic={topic}
+          definition={definition}
+          topicPosition={topicPosition}
+          locked
+        />
         <LearningLocked hint={topic.unlockHint} className="mt-6" />
       </div>
     );
   }
 
-  const tocItems = [
-    ...LESSON_NAV_ITEMS,
+  const tocItems: LessonTocItem[] = [
+    { id: "concept", label: "Concept note" },
+    { id: "guided", label: "Guided practice" },
+    {
+      id: "tiered",
+      label: "Tiered practice",
+      children: LEVELS.map((level) => ({
+        id: `tiered-${level.key}`,
+        label: level.label,
+      })),
+    },
+    { id: "extra", label: "Extra practice" },
     ...(checkpoint ? [{ id: "checkpoint", label: "Checkpoint" }] : []),
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-      <div className="lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[16rem_minmax(0,1fr)]">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <LessonHeader
+        topic={topic}
+        definition={definition}
+        topicPosition={topicPosition}
+        locked={false}
+      />
+
+      <div className="pt-6 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-10 xl:grid-cols-[16rem_minmax(0,1fr)]">
         <aside className="hidden lg:block" aria-label="Lesson contents">
-          <div className="sticky top-24">
+          <div className="sticky top-[13rem]">
             <LessonToc items={tocItems} />
             <div className="mt-6 border-t border-border pt-4">
               <Link
@@ -113,15 +116,12 @@ export default async function LearningTopicPage({
         </aside>
 
         <div className="min-w-0 max-w-4xl">
-          {breadcrumb}
-          <div className="mt-4">
-            <TopicHeader
-              topic={topic}
-              definition={definition}
-              topicPosition={topicPosition}
-              locked={false}
-            />
-          </div>
+          <p
+            lang="bn"
+            className="max-w-3xl text-sm leading-relaxed text-muted-foreground"
+          >
+            {topic.summary}
+          </p>
 
           <div className="lg:hidden">
             <LessonNav showCheckpoint={Boolean(checkpoint)} />
@@ -170,6 +170,7 @@ export default async function LearningTopicPage({
                 {LEVELS.map((level) => (
                   <ProblemGroup
                     key={level.key}
+                    id={`tiered-${level.key}`}
                     title={level.label}
                     tone={level.key}
                     problems={topic.practice[level.key]}

@@ -76,7 +76,11 @@ export function TopicBreadcrumb({
   );
 }
 
-export function TopicHeader({
+/**
+ * Compact lesson header. On `lg+` it pins below the sticky site header so the
+ * lesson context stays visible while the content and side menu scroll.
+ */
+export function LessonHeader({
   topic,
   definition,
   topicPosition,
@@ -93,11 +97,20 @@ export function TopicHeader({
   const showProgress = !locked && !isPlanned && topic.progress.total > 0;
 
   return (
-    <header className="border-b border-border pb-6">
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.18em] text-primary">
-          Track {pad(definition.order)} · Topic {pad(topicPosition)} of{" "}
-          {pad(definition.topics.length)}
+    <header className="border-b border-border bg-background/95 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/85 lg:sticky lg:top-16 lg:z-30">
+      <TopicBreadcrumb
+        moduleSlug={definition.slug}
+        moduleOrder={definition.order}
+        moduleTitle={definition.title}
+        topicTitle={topic.title}
+      />
+
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+          {topic.title}
+        </h1>
+        <p lang="bn" className="text-sm text-muted-foreground">
+          {topic.titleBn}
         </p>
         {isPlanned ? (
           <Badge variant="muted">Planned</Badge>
@@ -109,31 +122,25 @@ export function TopicHeader({
         ) : null}
       </div>
 
-      <h1 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-        {topic.title}
-      </h1>
-      <p lang="bn" className="mt-1.5 text-base text-muted-foreground sm:text-lg">
-        {topic.titleBn}
-      </p>
-      <p lang="bn" className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-        {topic.summary}
-      </p>
-
-      <p className="mt-4 inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <FileCode2 className="size-3.5" aria-hidden="true" />
-        {topic.progress.total}{" "}
-        {topic.progress.total === 1 ? "problem" : "problems"}
-      </p>
-
-      {showProgress ? (
-        <LearningProgressBar
-          solved={topic.progress.solved}
-          total={topic.progress.total}
-          percent={topic.progress.percent}
-          className="mt-3 max-w-sm"
-          label={`${topic.title}: ${topic.progress.solved} of ${topic.progress.total} problems solved`}
-        />
-      ) : null}
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-primary">
+          Topic {pad(topicPosition)} of {pad(definition.topics.length)}
+        </span>
+        <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <FileCode2 className="size-3.5" aria-hidden="true" />
+          {topic.progress.total}{" "}
+          {topic.progress.total === 1 ? "problem" : "problems"}
+        </span>
+        {showProgress ? (
+          <LearningProgressBar
+            solved={topic.progress.solved}
+            total={topic.progress.total}
+            percent={topic.progress.percent}
+            className="min-w-40 max-w-sm flex-1"
+            label={`${topic.title}: ${topic.progress.solved} of ${topic.progress.total} problems solved`}
+          />
+        ) : null}
+      </div>
     </header>
   );
 }

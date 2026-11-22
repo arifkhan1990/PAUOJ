@@ -16,6 +16,7 @@ export function ProblemGroup({
   emptyText,
   description,
   tone,
+  id,
 }: {
   title: string;
   titleLang?: string;
@@ -23,11 +24,12 @@ export function ProblemGroup({
   emptyText: string;
   description?: string;
   tone?: "easy" | "medium" | "hard";
+  id?: string;
 }) {
   const solved = problems.filter((problem) => problem.solved).length;
 
   return (
-    <div>
+    <div id={id} className={cn(id && "scroll-mt-24 lg:scroll-mt-52")}>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <h3
           lang={titleLang}

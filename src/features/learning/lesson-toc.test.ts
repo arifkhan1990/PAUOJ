@@ -1,14 +1,26 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LessonToc } from "@/features/learning/lesson-toc";
+import {
+  LessonToc,
+  flattenTocIds,
+  type LessonTocItem,
+} from "@/features/learning/lesson-toc";
 import { resolveActiveSection } from "@/lib/use-active-section";
 
 const IDS = ["concept", "guided", "tiered", "extra", "checkpoint"];
-const ITEMS = [
+const ITEMS: LessonTocItem[] = [
   { id: "concept", label: "Concept note" },
   { id: "guided", label: "Guided practice" },
-  { id: "tiered", label: "Tiered practice" },
+  {
+    id: "tiered",
+    label: "Tiered practice",
+    children: [
+      { id: "tiered-easy", label: "Easy" },
+      { id: "tiered-medium", label: "Medium" },
+      { id: "tiered-hard", label: "Hard" },
+    ],
+  },
   { id: "extra", label: "Extra practice" },
   { id: "checkpoint", label: "Checkpoint" },
 ];
@@ -18,6 +30,25 @@ function render(items = ITEMS, label?: string) {
     createElement(LessonToc, { items, ...(label ? { label } : {}) }),
   );
 }
+
+describe("flattenTocIds", () => {
+  it("lists parent sections before their submenu children", () => {
+    expect(flattenTocIds(ITEMS)).toEqual([
+      "concept",
+      "guided",
+      "tiered",
+      "tiered-easy",
+      "tiered-medium",
+      "tiered-hard",
+      "extra",
+      "checkpoint",
+    ]);
+  });
+
+  it("handles empty input", () => {
+    expect(flattenTocIds([])).toEqual([]);
+  });
+});
 
 describe("resolveActiveSection", () => {
   it("keeps the first section active at the top of the page", () => {
@@ -53,13 +84,27 @@ describe("resolveActiveSection", () => {
 });
 
 describe("LessonToc server rendering", () => {
-  it("renders a labelled nav with every section anchor in order", () => {
+  it("renders a labelled nav with every section and submenu anchor in order", () => {
     const html = render();
     const hrefs = [...html.matchAll(/href="#([^"]+)"/g)].map((match) => match[1]);
 
     expect(html).toContain('aria-label="In this lesson"');
-    expect(hrefs).toEqual(IDS);
+    expect(hrefs).toEqual(flattenTocIds(ITEMS));
     expect(html).toContain("Concept note");
+    expect(html).toContain("Tiered practice");
+    expect(html).toContain("Medium");
+  });
+
+  it("nests submenu items inside their parent list item", () => {
+    const html = render();
+    const tiered = html.indexOf('href="#tiered"');
+    const easy = html.indexOf('href="#tiered-easy"');
+    const extra = html.indexOf('href="#extra"');
+
+    expect(tiered).toBeGreaterThan(-1);
+    expect(easy).toBeGreaterThan(tiered);
+    expect(extra).toBeGreaterThan(easy);
+    expect(html.match(/<ul/g)?.length ?? 0).toBeGreaterThan(1);
   });
 
   it("marks exactly one item as current, and only the first on first paint", () => {
