@@ -126,9 +126,9 @@ print(heappop(heap))    # -> 12
 গাইডেড সমস্যা দুটো \`learn-m2-stl-collections-g1\` (সাজিয়ে আলাদা করা) আর \`learn-m2-stl-collections-g2\` (সেট দিয়ে সদস্যতা যাচাই) দিয়ে শুরু করো। এরপর easy, medium আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m2-stl-collections-g1","learn-m2-stl-collections-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m2-stl-collections-e1"],
-    medium: ["learn-m2-stl-collections-m1"],
-    hard: ["learn-m2-stl-collections-h1"],
+    easy: ["learn-m2-stl-collections-e1", "learn-m2-stl-collections-e2", "learn-m2-stl-collections-e3"],
+    medium: ["learn-m2-stl-collections-m1", "learn-m2-stl-collections-m2", "learn-m2-stl-collections-m3"],
+    hard: ["learn-m2-stl-collections-h1", "learn-m2-stl-collections-h2"],
   },
   extraProblemSlugs: ["learn-m2-stl-collections-x1","learn-m2-stl-collections-x2"],
 };

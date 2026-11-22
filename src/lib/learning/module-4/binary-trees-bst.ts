@@ -159,9 +159,9 @@ bool search(Node *root, long long target) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m4-binary-trees-bst-g1\` (ট্রি থেকে নোড গোনা) আর \`learn-m4-binary-trees-bst-g2\` (BST-এ খোঁজা)। তারপর easy, medium, hard আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-binary-trees-bst-g1","learn-m4-binary-trees-bst-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-binary-trees-bst-e1"],
-    medium: ["learn-m4-binary-trees-bst-m1"],
-    hard: ["learn-m4-binary-trees-bst-h1"],
+    easy: ["learn-m4-binary-trees-bst-e1","learn-m4-binary-trees-bst-e2","learn-m4-binary-trees-bst-e3"],
+    medium: ["learn-m4-binary-trees-bst-m1","learn-m4-binary-trees-bst-m2","learn-m4-binary-trees-bst-m3"],
+    hard: ["learn-m4-binary-trees-bst-h1","learn-m4-binary-trees-bst-h2"],
   },
   extraProblemSlugs: ["learn-m4-binary-trees-bst-x1","learn-m4-binary-trees-bst-x2"],
 };

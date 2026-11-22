@@ -100,9 +100,9 @@ LIS \`O(n log n)\`-এর মূল কথা: \`tails\` অ্যারে \`ta
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m5-lcs-lis-g1\` (দুই লেখার দীর্ঘতম মিলে-যাওয়া পাশাপাশি অংশ — substring) আর \`learn-m5-lcs-lis-g2\` (দুই লেখার দীর্ঘতম ক্রম-মেনে মিল — subsequence)। তারপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m5-lcs-lis-g1","learn-m5-lcs-lis-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m5-lcs-lis-e1"],
-    medium: ["learn-m5-lcs-lis-m1"],
-    hard: ["learn-m5-lcs-lis-h1"],
+    easy: ["learn-m5-lcs-lis-e1", "learn-m5-lcs-lis-e2", "learn-m5-lcs-lis-e3"],
+    medium: ["learn-m5-lcs-lis-m1", "learn-m5-lcs-lis-m2", "learn-m5-lcs-lis-m3"],
+    hard: ["learn-m5-lcs-lis-h1", "learn-m5-lcs-lis-h2"],
   },
   extraProblemSlugs: ["learn-m5-lcs-lis-x1","learn-m5-lcs-lis-x2"],
 };

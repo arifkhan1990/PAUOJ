@@ -144,9 +144,17 @@ int main() {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m7-network-flow-g1\` (ছোট গ্রাফে সর্বোচ্চ ফ্লো) আর \`learn-m7-network-flow-g2\` (mentor-শিক্ষার্থী ম্যাচিং)। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m7-network-flow-g1", "learn-m7-network-flow-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m7-network-flow-e1"],
-    medium: ["learn-m7-network-flow-m1"],
-    hard: ["learn-m7-network-flow-h1"],
+    easy: [
+      "learn-m7-network-flow-e1",
+      "learn-m7-network-flow-e2",
+      "learn-m7-network-flow-e3",
+    ],
+    medium: [
+      "learn-m7-network-flow-m1",
+      "learn-m7-network-flow-m2",
+      "learn-m7-network-flow-m3",
+    ],
+    hard: ["learn-m7-network-flow-h1", "learn-m7-network-flow-h2"],
   },
   extraProblemSlugs: ["learn-m7-network-flow-x1", "learn-m7-network-flow-x2"],
 };

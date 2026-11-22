@@ -128,9 +128,9 @@ long long rangeSum(int l, int r) { return prefix(r) - prefix(l - 1); }
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m6-fenwick-tree-g1\` (যোগ আর রেঞ্জ যোগফল) আর \`learn-m6-fenwick-tree-g2\` (ভ্যালু ডোমেইনে ফ্রিকোয়েন্সি কাউন্ট)। তারপর easy, medium, hard আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m6-fenwick-tree-g1","learn-m6-fenwick-tree-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m6-fenwick-tree-e1"],
-    medium: ["learn-m6-fenwick-tree-m1"],
-    hard: ["learn-m6-fenwick-tree-h1"],
+    easy: ["learn-m6-fenwick-tree-e1", "learn-m6-fenwick-tree-e2", "learn-m6-fenwick-tree-e3"],
+    medium: ["learn-m6-fenwick-tree-m1", "learn-m6-fenwick-tree-m2", "learn-m6-fenwick-tree-m3"],
+    hard: ["learn-m6-fenwick-tree-h1", "learn-m6-fenwick-tree-h2"],
   },
   extraProblemSlugs: ["learn-m6-fenwick-tree-x1","learn-m6-fenwick-tree-x2"],
 };

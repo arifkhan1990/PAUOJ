@@ -124,9 +124,9 @@ for value in values:
 গাইডেড সমস্যা দুটো \`learn-m2-hashing-g1\` (শব্দের ফ্রিকোয়েন্সি) আর \`learn-m2-hashing-g2\` (two-sum জোড়া খোঁজা) দিয়ে শুরু করো। এরপর easy, medium আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m2-hashing-g1","learn-m2-hashing-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m2-hashing-e1"],
-    medium: ["learn-m2-hashing-m1"],
-    hard: ["learn-m2-hashing-h1"],
+    easy: ["learn-m2-hashing-e1", "learn-m2-hashing-e2", "learn-m2-hashing-e3"],
+    medium: ["learn-m2-hashing-m1", "learn-m2-hashing-m2", "learn-m2-hashing-m3"],
+    hard: ["learn-m2-hashing-h1", "learn-m2-hashing-h2"],
   },
   extraProblemSlugs: ["learn-m2-hashing-x1","learn-m2-hashing-x2"],
 };

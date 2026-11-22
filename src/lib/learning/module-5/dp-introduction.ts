@@ -119,9 +119,9 @@ cout << (n == 0 ? a : b) << "\\n";
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m5-dp-introduction-g1\` (মেমো বনাম ট্যাবুলেশন দিয়ে ফিবোনাচি) আর \`learn-m5-dp-introduction-g2\` (একটা state আর transition দিয়ে সর্বোচ্চ অ-পাশাপাশি যোগফল)। তারপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m5-dp-introduction-g1","learn-m5-dp-introduction-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m5-dp-introduction-e1"],
-    medium: ["learn-m5-dp-introduction-m1"],
-    hard: ["learn-m5-dp-introduction-h1"],
+    easy: ["learn-m5-dp-introduction-e1", "learn-m5-dp-introduction-e2", "learn-m5-dp-introduction-e3"],
+    medium: ["learn-m5-dp-introduction-m1", "learn-m5-dp-introduction-m2", "learn-m5-dp-introduction-m3"],
+    hard: ["learn-m5-dp-introduction-h1", "learn-m5-dp-introduction-h2"],
   },
   extraProblemSlugs: ["learn-m5-dp-introduction-x1","learn-m5-dp-introduction-x2"],
 };

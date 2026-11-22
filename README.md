@@ -322,8 +322,8 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
   domain (SPF/DKIM/DMARC) at deployment. Link-only invites work without SMTP.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.
-- All seven learning tracks ship. Module 1 has the full 3-easy / 3-medium / 2-hard practice
-  tier; tracks 2–7 use the compact 1/1/1 tier plus two extra problems per topic.
+- All seven learning tracks ship. Every topic has the full 3-easy / 3-medium / 2-hard
+  practice tier plus two or three extra problems.
 - Problem publication review is staff-only: only teachers and administrators can approve, hold,
   resolve or reopen, and coders only see the status of problems they authored. The public problem
   list shows published problems only — contest-only problems and private drafts never appear there.

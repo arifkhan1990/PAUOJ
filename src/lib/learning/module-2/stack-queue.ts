@@ -142,9 +142,9 @@ print(queue.popleft())  # -> 7
 গাইডেড সমস্যা দুটো \`learn-m2-stack-queue-g1\` (স্ট্যাক দিয়ে শব্দ উল্টানো) আর \`learn-m2-stack-queue-g2\` (postfix হিসাবকারী) দিয়ে শুরু করো। এরপর easy, medium আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m2-stack-queue-g1","learn-m2-stack-queue-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m2-stack-queue-e1"],
-    medium: ["learn-m2-stack-queue-m1"],
-    hard: ["learn-m2-stack-queue-h1"],
+    easy: ["learn-m2-stack-queue-e1", "learn-m2-stack-queue-e2", "learn-m2-stack-queue-e3"],
+    medium: ["learn-m2-stack-queue-m1", "learn-m2-stack-queue-m2", "learn-m2-stack-queue-m3"],
+    hard: ["learn-m2-stack-queue-h1", "learn-m2-stack-queue-h2"],
   },
   extraProblemSlugs: ["learn-m2-stack-queue-x1","learn-m2-stack-queue-x2"],
 };

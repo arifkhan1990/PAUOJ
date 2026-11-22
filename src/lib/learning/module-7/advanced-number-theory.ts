@@ -129,9 +129,20 @@ ll fib(ll n, ll mod) {
     "learn-m7-advanced-number-theory-g2",
   ],
   practiceProblemSlugs: {
-    easy: ["learn-m7-advanced-number-theory-e1"],
-    medium: ["learn-m7-advanced-number-theory-m1"],
-    hard: ["learn-m7-advanced-number-theory-h1"],
+    easy: [
+      "learn-m7-advanced-number-theory-e1",
+      "learn-m7-advanced-number-theory-e2",
+      "learn-m7-advanced-number-theory-e3",
+    ],
+    medium: [
+      "learn-m7-advanced-number-theory-m1",
+      "learn-m7-advanced-number-theory-m2",
+      "learn-m7-advanced-number-theory-m3",
+    ],
+    hard: [
+      "learn-m7-advanced-number-theory-h1",
+      "learn-m7-advanced-number-theory-h2",
+    ],
   },
   extraProblemSlugs: [
     "learn-m7-advanced-number-theory-x1",

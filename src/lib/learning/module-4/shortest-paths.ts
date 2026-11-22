@@ -98,9 +98,9 @@ for _ in range(n - 1):
 গাইডেড সমস্যা \`learn-m4-shortest-paths-g1\` (Dijkstra দিয়ে সব দূরত্ব) আর \`learn-m4-shortest-paths-g2\` (ঋণাত্মক ওজনে Bellman-Ford) দিয়ে শুরু করো, এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-shortest-paths-g1","learn-m4-shortest-paths-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-shortest-paths-e1"],
-    medium: ["learn-m4-shortest-paths-m1"],
-    hard: ["learn-m4-shortest-paths-h1"],
+    easy: ["learn-m4-shortest-paths-e1","learn-m4-shortest-paths-e2","learn-m4-shortest-paths-e3"],
+    medium: ["learn-m4-shortest-paths-m1","learn-m4-shortest-paths-m2","learn-m4-shortest-paths-m3"],
+    hard: ["learn-m4-shortest-paths-h1","learn-m4-shortest-paths-h2"],
   },
   extraProblemSlugs: ["learn-m4-shortest-paths-x1","learn-m4-shortest-paths-x2"],
 };

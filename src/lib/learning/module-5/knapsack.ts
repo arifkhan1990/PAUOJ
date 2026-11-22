@@ -101,9 +101,9 @@ print("YES" if dp[S] else "NO")
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m5-knapsack-g1\` (ওজন সীমায় সর্বোচ্চ মূল্য) আর \`learn-m5-knapsack-g2\` (নির্দিষ্ট যোগফল কি পাওয়া যায়)। তারপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m5-knapsack-g1","learn-m5-knapsack-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m5-knapsack-e1"],
-    medium: ["learn-m5-knapsack-m1"],
-    hard: ["learn-m5-knapsack-h1"],
+    easy: ["learn-m5-knapsack-e1", "learn-m5-knapsack-e2", "learn-m5-knapsack-e3"],
+    medium: ["learn-m5-knapsack-m1", "learn-m5-knapsack-m2", "learn-m5-knapsack-m3"],
+    hard: ["learn-m5-knapsack-h1", "learn-m5-knapsack-h2"],
   },
   extraProblemSlugs: ["learn-m5-knapsack-x1","learn-m5-knapsack-x2"],
 };

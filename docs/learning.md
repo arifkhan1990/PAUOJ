@@ -29,11 +29,9 @@ extra is stored per learner.
 ## Current release
 
 **All seven tracks ship in this release.** The curriculum contains 34 topics,
-**285 original problems** and **1,839 tests**. Module 1 has the full practice
-tier: three easy, three medium and two hard problems per topic, plus two or three extra
-problems. Tracks 2–7 use a compact starter tier: one easy, one medium and one
-hard practice problem per topic, plus two extra problems. Every track ends with
-a mixed three-problem checkpoint and a module badge.
+**430 original problems** and **2,750 tests**. Every topic has the full practice
+tier: three easy, three medium and two hard problems, plus two or three extra
+problems. Every track ends with a mixed three-problem checkpoint and a module badge.
 
 Module 1 contains five topics:
 

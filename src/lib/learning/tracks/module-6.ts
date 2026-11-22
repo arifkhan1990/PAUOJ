@@ -10,6 +10,7 @@ export const module6: LearningModuleDefinition = {
   description: "Trie, segment tree, lazy propagation, Fenwick tree, sparse table, LCA আর HLD—জটিল কুয়েরির জন্য specialised টুল।",
   estimatedHours: 24,
   status: "LIVE",
+  practiceTier: "FULL",
   diagram: {
     src: "/learning/module-6.svg",
     alt: "মডিউল ৬-এর শেখার ধারা: ট্রাই, সেগমেন্ট ট্রি, ফেনউইক ট্রি, স্পার্স টেবিল/LCA এবং হেভি-লাইট ডিকম্পোজিশন।",

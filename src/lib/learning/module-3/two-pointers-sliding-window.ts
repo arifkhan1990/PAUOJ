@@ -121,9 +121,9 @@ int main() {
 গাইডেড সমস্যা দুটো \`learn-m3-two-pointers-sliding-window-g1\` (সাজিয়ে জোড়া গোনা) আর \`learn-m3-two-pointers-sliding-window-g2\` (ফিক্সড উইন্ডোর সর্বোচ্চ যোগফল) দিয়ে শুরু করো। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m3-two-pointers-sliding-window-g1","learn-m3-two-pointers-sliding-window-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m3-two-pointers-sliding-window-e1"],
-    medium: ["learn-m3-two-pointers-sliding-window-m1"],
-    hard: ["learn-m3-two-pointers-sliding-window-h1"],
+    easy: ["learn-m3-two-pointers-sliding-window-e1","learn-m3-two-pointers-sliding-window-e2","learn-m3-two-pointers-sliding-window-e3"],
+    medium: ["learn-m3-two-pointers-sliding-window-m1","learn-m3-two-pointers-sliding-window-m2","learn-m3-two-pointers-sliding-window-m3"],
+    hard: ["learn-m3-two-pointers-sliding-window-h1","learn-m3-two-pointers-sliding-window-h2"],
   },
   extraProblemSlugs: ["learn-m3-two-pointers-sliding-window-x1","learn-m3-two-pointers-sliding-window-x2"],
 };

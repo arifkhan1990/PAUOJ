@@ -100,9 +100,9 @@ cout << dp[n - 1][m - 1] << "\\n";
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m5-grid-dp-g1\` (সিঁড়ি ওঠার পথ গোনা) আর \`learn-m5-grid-dp-g2\` (গ্রিডে unique paths)। তারপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m5-grid-dp-g1","learn-m5-grid-dp-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m5-grid-dp-e1"],
-    medium: ["learn-m5-grid-dp-m1"],
-    hard: ["learn-m5-grid-dp-h1"],
+    easy: ["learn-m5-grid-dp-e1", "learn-m5-grid-dp-e2", "learn-m5-grid-dp-e3"],
+    medium: ["learn-m5-grid-dp-m1", "learn-m5-grid-dp-m2", "learn-m5-grid-dp-m3"],
+    hard: ["learn-m5-grid-dp-h1", "learn-m5-grid-dp-h2"],
   },
   extraProblemSlugs: ["learn-m5-grid-dp-x1","learn-m5-grid-dp-x2"],
 };

@@ -111,9 +111,17 @@ for (int x = 1; x <= n; x++) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m7-game-theory-g1\` (Nim-এ বিজয়ী নির্ণয়) আর \`learn-m7-game-theory-g2\` (ছোট খেলার Grundy টেবিল)। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m7-game-theory-g1", "learn-m7-game-theory-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m7-game-theory-e1"],
-    medium: ["learn-m7-game-theory-m1"],
-    hard: ["learn-m7-game-theory-h1"],
+    easy: [
+      "learn-m7-game-theory-e1",
+      "learn-m7-game-theory-e2",
+      "learn-m7-game-theory-e3",
+    ],
+    medium: [
+      "learn-m7-game-theory-m1",
+      "learn-m7-game-theory-m2",
+      "learn-m7-game-theory-m3",
+    ],
+    hard: ["learn-m7-game-theory-h1", "learn-m7-game-theory-h2"],
   },
   extraProblemSlugs: ["learn-m7-game-theory-x1", "learn-m7-game-theory-x2"],
 };

@@ -113,9 +113,9 @@ def union(a, b):
 গাইডেড সমস্যা \`learn-m4-mst-dsu-g1\` (DSU দিয়ে দল মেলানো) আর \`learn-m4-mst-dsu-g2\` (Kruskal দিয়ে MST-এর মোট ওজন) দিয়ে শুরু করো, এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-mst-dsu-g1","learn-m4-mst-dsu-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-mst-dsu-e1"],
-    medium: ["learn-m4-mst-dsu-m1"],
-    hard: ["learn-m4-mst-dsu-h1"],
+    easy: ["learn-m4-mst-dsu-e1","learn-m4-mst-dsu-e2","learn-m4-mst-dsu-e3"],
+    medium: ["learn-m4-mst-dsu-m1","learn-m4-mst-dsu-m2","learn-m4-mst-dsu-m3"],
+    hard: ["learn-m4-mst-dsu-h1","learn-m4-mst-dsu-h2"],
   },
   extraProblemSlugs: ["learn-m4-mst-dsu-x1","learn-m4-mst-dsu-x2"],
 };

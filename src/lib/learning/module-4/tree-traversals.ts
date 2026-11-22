@@ -143,9 +143,9 @@ vector<int> preorderIterative(Node *root) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m4-tree-traversals-g1\` (preorder বের করা) আর \`learn-m4-tree-traversals-g2\` (inorder বের করা)। তারপর easy, medium, hard আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-tree-traversals-g1","learn-m4-tree-traversals-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-tree-traversals-e1"],
-    medium: ["learn-m4-tree-traversals-m1"],
-    hard: ["learn-m4-tree-traversals-h1"],
+    easy: ["learn-m4-tree-traversals-e1","learn-m4-tree-traversals-e2","learn-m4-tree-traversals-e3"],
+    medium: ["learn-m4-tree-traversals-m1","learn-m4-tree-traversals-m2","learn-m4-tree-traversals-m3"],
+    hard: ["learn-m4-tree-traversals-h1","learn-m4-tree-traversals-h2"],
   },
   extraProblemSlugs: ["learn-m4-tree-traversals-x1","learn-m4-tree-traversals-x2"],
 };

@@ -111,9 +111,17 @@ vector<int> z_function(const string &s) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m7-string-matching-g1\` (সব মিলের পজিশন বের করা) আর \`learn-m7-string-matching-g2\` (prefix function নিজে হাতে বানানো)। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m7-string-matching-g1", "learn-m7-string-matching-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m7-string-matching-e1"],
-    medium: ["learn-m7-string-matching-m1"],
-    hard: ["learn-m7-string-matching-h1"],
+    easy: [
+      "learn-m7-string-matching-e1",
+      "learn-m7-string-matching-e2",
+      "learn-m7-string-matching-e3",
+    ],
+    medium: [
+      "learn-m7-string-matching-m1",
+      "learn-m7-string-matching-m2",
+      "learn-m7-string-matching-m3",
+    ],
+    hard: ["learn-m7-string-matching-h1", "learn-m7-string-matching-h2"],
   },
   extraProblemSlugs: ["learn-m7-string-matching-x1", "learn-m7-string-matching-x2"],
 };

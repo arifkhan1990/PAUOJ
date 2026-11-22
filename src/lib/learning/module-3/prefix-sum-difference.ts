@@ -115,9 +115,9 @@ int main() {
 গাইডেড সমস্যা দুটো \`learn-m3-prefix-sum-difference-g1\` (রেঞ্জ যোগফল) আর \`learn-m3-prefix-sum-difference-g2\` (রেঞ্জ আপডেট) দিয়ে শুরু করো। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m3-prefix-sum-difference-g1","learn-m3-prefix-sum-difference-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m3-prefix-sum-difference-e1"],
-    medium: ["learn-m3-prefix-sum-difference-m1"],
-    hard: ["learn-m3-prefix-sum-difference-h1"],
+    easy: ["learn-m3-prefix-sum-difference-e1","learn-m3-prefix-sum-difference-e2","learn-m3-prefix-sum-difference-e3"],
+    medium: ["learn-m3-prefix-sum-difference-m1","learn-m3-prefix-sum-difference-m2","learn-m3-prefix-sum-difference-m3"],
+    hard: ["learn-m3-prefix-sum-difference-h1","learn-m3-prefix-sum-difference-h2"],
   },
   extraProblemSlugs: ["learn-m3-prefix-sum-difference-x1","learn-m3-prefix-sum-difference-x2"],
 };

@@ -6,11 +6,10 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [0.8.0] - 2026-11-22
 
 ### Added
-- A complete seven-track learning curriculum at `/learn`: 34 topics, **285 original problems**
-  with **1,839 tests**, Bangla concept notes, guided problems, tiered practice, extra
-  self-try problems, reference Python solutions and Bangla editorials. Module 1 has the full
-  3-easy / 3-medium / 2-hard practice tier; tracks 2–7 use the compact 1/1/1 tier plus two
-  extra problems per topic.
+- A complete seven-track learning curriculum at `/learn`: 34 topics, **430 original problems**
+  with **2,750 tests**, Bangla concept notes, guided problems, tiered practice, extra
+  self-try problems, reference Python solutions and Bangla editorials. Every topic has the full
+  3-easy / 3-medium / 2-hard practice tier plus two or three extra problems.
 - Seven 45-minute checkpoints and module badges, including Foundation Coder, Data Structures
   Builder and the advanced-track badges. `learning_checkpoint_attempts` stores one timed
   attempt per `(user, module)`; completion is derived from accepted, non-assessment
@@ -27,7 +26,7 @@ All notable changes to PAU OJ are documented here. The format follows
   editorial's full Python block against every test. Large fixed tests are generated from
   expressions, so declared maximum bounds are exercised without 100 KB literals.
 - Every module page now has a professional SVG concept-map diagram with accessible title,
-  description and alt text, plus a review pass across all 34 concept notes and 285 problems
+  description and alt text, plus a review pass across all 34 concept notes and 430 problems
   covering Bangla grammar, tense/person, difficulty calibration, diagrams and editorial
   accuracy.
 - A learning release checklist in `docs/learning.md` and `deploy/README.md` covering the

@@ -112,9 +112,9 @@ cout << dp[(1 << n) - 1] << "\\n";
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m5-tree-bitmask-dp-g1\` (ট্রির diameter) আর \`learn-m5-tree-bitmask-dp-g2\` (প্রতিটি subtree-এর যোগফল)। তারপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m5-tree-bitmask-dp-g1","learn-m5-tree-bitmask-dp-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m5-tree-bitmask-dp-e1"],
-    medium: ["learn-m5-tree-bitmask-dp-m1"],
-    hard: ["learn-m5-tree-bitmask-dp-h1"],
+    easy: ["learn-m5-tree-bitmask-dp-e1", "learn-m5-tree-bitmask-dp-e2", "learn-m5-tree-bitmask-dp-e3"],
+    medium: ["learn-m5-tree-bitmask-dp-m1", "learn-m5-tree-bitmask-dp-m2", "learn-m5-tree-bitmask-dp-m3"],
+    hard: ["learn-m5-tree-bitmask-dp-h1", "learn-m5-tree-bitmask-dp-h2"],
   },
   extraProblemSlugs: ["learn-m5-tree-bitmask-dp-x1","learn-m5-tree-bitmask-dp-x2"],
 };

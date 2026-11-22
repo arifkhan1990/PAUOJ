@@ -134,9 +134,9 @@ void pointSet(int node, int l, int r, int idx, long long value) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m6-segment-tree-g1\` (রেঞ্জ মিনিমাম কোয়েরি) আর \`learn-m6-segment-tree-g2\` (পয়েন্ট আপডেট সহ রেঞ্জ যোগফল)। তারপর easy, medium (lazy), hard আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m6-segment-tree-g1","learn-m6-segment-tree-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m6-segment-tree-e1"],
-    medium: ["learn-m6-segment-tree-m1"],
-    hard: ["learn-m6-segment-tree-h1"],
+    easy: ["learn-m6-segment-tree-e1", "learn-m6-segment-tree-e2", "learn-m6-segment-tree-e3"],
+    medium: ["learn-m6-segment-tree-m1", "learn-m6-segment-tree-m2", "learn-m6-segment-tree-m3"],
+    hard: ["learn-m6-segment-tree-h1", "learn-m6-segment-tree-h2"],
   },
   extraProblemSlugs: ["learn-m6-segment-tree-x1","learn-m6-segment-tree-x2"],
 };

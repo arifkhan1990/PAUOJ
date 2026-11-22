@@ -143,9 +143,9 @@ void decompose(int u, int h) {
 প্রথমে ছোট গাছে হাত মেলাও: \`learn-m6-hld-g1\` (স্ট্যাটিক পথের যোগফল) আর \`learn-m6-hld-g2\` (আপডেটসহ পথের সর্বাধিক)। এরপর \`learn-m6-hld-m1\`-এ আসল HLD-তে কাজ করো, আর hard/extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m6-hld-g1","learn-m6-hld-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m6-hld-e1"],
-    medium: ["learn-m6-hld-m1"],
-    hard: ["learn-m6-hld-h1"],
+    easy: ["learn-m6-hld-e1", "learn-m6-hld-e2", "learn-m6-hld-e3"],
+    medium: ["learn-m6-hld-m1", "learn-m6-hld-m2", "learn-m6-hld-m3"],
+    hard: ["learn-m6-hld-h1", "learn-m6-hld-h2"],
   },
   extraProblemSlugs: ["learn-m6-hld-x1","learn-m6-hld-x2"],
 };

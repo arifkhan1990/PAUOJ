@@ -106,9 +106,9 @@ void dfs(int u) {
 গাইডেড সমস্যা \`learn-m4-graph-traversal-g1\` (BFS দিয়ে দূরত্ব) আর \`learn-m4-graph-traversal-g2\` (কম্পোনেন্ট গোনা) দিয়ে শুরু করো, এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-graph-traversal-g1","learn-m4-graph-traversal-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-graph-traversal-e1"],
-    medium: ["learn-m4-graph-traversal-m1"],
-    hard: ["learn-m4-graph-traversal-h1"],
+    easy: ["learn-m4-graph-traversal-e1","learn-m4-graph-traversal-e2","learn-m4-graph-traversal-e3"],
+    medium: ["learn-m4-graph-traversal-m1","learn-m4-graph-traversal-m2","learn-m4-graph-traversal-m3"],
+    hard: ["learn-m4-graph-traversal-h1","learn-m4-graph-traversal-h2"],
   },
   extraProblemSlugs: ["learn-m4-graph-traversal-x1","learn-m4-graph-traversal-x2"],
 };

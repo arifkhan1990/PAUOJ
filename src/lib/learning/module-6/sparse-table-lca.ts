@@ -137,9 +137,9 @@ void build(int root) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m6-sparse-table-lca-g1\` (রেঞ্জ GCD — স্পার্স টেবিলের প্রথম হাতে-কলম) আর \`learn-m6-sparse-table-lca-g2\` (গাছের LCA)। তারপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m6-sparse-table-lca-g1","learn-m6-sparse-table-lca-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m6-sparse-table-lca-e1"],
-    medium: ["learn-m6-sparse-table-lca-m1"],
-    hard: ["learn-m6-sparse-table-lca-h1"],
+    easy: ["learn-m6-sparse-table-lca-e1", "learn-m6-sparse-table-lca-e2", "learn-m6-sparse-table-lca-e3"],
+    medium: ["learn-m6-sparse-table-lca-m1", "learn-m6-sparse-table-lca-m2", "learn-m6-sparse-table-lca-m3"],
+    hard: ["learn-m6-sparse-table-lca-h1", "learn-m6-sparse-table-lca-h2"],
   },
   extraProblemSlugs: ["learn-m6-sparse-table-lca-x1","learn-m6-sparse-table-lca-x2"],
 };

@@ -112,9 +112,9 @@ binary search on answer-এর গতিপথ এভাবে:
 গাইডেড সমস্যা দুটো \`learn-m3-sorting-searching-g1\` (সর্ট করে ক্রম বসানো) আর \`learn-m3-sorting-searching-g2\` (বাইনারি সার্চ দিয়ে প্রথম ঘর খোঁজা) দিয়ে শুরু করো। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m3-sorting-searching-g1","learn-m3-sorting-searching-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m3-sorting-searching-e1"],
-    medium: ["learn-m3-sorting-searching-m1"],
-    hard: ["learn-m3-sorting-searching-h1"],
+    easy: ["learn-m3-sorting-searching-e1","learn-m3-sorting-searching-e2","learn-m3-sorting-searching-e3"],
+    medium: ["learn-m3-sorting-searching-m1","learn-m3-sorting-searching-m2","learn-m3-sorting-searching-m3"],
+    hard: ["learn-m3-sorting-searching-h1","learn-m3-sorting-searching-h2"],
   },
   extraProblemSlugs: ["learn-m3-sorting-searching-x1","learn-m3-sorting-searching-x2"],
 };

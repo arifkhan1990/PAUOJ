@@ -114,9 +114,9 @@ maxHeap.pop();                    // রুট সরিয়ে দিল
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m4-heaps-priority-queues-g1\` (k-তম বড় সংখ্যা বের করা) আর \`learn-m4-heaps-priority-queues-g2\` (সবচেয়ে বেশিবার আসা kটা মান)। তারপর easy, medium, hard আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-heaps-priority-queues-g1","learn-m4-heaps-priority-queues-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-heaps-priority-queues-e1"],
-    medium: ["learn-m4-heaps-priority-queues-m1"],
-    hard: ["learn-m4-heaps-priority-queues-h1"],
+    easy: ["learn-m4-heaps-priority-queues-e1","learn-m4-heaps-priority-queues-e2","learn-m4-heaps-priority-queues-e3"],
+    medium: ["learn-m4-heaps-priority-queues-m1","learn-m4-heaps-priority-queues-m2","learn-m4-heaps-priority-queues-m3"],
+    hard: ["learn-m4-heaps-priority-queues-h1","learn-m4-heaps-priority-queues-h2"],
   },
   extraProblemSlugs: ["learn-m4-heaps-priority-queues-x1","learn-m4-heaps-priority-queues-x2"],
 };

@@ -133,9 +133,9 @@ void insert(const string &s) {
 কনসেপ্ট নোট পড়া শেষ হলে দুটো guided সমস্যা দিয়ে শুরু করো: \`learn-m6-trie-g1\` (prefix ধরে শব্দ গোনা) আর \`learn-m6-trie-g2\` (autocomplete-এ সবচেয়ে ছোট পরামর্শ)। তারপর easy, medium, hard আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m6-trie-g1","learn-m6-trie-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m6-trie-e1"],
-    medium: ["learn-m6-trie-m1"],
-    hard: ["learn-m6-trie-h1"],
+    easy: ["learn-m6-trie-e1", "learn-m6-trie-e2", "learn-m6-trie-e3"],
+    medium: ["learn-m6-trie-m1", "learn-m6-trie-m2", "learn-m6-trie-m3"],
+    hard: ["learn-m6-trie-h1", "learn-m6-trie-h2"],
   },
   extraProblemSlugs: ["learn-m6-trie-x1","learn-m6-trie-x2"],
 };

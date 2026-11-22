@@ -8,40 +8,52 @@ import {
   STRINGS_ARRAYS_PROBLEMS,
 } from "./module-1";
 import { MODULE2_CHECKPOINT_PROBLEMS } from "./module-2/checkpoint-problems";
-import { STACK_QUEUE_PROBLEMS } from "./module-2/stack-queue-problems";
-import { LINKED_LIST_PROBLEMS } from "./module-2/linked-list-problems";
-import { HASHING_PROBLEMS } from "./module-2/hashing-problems";
-import { STL_COLLECTIONS_PROBLEMS } from "./module-2/stl-collections-problems";
+import {
+  HASHING_PROBLEMS,
+  LINKED_LIST_PROBLEMS,
+  STACK_QUEUE_PROBLEMS,
+  STL_COLLECTIONS_PROBLEMS,
+} from "./module-2";
 import { MODULE3_CHECKPOINT_PROBLEMS } from "./module-3/checkpoint-problems";
-import { SORTING_SEARCHING_PROBLEMS } from "./module-3/sorting-searching-problems";
-import { TWO_POINTERS_SLIDING_WINDOW_PROBLEMS } from "./module-3/two-pointers-sliding-window-problems";
-import { PREFIX_SUM_DIFFERENCE_PROBLEMS } from "./module-3/prefix-sum-difference-problems";
-import { RECURSION_BACKTRACKING_PROBLEMS } from "./module-3/recursion-backtracking-problems";
-import { GREEDY_PROBLEMS } from "./module-3/greedy-problems";
+import {
+  GREEDY_PROBLEMS,
+  PREFIX_SUM_DIFFERENCE_PROBLEMS,
+  RECURSION_BACKTRACKING_PROBLEMS,
+  SORTING_SEARCHING_PROBLEMS,
+  TWO_POINTERS_SLIDING_WINDOW_PROBLEMS,
+} from "./module-3";
 import { MODULE4_CHECKPOINT_PROBLEMS } from "./module-4/checkpoint-problems";
-import { BINARY_TREES_BST_PROBLEMS } from "./module-4/binary-trees-bst-problems";
-import { TREE_TRAVERSALS_PROBLEMS } from "./module-4/tree-traversals-problems";
-import { HEAPS_PRIORITY_QUEUES_PROBLEMS } from "./module-4/heaps-priority-queues-problems";
-import { GRAPH_TRAVERSAL_PROBLEMS } from "./module-4/graph-traversal-problems";
-import { SHORTEST_PATHS_PROBLEMS } from "./module-4/shortest-paths-problems";
-import { MST_DSU_PROBLEMS } from "./module-4/mst-dsu-problems";
+import {
+  BINARY_TREES_BST_PROBLEMS,
+  GRAPH_TRAVERSAL_PROBLEMS,
+  HEAPS_PRIORITY_QUEUES_PROBLEMS,
+  MST_DSU_PROBLEMS,
+  SHORTEST_PATHS_PROBLEMS,
+  TREE_TRAVERSALS_PROBLEMS,
+} from "./module-4";
 import { MODULE5_CHECKPOINT_PROBLEMS } from "./module-5/checkpoint-problems";
-import { DP_INTRODUCTION_PROBLEMS } from "./module-5/dp-introduction-problems";
-import { GRID_DP_PROBLEMS } from "./module-5/grid-dp-problems";
-import { KNAPSACK_PROBLEMS } from "./module-5/knapsack-problems";
-import { LCS_LIS_PROBLEMS } from "./module-5/lcs-lis-problems";
-import { TREE_BITMASK_DP_PROBLEMS } from "./module-5/tree-bitmask-dp-problems";
+import {
+  DP_INTRODUCTION_PROBLEMS,
+  GRID_DP_PROBLEMS,
+  KNAPSACK_PROBLEMS,
+  LCS_LIS_PROBLEMS,
+  TREE_BITMASK_DP_PROBLEMS,
+} from "./module-5";
 import { MODULE6_CHECKPOINT_PROBLEMS } from "./module-6/checkpoint-problems";
-import { TRIE_PROBLEMS } from "./module-6/trie-problems";
-import { SEGMENT_TREE_PROBLEMS } from "./module-6/segment-tree-problems";
-import { FENWICK_TREE_PROBLEMS } from "./module-6/fenwick-tree-problems";
-import { SPARSE_TABLE_LCA_PROBLEMS } from "./module-6/sparse-table-lca-problems";
-import { HLD_PROBLEMS } from "./module-6/hld-problems-final";
+import {
+  FENWICK_TREE_PROBLEMS,
+  HLD_PROBLEMS,
+  SEGMENT_TREE_PROBLEMS,
+  SPARSE_TABLE_LCA_PROBLEMS,
+  TRIE_PROBLEMS,
+} from "./module-6";
 import { MODULE7_CHECKPOINT_PROBLEMS } from "./module-7/checkpoint-problems";
-import { STRING_MATCHING_PROBLEMS } from "./module-7/string-matching-problems";
-import { NETWORK_FLOW_PROBLEMS } from "./module-7/network-flow-problems";
-import { ADVANCED_NUMBER_THEORY_PROBLEMS } from "./module-7/advanced-number-theory-problems";
-import { GAME_THEORY_PROBLEMS } from "./module-7/game-theory-problems";
+import {
+  ADVANCED_NUMBER_THEORY_PROBLEMS,
+  GAME_THEORY_PROBLEMS,
+  NETWORK_FLOW_PROBLEMS,
+  STRING_MATCHING_PROBLEMS,
+} from "./module-7";
 
 function curriculumProblems(
   problems: SeedProblem[],

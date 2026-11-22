@@ -10,6 +10,7 @@ export const module4: LearningModuleDefinition = {
   description: "বাইনারি ট্রি, BST, heap, graph traversal, Dijkstra, Bellman-Ford, Floyd-Warshall, MST আর DSU—এক মডিউলে।",
   estimatedHours: 24,
   status: "LIVE",
+  practiceTier: "FULL",
   diagram: {
     src: "/learning/module-4.svg",
     alt: "মডিউল ৪-এর শেখার ধারা: ট্রি ও BST থেকে ট্রাভার্সাল ও হিপ, গ্রাফ BFS/DFS, শর্টেস্ট পাথ, তারপর MST ও DSU।",

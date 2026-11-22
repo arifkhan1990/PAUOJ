@@ -113,9 +113,9 @@ int main() {
 গাইডেড সমস্যা দুটো \`learn-m3-recursion-backtracking-g1\` (রিকার্সনে ডিজিট যোগ) আর \`learn-m3-recursion-backtracking-g2\` (সাবসেটে যোগফল \`K\` গোনা) দিয়ে শুরু করো। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m3-recursion-backtracking-g1","learn-m3-recursion-backtracking-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m3-recursion-backtracking-e1"],
-    medium: ["learn-m3-recursion-backtracking-m1"],
-    hard: ["learn-m3-recursion-backtracking-h1"],
+    easy: ["learn-m3-recursion-backtracking-e1","learn-m3-recursion-backtracking-e2","learn-m3-recursion-backtracking-e3"],
+    medium: ["learn-m3-recursion-backtracking-m1","learn-m3-recursion-backtracking-m2","learn-m3-recursion-backtracking-m3"],
+    hard: ["learn-m3-recursion-backtracking-h1","learn-m3-recursion-backtracking-h2"],
   },
   extraProblemSlugs: ["learn-m3-recursion-backtracking-x1","learn-m3-recursion-backtracking-x2"],
 };

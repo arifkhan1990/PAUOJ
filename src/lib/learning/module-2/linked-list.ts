@@ -131,9 +131,9 @@ Node* reverse(Node* head) {
 গাইডেড সমস্যা দুটো \`learn-m2-linked-list-g1\` (লিস্ট বানিয়ে ছাপা) আর \`learn-m2-linked-list-g2\` (লিস্ট উল্টানো) দিয়ে শুরু করো। এরপর easy, medium আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m2-linked-list-g1","learn-m2-linked-list-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m2-linked-list-e1"],
-    medium: ["learn-m2-linked-list-m1"],
-    hard: ["learn-m2-linked-list-h1"],
+    easy: ["learn-m2-linked-list-e1", "learn-m2-linked-list-e2", "learn-m2-linked-list-e3"],
+    medium: ["learn-m2-linked-list-m1", "learn-m2-linked-list-m2", "learn-m2-linked-list-m3"],
+    hard: ["learn-m2-linked-list-h1", "learn-m2-linked-list-h2"],
   },
   extraProblemSlugs: ["learn-m2-linked-list-x1","learn-m2-linked-list-x2"],
 };

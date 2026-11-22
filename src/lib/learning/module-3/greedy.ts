@@ -106,9 +106,9 @@ int main() {
 গাইডেড সমস্যা দুটো \`learn-m3-greedy-g1\` (সর্বনিম্ন মুদ্রা) আর \`learn-m3-greedy-g2\` (সবচেয়ে তাড়াতাড়ি শেষ হওয়া কাজ) দিয়ে শুরু করো। এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m3-greedy-g1","learn-m3-greedy-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m3-greedy-e1"],
-    medium: ["learn-m3-greedy-m1"],
-    hard: ["learn-m3-greedy-h1"],
+    easy: ["learn-m3-greedy-e1","learn-m3-greedy-e2","learn-m3-greedy-e3"],
+    medium: ["learn-m3-greedy-m1","learn-m3-greedy-m2","learn-m3-greedy-m3"],
+    hard: ["learn-m3-greedy-h1","learn-m3-greedy-h2"],
   },
   extraProblemSlugs: ["learn-m3-greedy-x1","learn-m3-greedy-x2"],
 };
