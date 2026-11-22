@@ -70,3 +70,37 @@ describe("problem slug proxy", () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe("learning route proxy", () => {
+  beforeEach(() => {
+    sql.mockReset();
+  });
+
+  it("returns a real 404 for an unknown track", async () => {
+    const response = await proxy(request("/learn/not-a-track"));
+    expect(response.status).toBe(404);
+  });
+
+  it("returns a real 404 for an unknown topic in a known track", async () => {
+    const response = await proxy(
+      request("/learn/basic-programming-math/not-a-topic"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("passes known tracks and topics through without a database query", async () => {
+    const track = await proxy(request("/learn/basic-programming-math"));
+    const topic = await proxy(
+      request("/learn/basic-programming-math/complexity"),
+    );
+    expect(track.status).toBe(200);
+    expect(topic.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("does not intercept the learning index", async () => {
+    const response = await proxy(request("/learn"));
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+});

@@ -11,6 +11,7 @@ pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm learning:check
 pnpm build
 pnpm build:worker
 

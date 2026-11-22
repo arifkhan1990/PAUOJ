@@ -670,6 +670,32 @@ until the candidate claims. Rows sort by group label (nulls first), then roster 
 participant-only rows, points descending, then `candidate_ref`. Cells are formula-escaped. Audit:
 `assessment.export` with the row count.
 
+## Learning checkpoints
+
+### POST `/learning/checkpoints`
+
+Start or resume the timed checkpoint for a learning module. The user is taken
+from the session; `userId` is never accepted in the body.
+
+```json
+{ "moduleSlug": "basic-programming-math" }
+```
+
+- `200` — `{ "data": { "moduleSlug", "startedAt", "endsAt", "status" } }`.
+  `status` is `ACTIVE` for a fresh or resumed attempt.
+- `401` — anonymous.
+- `403` — cross-origin request.
+- `404` — unknown module.
+- `409` — the module is not live, has no checkpoint, or the checkpoint is
+  already completed.
+- `422` — missing or invalid `moduleSlug`.
+
+A second POST while an attempt is active returns the same window instead of
+resetting the timer. Completion is derived from accepted, non-assessment
+submissions whose `created_at` falls between `startedAt` and `endsAt`; the
+module page evaluates it on read and awards the badge once all checkpoint
+problems are accepted.
+
 ## Ranking
 
 `GET /rank?page=1&pageSize=20`

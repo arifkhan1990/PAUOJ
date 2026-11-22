@@ -23,8 +23,8 @@ import type { HeaderUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", authOnly: true },
   { href: "/problems", label: "Problems" },
+  { href: "/learn", label: "Learn" },
   { href: "/lists", label: "Study plans" },
   { href: "/contests", label: "Contests" },
   { href: "/submissions", label: "Submissions" },
@@ -228,22 +228,20 @@ export function HeaderNav({
         </Link>
 
         <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Main">
-          {navItems
-            .filter((item) => !item.authOnly || Boolean(user))
-            .map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                  isActive(pathname, item.href)
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive(pathname, item.href)
+                  ? "bg-muted text-foreground"
+                  : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
@@ -323,22 +321,20 @@ export function HeaderNav({
       {mobileOpen ? (
         <div className="border-t border-border bg-background px-4 py-4 lg:hidden">
           <nav className="flex flex-col gap-1" aria-label="Mobile">
-            {navItems
-              .filter((item) => !item.authOnly || Boolean(user))
-              .map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "rounded-md px-3 py-2.5 text-sm font-medium",
-                    isActive(pathname, item.href)
-                      ? "bg-muted text-foreground"
-                      : "text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "rounded-md px-3 py-2.5 text-sm font-medium",
+                  isActive(pathname, item.href)
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {item.label}
+              </Link>
+            ))}
           </nav>
           {!user ? (
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">

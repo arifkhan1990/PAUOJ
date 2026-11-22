@@ -15,6 +15,7 @@ import {
 } from "./schema";
 import { SEED_PROBLEMS, type SeededProblem } from "./seed-problems";
 import { ASSESSMENT_PROBLEMS } from "./seed-assessment-problems";
+import { LEARNING_PROBLEMS } from "./learning";
 import { DEMO_PASSWORD, DEMO_USERS, seedDemoData } from "./seed-demo";
 import { seedAssessment } from "./seed-assessments";
 import { attachTeacherDemoContent, seedTeacher } from "./seed-teacher";
@@ -63,7 +64,11 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
   const db = getDb();
   const result = new Map<string, SeededProblem>();
 
-  for (const definition of [...SEED_PROBLEMS, ...ASSESSMENT_PROBLEMS]) {
+  for (const definition of [
+    ...SEED_PROBLEMS,
+    ...ASSESSMENT_PROBLEMS,
+    ...LEARNING_PROBLEMS,
+  ]) {
     const existingRows = await db
       .select({ id: problems.id })
       .from(problems)
@@ -84,6 +89,8 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           outputFormat: definition.outputFormat,
           constraints: definition.constraints,
           editorial: definition.editorial,
+          category: definition.category ?? null,
+          subcategory: definition.subcategory ?? null,
           difficulty: definition.difficulty,
           points: definition.points,
           timeLimitMs: definition.timeLimitMs,
@@ -108,6 +115,8 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           outputFormat: definition.outputFormat,
           constraints: definition.constraints,
           editorial: definition.editorial,
+          category: definition.category ?? null,
+          subcategory: definition.subcategory ?? null,
           difficulty: definition.difficulty,
           points: definition.points,
           timeLimitMs: definition.timeLimitMs,

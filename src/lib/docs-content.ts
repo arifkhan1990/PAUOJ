@@ -121,6 +121,18 @@ export const DOC_SECTIONS: DocSection[] = [
     ],
   },
   {
+    id: "learning-tracks",
+    title: "Learning tracks and checkpoints",
+    category: "practice",
+    icon: Award,
+    body: [
+      "Learn in the main navigation opens a seven-track roadmap from basic programming and math to advanced algorithms. Track 1 is open; each later track unlocks after you earn the previous track's checkpoint badge.",
+      "Each topic starts with a short Bangla concept note, then guided problems, a tiered practice set and extra problems to try without hints. Every problem has hidden tests, a reference solution and a Bangla editorial.",
+      "Finish a topic and start the 45-minute module checkpoint. All three checkpoint problems must be accepted inside the attempt window. Completing them awards the module badge and unlocks the next track; an expired attempt can be restarted, a completed one cannot.",
+      "Your profile keeps a learning badge cabinet with every live track badge, earned or locked, linked back to the track.",
+    ],
+  },
+  {
     id: "ratings-resources",
     title: "Ratings, resources and related problems",
     category: "practice",

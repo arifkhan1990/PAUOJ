@@ -183,6 +183,13 @@
       "when": 1795282150877,
       "tag": "0025_brown_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795294827106,
+      "tag": "0026_funny_risque",
+      "breakpoints": true
     }
   ]
 }

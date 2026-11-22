@@ -7,12 +7,14 @@ const FALLBACK_IMAGE_ALT = "Image";
 export function Markdown({
   children,
   className,
+  lang,
 }: {
   children: string;
   className?: string;
+  lang?: string;
 }) {
   return (
-    <div className={cn("prose-pauoj", className)}>
+    <div className={cn("prose-pauoj", className)} lang={lang}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{

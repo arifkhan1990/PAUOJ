@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSql } from "@/server/db";
 import { SESSION_COOKIE } from "@/lib/auth-cookie";
+import { isLearningRoute } from "@/lib/learning/route-slugs";
 
 /**
  * `notFound()` inside the page runs after the `(app)/loading.tsx` boundary has
@@ -10,8 +11,34 @@ import { SESSION_COOKIE } from "@/lib/auth-cookie";
  *
  * Anonymous `/contribute` requests still go to the page's sign-in gate; a
  * signed-in request for an unknown slug gets the 404 here.
+ *
+ * Learning tracks use a static route index so `/learn/<unknown>` is a real
+ * 404 before the page's streaming boundary, without importing the curriculum
+ * content into the proxy.
  */
 export async function proxy(request: NextRequest) {
+  const learningMatch = /^\/learn\/([^/]+)(?:\/([^/]+))?\/?$/.exec(
+    request.nextUrl.pathname,
+  );
+  if (learningMatch) {
+    let moduleSlug: string;
+    let topicSlug: string | undefined;
+    try {
+      moduleSlug = decodeURIComponent(learningMatch[1] ?? "");
+      topicSlug = learningMatch[2]
+        ? decodeURIComponent(learningMatch[2])
+        : undefined;
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
+    if (!isLearningRoute(moduleSlug, topicSlug)) {
+      return NextResponse.rewrite(new URL("/_not-found", request.url), {
+        status: 404,
+      });
+    }
+    return NextResponse.next();
+  }
+
   const match = /^\/problems\/([^/]+)(\/contribute)?\/?$/.exec(
     request.nextUrl.pathname,
   );
@@ -44,5 +71,10 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/problems/:slug", "/problems/:slug/contribute"],
+  matcher: [
+    "/problems/:slug",
+    "/problems/:slug/contribute",
+    "/learn/:module",
+    "/learn/:module/:topic",
+  ],
 };

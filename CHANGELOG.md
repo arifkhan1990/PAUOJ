@@ -3,6 +3,30 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.8.0] - 2026-11-22
+
+### Added
+- A complete seven-track learning curriculum at `/learn`: 34 topics, **284 original problems**
+  with **1,815 tests**, Bangla concept notes, guided problems, tiered practice, extra
+  self-try problems, reference Python solutions and Bangla editorials. Module 1 has the full
+  3-easy / 3-medium / 2-hard practice tier; tracks 2–7 use the compact 1/1/1 tier plus two
+  extra problems per topic.
+- Seven 45-minute checkpoints and module badges, including Foundation Coder, Data Structures
+  Builder and the advanced-track badges. `learning_checkpoint_attempts` stores one timed
+  attempt per `(user, module)`; completion is derived from accepted, non-assessment
+  submissions inside the window and persisted with an idempotent conditional update.
+- Sequential track unlocks: track 1 is open, and track N requires the previous track's
+  checkpoint badge. The API enforces the same rule as the UI, and locked module/topic pages
+  show the requirement.
+- A learning-badge cabinet on every profile, showing each live track badge as earned or
+  locked with the earned date and a link back to the track.
+- `pnpm learning:check` executes every reference solution against every test, validates tier
+  counts, slugs, Bangla statements and editorial code blocks, and runs in `verify.sh` and CI.
+  Large fixed tests are generated from expressions, so declared maximum bounds are exercised
+  without 100 KB literals.
+- A learning release checklist in `docs/learning.md` and `deploy/README.md` covering the
+  additive checkpoint migration, idempotent curriculum seed, judge rebuild and smoke checks.
+
 ## [0.7.1] - 2026-11-22
 
 ### Fixed

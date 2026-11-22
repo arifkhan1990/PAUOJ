@@ -5,6 +5,7 @@ import { UserRound } from "lucide-react";
 import { ActivityHeatmap } from "@/components/profile/activity-heatmap";
 import { AchievementBadges } from "@/components/profile/achievement-badges";
 import { LanguageAnalytics } from "@/components/profile/language-analytics";
+import { LearningBadges } from "@/components/profile/learning-badges";
 import { ProfileEditorials } from "@/components/profile/profile-editorials";
 import { ProfileHero } from "@/components/profile/profile-hero";
 import { ProfileProblems } from "@/components/profile/profile-problems";
@@ -86,6 +87,10 @@ export default async function ProfilePage({
           solvedCount={profile.solvedCount}
         />
         <AchievementBadges achievements={profile.achievements} />
+      </div>
+
+      <div className="animate-enter mt-5" style={{ animationDelay: "180ms" }}>
+        <LearningBadges badges={profile.learningBadges} />
       </div>
 
       <div

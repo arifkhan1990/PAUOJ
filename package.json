@@ -1,6 +1,6 @@
 {
   "name": "pauoj",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "private": true,
   "description": "PrimeAsia University Online Judge",
   "packageManager": "pnpm@10.33.2",
@@ -15,6 +15,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "learning:check": "tsx scripts/validate-learning.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:seed": "tsx src/server/db/seed.ts",
