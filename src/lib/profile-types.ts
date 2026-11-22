@@ -6,6 +6,7 @@ import type {
   SubmissionListItem,
   UserRole,
 } from "./types";
+import type { LearningBadge } from "./learning/types";
 import type { Verdict } from "./verdicts";
 
 export type ProfileLanguageStat = {
@@ -112,6 +113,7 @@ export type ProfileStats = {
     approvedAt: string;
   }[];
   achievements: Achievement[];
+  learningBadges: LearningBadge[];
   difficultySolved: Record<Difficulty, number>;
   difficultyTotals: Record<Difficulty, number>;
   heatmap: HeatmapDay[];

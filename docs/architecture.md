@@ -42,6 +42,7 @@ problems 1─* problem_ratings *─1 users
 problems 1─* problem_review_approvals *─1 users
 problems 1─* problem_review_holds *─1 users
 study_lists 1─* study_list_items *─1 problems
+users 1─* learning_checkpoint_attempts (module_slug is static curriculum data)
 contests 1─* contest_problems *─1 problems
 contests 1─* contest_registrations *─1 users
 contests 1─* contest_clarifications *─1 users
@@ -274,6 +275,29 @@ from accepted submissions rather than stored separately. The daily challenge is
 deterministic per UTC date (an MD5 ordering over eligible public problems), and
 the streak reuses the accepted-submission activity heatmap. Category,
 subcategory and company tags live on `problems`; companies use a GIN index.
+
+## Learning tracks
+
+The learning curriculum is static TypeScript metadata in `src/lib/learning/`
+(tracks, topics, concept notes and ordered problem slugs) layered on the normal
+problem tables. Seeded learning problems use `category = "Learning track"` and a
+module/topic `subcategory`, so they participate in the existing filters, ratings,
+discussions and editorial tabs. Progress is derived on read from accepted,
+non-assessment submissions; assessment attempts never count.
+
+A timed checkpoint stores one `learning_checkpoint_attempts` row per
+`(user, module)`. Starting is authenticated and same-origin protected. The
+service checks accepted submissions whose `created_at` falls inside the attempt
+window and marks `completed_at` with a conditional update, so completion is
+idempotent and safe to evaluate on page read. An expired attempt can be
+restarted; a completed one cannot. The badge is derived from `completed_at` and
+is not a separate achievements table.
+
+Tracks unlock sequentially: track 1 is open, and track N requires the previous
+track's completed checkpoint. The module summary carries `locked` and
+`unlockHint`; the checkpoint start service enforces the same rule so the API
+cannot bypass the UI. Locked module/topic pages render a gate, and profiles
+show every live track badge as earned or locked.
 
 ## Authentication and authorization
 

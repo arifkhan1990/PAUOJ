@@ -32,6 +32,7 @@ owns what, who reads it, and where a change belongs.
 | --- | --- | --- | --- |
 | [README.md](../README.md) | Product pitch, features (assessment join modes, invites, results CSV, problem publication review), stack, quick start, local dev, judge summary, languages, env vars, API overview, structure, testing, limitations | Everyone | A user-visible feature, command, env var or limitation changes |
 | [architecture.md](architecture.md) | Runtime components, submission flow, DB model, problem publication review, auth, contests, assessment invites and join modes, dashboards, profile, judge sandbox, recovery | Engineers | Behavior, data model or design decisions change |
+| [learning.md](learning.md) | Seven-track learning curriculum, four-step module flow, checkpoint rules, content paths and authoring/validation workflow | Engineers, content authors | A track, module format, checkpoint rule or content path changes |
 | [api.md](api.md) | Full `/api/v1` reference: auth, problems, problem publication review, submissions, runs, contests, assessments (join, invite claim, roster import, results CSV), ranking, admin, notifications, health | API consumers, frontend/backend | Any endpoint, payload, auth rule or error code changes |
 | [deployment.md](deployment.md) | Target topology, server setup, reverse proxy/TLS, transactional email sender, backups, monitoring, security checklist, updates, troubleshooting | Operators | Infrastructure, ports, backup, email or recovery steps change |
 | [deploy/README.md](../deploy/README.md) | Production runbook: server requirements, first deploy, backups, monitoring, updates/rollback, CI/CD, security checklist | Operators | Deploy scripts, Compose prod files or CI/CD change |
@@ -49,6 +50,7 @@ owns what, who reads it, and where a change belongs.
 | What are the contest and assessment access rules? | [architecture.md](architecture.md#contest-access-rules) |
 | How do assessment invite links, join modes and claim assurance work? | [architecture.md](architecture.md#assessment-invites-and-join-modes) |
 | How does a new problem get approved and published? | [architecture.md](architecture.md#problem-publication-review) |
+| How do learning tracks, concept notes and checkpoints work? | [learning.md](learning.md) |
 | What does `POST /problem-reviews/:problemId` accept? | [api.md](api.md#problem-publication-review) |
 | What does `POST /assessments/:slug/join` accept and which errors can it return? | [api.md](api.md#coding-assessments) |
 | Which env var do I set for SMTP, judge or ports? | [README.md](../README.md#environment-variables) |

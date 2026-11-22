@@ -20,6 +20,7 @@ import {
 } from "./activity";
 import { getUserRank } from "./rank";
 import { getProfileEditorials } from "./profile-editorials";
+import { getLearningBadges } from "./learning-access";
 import { practiceSubmissionCondition } from "./submission-filters";
 import { listSubmissions } from "./submissions";
 
@@ -251,7 +252,12 @@ export async function getProfile(
     .where(eq(contestRatingChanges.userId, user.id))
     .orderBy(asc(contestRatingChanges.createdAt));
 
-  const [problemSettingRow, contestCreateRow, editorialStats] = await Promise.all([
+  const [
+    problemSettingRow,
+    contestCreateRow,
+    editorialStats,
+    learningBadges,
+  ] = await Promise.all([
     db
       .select({ value: count() })
       .from(problems)
@@ -261,6 +267,7 @@ export async function getProfile(
       .from(contests)
       .where(eq(contests.createdBy, user.id)),
     getProfileEditorials(user.id),
+    getLearningBadges(user.id),
   ]);
 
   const currentStreak = computeCurrentStreak(heatmap);
@@ -372,6 +379,7 @@ export async function getProfile(
     contestCreateCount: Number(contestCreateRow?.[0]?.value ?? 0),
     approvedEditorialCount: editorialStats.count,
     approvedEditorials: editorialStats.editorials,
+    learningBadges,
     achievements: buildAchievements({
       solvedCount: solvedRows.length,
       submissionCount,

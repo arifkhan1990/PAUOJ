@@ -28,6 +28,8 @@ export type SeedProblem = {
   tags: string[];
   tests: SeedTest[];
   referencePython: string;
+  category?: string;
+  subcategory?: string;
 };
 
 export const SEED_PROBLEMS: SeedProblem[] = [

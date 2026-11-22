@@ -229,6 +229,25 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
   up -d --force-recreate app worker caddy
 ```
 
+### Learning content release
+
+The learning curriculum is data, not a schema-only feature. After the app
+migration has run, seed the curriculum once (the seed is idempotent and updates
+existing problems by slug):
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  --profile seed run --rm seed
+```
+
+If the judge harness or language toolchain changed, rebuild the judge image as
+shown above. Smoke-check `/learn`, one live module, one live topic and a
+checkpoint start with a non-admin account. Confirm an unknown track returns
+`404`, then check that a completed Module 1 checkpoint unlocks Module 2.
+
+Migration `0026` is additive; a rollback to the previous app image keeps the new
+table and seeded problems harmless.
+
 ## 7. CI/CD
 
 `.github/workflows/deploy.yml` is a manual `workflow_dispatch` job that runs on a

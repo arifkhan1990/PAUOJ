@@ -8,6 +8,7 @@ export * from "./contests";
 export * from "./contest-problem-approvals";
 export * from "./assessments";
 export * from "./submissions";
+export * from "./learning";
 export * from "./discussions";
 export * from "./notifications";
 export * from "./audit";

@@ -2,7 +2,7 @@
 
 ![PAU OJ — PrimeAsia University Online Judge](public/brand/pauoj-logo.png)
 
-**Version 0.7.1.** A full-stack online judge for PrimeAsia University: browse problems, write code in
+**Version 0.8.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
 the browser, get sandboxed verdicts, compete in ICPC-style contests, run timed assessments and track
 progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 
@@ -40,6 +40,9 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Reviewer leaderboard** — a public `/reviewers` board ranks reviewers by completed
   contribution decisions, with 7/30/all-time filters, approval rate, turnaround time, a top-3
   podium and a mobile-safe table.
+- **Learning tracks** — a seven-track curriculum at `/learn` with Bangla concept notes, guided
+  problems, tiered practice, extra self-try problems and timed checkpoint badges. Tracks unlock
+  sequentially, and earned/locked badges appear on the profile.
 - **Study plans and daily practice** — curated lists with progress, a deterministic daily challenge
   with a streak, and category/subcategory/company filters.
 - **Discussions** — one-level threads with votes, moderation and auto-lock during live contests or
@@ -261,6 +264,7 @@ All app routes are under `/api/v1`. Success: `{ "data": ..., "meta": { "page": 1
 | GET | `/admin/assessments/:id/results.csv` | admin/teacher | Roster-complete results export |
 | POST/PUT | `/admin/problems`, `/admin/contests`, `/admin/assessments` | admin/teacher | Content management |
 | GET/POST | `/problem-reviews/:problemId` | author/staff | Publication review workspace and actions |
+| POST | `/learning/checkpoints` | user | Start or resume a timed module checkpoint |
 | GET | `/rank`, `/health` | public | Ranking and health |
 
 Full reference: [docs/api.md](docs/api.md) (contributions, discussions, admin actions, notifications,
@@ -288,6 +292,7 @@ PAU-OJ-Design/      Original static design reference (separate repo, not built)
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm learning:check
 pnpm build
 pnpm build:worker
 curl http://localhost:3000/health
@@ -315,6 +320,8 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
   domain (SPF/DKIM/DMARC) at deployment. Link-only invites work without SMTP.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
 - No team contests.
+- All seven learning tracks ship. Module 1 has the full 3-easy / 3-medium / 2-hard practice
+  tier; tracks 2–7 use the compact 1/1/1 tier plus two extra problems per topic.
 - Problem publication review is staff-only: only teachers and administrators can approve, hold,
   resolve or reopen, and coders only see the status of problems they authored. The public problem
   list shows published problems only — contest-only problems and private drafts never appear there.
