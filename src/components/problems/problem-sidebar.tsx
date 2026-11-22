@@ -1,11 +1,5 @@
 import Link from "next/link";
-import {
-  Clock3,
-  HardDrive,
-  ListChecks,
-  Sparkles,
-  Target,
-} from "lucide-react";
+import { ListChecks, Target } from "lucide-react";
 import { ProblemRatingCard } from "@/features/problems/problem-rating-card";
 import { RelatedProblems } from "@/components/problems/related-problems";
 import { UserAvatar } from "@/components/shared/user-avatar";
@@ -105,30 +99,6 @@ export function ProblemSidebar({
           </Link>
         </Card>
       ) : null}
-
-      <Card className="p-5">
-        <h2 className="text-sm font-semibold">Limits</h2>
-        <dl className="mt-3 space-y-2.5 text-sm">
-          <div className="flex items-center justify-between">
-            <dt className="flex items-center gap-2 text-muted-foreground">
-              <Clock3 className="size-4" /> Time
-            </dt>
-            <dd className="font-mono text-xs">{problem.timeLimitMs} ms</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="flex items-center gap-2 text-muted-foreground">
-              <HardDrive className="size-4" /> Memory
-            </dt>
-            <dd className="font-mono text-xs">{problem.memoryLimitMb} MB</dd>
-          </div>
-          <div className="flex items-center justify-between">
-            <dt className="flex items-center gap-2 text-muted-foreground">
-              <Sparkles className="size-4" /> Points
-            </dt>
-            <dd className="font-mono text-xs">{problem.points}</dd>
-          </div>
-        </dl>
-      </Card>
     </aside>
   );
 }
