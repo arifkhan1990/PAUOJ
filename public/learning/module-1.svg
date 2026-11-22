@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-labelledby="m1-title m1-title-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif">
+  <title id="m1-title">Module 1: Basic Programming &amp; Math concept map</title>
+  <desc id="m1-title-desc">Concept flow of the first track: reading input and writing loops builds a first mental model of time and space complexity, then basic math, bit manipulation, and strings with one- and two-dimensional arrays.</desc>
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#cbd5e1" opacity="0.45"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" refX="10" refY="6" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="320" fill="#f8fafc"/>
+  <rect width="1200" height="320" fill="url(#dots)"/>
+  <rect x="48" y="36" width="118" height="36" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="107" y="60" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309" letter-spacing="2">MODULE 1</text>
+  <text x="186" y="60" font-size="26" font-weight="700" fill="#0f172a">Basic Programming &amp; Math</text>
+  <rect x="47" y="128" width="186" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="63" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="80" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">01</text>
+  <text x="140" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">I/O &amp; Loops</text>
+  <text x="140" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">read · branch</text>
+  <line x1="241" y1="206" x2="264" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="277" y="128" width="186" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="293" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="310" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">02</text>
+  <text x="370" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Complexity</text>
+  <text x="370" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">Big-O thinking</text>
+  <line x1="471" y1="206" x2="494" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="507" y="128" width="186" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="523" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="540" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">03</text>
+  <text x="600" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Math</text>
+  <text x="600" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">GCD · primes</text>
+  <line x1="701" y1="206" x2="724" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="737" y="128" width="186" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="753" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="770" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">04</text>
+  <text x="830" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Bits</text>
+  <text x="830" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">shifts · masks</text>
+  <line x1="931" y1="206" x2="954" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="967" y="128" width="186" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="983" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="1000" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">05</text>
+  <text x="1060" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Arrays</text>
+  <text x="1060" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">strings, grids</text>
+</svg>

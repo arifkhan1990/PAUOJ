@@ -22,18 +22,16 @@ Every live module follows the same four-step loop:
 | 3. Tiered practice | Easy, medium and hard problems | Build real control of the topic |
 | 4. Checkpoint | A timed three-problem set and a badge | Prove readiness and unlock the reward |
 
-Each topic also carries two extra "try it yourself" problems after the practice
+Each topic also carries two or three extra "try it yourself" problems after the practice
 set. Progress is derived from accepted, non-assessment submissions, so nothing
 extra is stored per learner.
 
 ## Current release
 
 **All seven tracks ship in this release.** The curriculum contains 34 topics,
-**284 original problems** and **1,815 tests**. Module 1 has the full practice
-tier: three easy, three medium and two hard problems per topic, plus two extra
-problems. Tracks 2–7 use a compact starter tier: one easy, one medium and one
-hard practice problem per topic, plus two extra problems. Every track ends with
-a mixed three-problem checkpoint and a module badge.
+**430 original problems** and **2,750 tests**. Every topic has the full practice
+tier: three easy, three medium and two hard problems, plus two or three extra
+problems. Every track ends with a mixed three-problem checkpoint and a module badge.
 
 Module 1 contains five topics:
 
@@ -44,8 +42,14 @@ Module 1 contains five topics:
 - Strings & 1D/2D Arrays
 
 Every topic has one Bangla concept note, guided problems, a tiered practice set,
-two extra problems and a mixed three-problem checkpoint. Every problem has
+two or three extra problems and a mixed three-problem checkpoint. Every problem has
 hidden tests, a reference Python solution and a Bangla editorial.
+
+Difficulty is calibrated within the track's prerequisite. In an advanced track,
+a direct application of the newly taught structure is Easy, one additional
+combined invariant is Medium, and multiple structures or phases is Hard. This is
+why a direct segment-tree query or a small direct HLD path can be Easy/Medium in
+Module 6 while remaining advanced material overall.
 
 ## Checkpoint rules and progression
 
@@ -100,10 +104,50 @@ problem counts per tier, verifies that every curriculum slug resolves, and
 requires Bangla statements plus a fenced solution in the editorial. CI runs it
 after the unit tests.
 
+`pnpm learning:audit` is the stricter content gate. It checks every concept
+note's required sections, table and diagram; every problem's editorial sections
+and fenced Python block; the tier/difficulty/points mapping; names, person and
+honorific forms; and it runs the editorial's full Python solution against every
+test. The release checklist runs both `learning:check` and `learning:audit`.
+
+## Lesson reactions and discussion
+
+Every live lesson has a like/dislike reaction and a content-based discussion:
+
+- `lesson_reactions` stores one reaction per user and lesson (`1` like,
+  `-1` dislike); clicking the active reaction clears it.
+- `lesson_comments` is a one-level thread per lesson. Soft deletes hide a
+  top-level comment together with its replies; `lesson_comment_votes` stores
+  one vote per user and comment, and authors cannot vote on their own comment.
+- The lesson page server-renders the reaction summary and the first page of
+  comments. The client then uses
+  `/api/v1/learning/topics/<module>/<topic>/reaction` and
+  `/api/v1/learning/topics/<module>/<topic>/comments` for updates. Posting
+  requires a signed-in session (`401` otherwise); deleting another user's
+  comment is `403`; an unknown track or topic is `404`.
+- Signed-in learners can report another user's comment (one report per user
+  and comment). Reports are audit-logged and admins get an in-app `SYSTEM`
+  notification (and an email when their address is verified) pointing at the
+  lesson discussion.
+- Admins resolve reports from `/admin/lesson-reports` (filters: open, resolved,
+  all; resolve is one-way and stamped with the admin and time).
+- If the social tables are missing (a deploy skipped migrations), the API
+  answers `503` with a clear message and the lesson page renders a neutral
+  "Discussion is being set up" panel instead of failing.
+- Reaction counts are cached in Redis for 30 seconds and invalidated on every
+  reaction write; a cache miss falls back to one aggregate query.
+- Reads are bounded: the reaction summary is one aggregate query, the first
+  comment page fetches top-level rows with a window count and replies in a
+  second indexed query.
+- The lesson header shows solved progress as a donut instead of a linear bar.
+
 ## Release checklist
 
-1. `pnpm db:migrate` — applies the additive checkpoint migration.
-2. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
+1. `pnpm db:migrate && pnpm db:check` — applies every additive migration and
+   verifies the database matches the shipped drizzle journal.
+2. `pnpm learning:check && pnpm learning:audit` — validates every solution,
+   editorial and difficulty label.
+3. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
    seed is idempotent; run it twice on staging before a release.
 3. Rebuild the judge image after a harness change (`pnpm judge:build`), then
    deploy the web and worker images.

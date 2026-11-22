@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TagFilterCloud } from "@/components/problems/tag-filter-cloud";
 import { buttonVariants } from "@/components/ui/button";
 import { DIFFICULTIES, difficultyMeta } from "@/lib/difficulty";
 import { buildQueryString, type SearchParams } from "@/lib/pagination";
@@ -166,37 +167,17 @@ export function ProblemFilters({
         </button>
       </form>
 
-      {tags.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="mr-1 text-xs font-medium text-muted-foreground">
-            Tags
-          </span>
-          {tags.map((item) => (
-            <Link
-              key={item.slug}
-              href={filterHref(searchParams, {
-                tag: tag === item.slug ? undefined : item.slug,
-              })}
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                tag === item.slug
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-primary",
-              )}
-            >
-              {item.name}
-            </Link>
-          ))}
-          {hasFilters ? (
-            <Link
-              href="/problems"
-              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs text-muted-foreground hover:text-destructive"
-            >
-              <X className="size-3" /> Clear
-            </Link>
-          ) : null}
-        </div>
-      ) : null}
+      <TagFilterCloud
+        tags={tags.map((item) => ({
+          name: item.name,
+          slug: item.slug,
+          href: filterHref(searchParams, {
+            tag: tag === item.slug ? undefined : item.slug,
+          }),
+          active: tag === item.slug,
+        }))}
+        clearHref={hasFilters ? "/problems" : null}
+      />
     </div>
   );
 }

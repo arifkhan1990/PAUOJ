@@ -10,6 +10,11 @@ export const module5: LearningModuleDefinition = {
   description: "ফিবোনাচি থেকে knapsack, LCS, LIS, tree DP আর bitmask DP—DP-এর প্যাটার্নগুলো ধাপে ধাপে।",
   estimatedHours: 26,
   status: "LIVE",
+  practiceTier: "FULL",
+  diagram: {
+    src: "/learning/module-5.svg",
+    alt: "মডিউল ৫-এর শেখার ধারা: স্টেট ও ট্রানজিশন, মেমোাইজেশন ও ট্যাবুলেশন, তারপর knapsack, LCS/LIS এবং ট্রি/বিটমাস্ক DP।",
+  },
   topics: module5Topics,
   checkpoint: module5Checkpoint,
 };

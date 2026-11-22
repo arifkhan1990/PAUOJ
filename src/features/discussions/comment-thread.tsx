@@ -7,6 +7,7 @@ import {
   ArrowBigDown,
   ArrowBigUp,
   CornerDownRight,
+  Flag,
   Loader2,
   Trash2,
 } from "lucide-react";
@@ -31,18 +32,30 @@ export function CommentThread({
   comment,
   viewer,
   depth = 0,
+  commentsBase,
+  onChanged,
+  reportBase,
 }: {
   slug: string;
   comment: ProblemComment;
   viewer: ViewerView;
   depth?: number;
+  /** Overrides the default problem comment endpoint (used by lesson discussions). */
+  commentsBase?: string;
+  /** Runs after this thread changes the server state (used to refresh custom lists). */
+  onChanged?: () => void;
+  /** Enables reporting when set to the comment collection endpoint. */
+  reportBase?: string;
 }) {
   const router = useRouter();
+  const base = commentsBase ?? `/api/v1/problems/${slug}/comments`;
   const [score, setScore] = useState(comment.score);
   const [myVote, setMyVote] = useState<CommentVote>(comment.myVote);
   const [voting, setVoting] = useState(false);
   const [replying, setReplying] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reporting, setReporting] = useState(false);
+  const [reported, setReported] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const vote = async (value: Exclude<CommentVote, 0>) => {
@@ -52,7 +65,7 @@ export function CommentThread({
     setError(null);
     try {
       const result = await apiPost<{ score: number; myVote: CommentVote }>(
-        `/api/v1/problems/${slug}/comments/${comment.id}/vote`,
+        `${base}/${comment.id}/vote`,
         { value: next },
       );
       setScore(result.score);
@@ -78,7 +91,8 @@ export function CommentThread({
     setDeleting(true);
     setError(null);
     try {
-      await apiDelete(`/api/v1/problems/${slug}/comments/${comment.id}`);
+      await apiDelete(`${base}/${comment.id}`);
+      onChanged?.();
       router.refresh();
     } catch (requestError) {
       setError(
@@ -87,6 +101,34 @@ export function CommentThread({
           : "Could not delete this comment.",
       );
       setDeleting(false);
+    }
+  };
+
+  const report = async () => {
+    if (!reportBase || reporting) return;
+    const reason = window.prompt(
+      "Why are you reporting this comment? (5-300 characters)",
+    );
+    if (!reason) return;
+    if (reason.trim().length < 5) {
+      setError("Add a short reason (at least 5 characters).");
+      return;
+    }
+    setReporting(true);
+    setError(null);
+    try {
+      await apiPost(`${reportBase}/${comment.id}/report`, {
+        reason: reason.trim(),
+      });
+      setReported(true);
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiClientError
+          ? requestError.message
+          : "Could not report this comment.",
+      );
+    } finally {
+      setReporting(false);
     }
   };
 
@@ -188,6 +230,29 @@ export function CommentThread({
                 Reply
               </Button>
             ) : null}
+            {viewer && reportBase && viewer.id !== comment.author.id ? (
+              reported ? (
+                <span className="px-2 text-xs text-muted-foreground">
+                  Reported
+                </span>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-amber-700 dark:hover:text-amber-300"
+                  onClick={() => void report()}
+                  disabled={reporting}
+                >
+                  {reporting ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <Flag className="size-3.5" />
+                  )}
+                  Report
+                </Button>
+              )
+            ) : null}
             {viewer && comment.canDelete ? (
               <Button
                 type="button"
@@ -216,6 +281,7 @@ export function CommentThread({
             <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3">
               <CommentComposer
                 slug={slug}
+                commentsBase={base}
                 parentId={comment.id}
                 viewer={viewer}
                 compact
@@ -232,9 +298,12 @@ export function CommentThread({
                 <CommentThread
                   key={reply.id}
                   slug={slug}
+                  commentsBase={base}
                   comment={reply}
                   viewer={viewer}
                   depth={depth + 1}
+                  onChanged={onChanged}
+                  reportBase={reportBase}
                 />
               ))}
             </div>

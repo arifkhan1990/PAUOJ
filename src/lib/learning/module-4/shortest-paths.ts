@@ -19,12 +19,12 @@ export const shortestPathsTopic: LearningTopicDefinition = {
 
 | অ্যালগরিদম | ওজন | সময় | কোথায় কাজে |
 | --- | --- | --- | --- |
-| BFS | সব ১ | \`O(n + m)\` | অসমতল পথের দূরত্ব |
+| BFS | সব ১ (ওজনহীন) | \`O(n + m)\` | ওজনহীন গ্রাফের দূরত্ব |
 | Dijkstra | ঋণাত্মক নয় | \`O((n + m) log n)\` | এক সোর্স থেকে সব |
 | Bellman-Ford | ঋণাত্মকও হতে পারে | \`O(n * m)\` | নেগেটিভ সাইকেল খোঁজা |
 | Floyd-Warshall | ঋণাত্মকও হতে পারে | \`O(n^3)\` | সব জোড়া, ছোট \`n\` |
 
-ওজন শুধু ০ বা ১ হলে deque দিয়ে আরও দ্রুত করা যায়: \`dist[u]\`-এ পৌঁছে ০ ওজনের edge সামনে, ১ ওজনের edge পেছনে ঢোকালেই হয় (একে ০-১ BFS)। আর একটা ছোট্ট ট্রিক: "সবচেয়ে একটা edge ফ্রি করা যায়" সমস্যায় প্রতিটি নোডকে দুই অবস্থায় (\`used = 0\` / \`used = 1\`) ধরে Dijkstra চালালেই হয় — অবস্থা বদলানোর সময় ওজন ০।
+ওজন শুধু ০ বা ১ হলে deque দিয়ে আরও দ্রুত করা যায়: \`dist[u]\`-এ পৌঁছে ০ ওজনের edge সামনে, ১ ওজনের edge পেছনে ঢোকালেই হয় (একে ০-১ BFS)। আর একটা ছোট্ট ট্রিক: "একটা edge ফ্রি করা যায়" ধরনের সমস্যায় প্রতিটি নোডকে দুই অবস্থায় (\`used = 0\` / \`used = 1\`) ধরে Dijkstra চালালেই হয় — অবস্থা বদলানোর সময় ওজন ০।
 
 ## কোডে দেখি
 
@@ -80,7 +80,7 @@ for _ in range(n - 1):
 ## সাধারণ ভুল
 
 - ঋণাত্মক ওজনে Dijkstra চালানো — উদাহরণ: \`1 -> 2\` ওজন ৫, \`1 -> 3 -> 2\` ওজন \`1 + (-3)\`। ভুল ফল আসবে, টেস্টে ধরাও পড়ে।
-- heap- থেকে বের হওয়া এন্ট্রি যাচাই না করা (\`if d != dist[u]: continue\`) — একই নোড বারবার প্রসেস করে সময় নষ্ট হয়, বড় ইনপুটে TLE আসে।
+- heap থেকে বের হওয়া এন্ট্রি যাচাই না করা (\`if d != dist[u]: continue\`) — একই নোড বারবার প্রসেস করে সময় নষ্ট হয়, বড় ইনপুটে TLE আসে।
 - \`INF\` খুব ছোট রাখা (যেমন \`10^9\`) — ওজন \`10^9\` আর পথে অনেক edge থাকলে \`INF\` যোগ করেই ছোট হয়ে যায়। \`10^{18}\` বা তার বেশি রাখো।
 - ডিরেক্টেড কি আনডিরেক্টেড — ভুল করে এক দিকে edge যোগ করলে দূরত্ব অসম হয়। ডিরেক্টেড প্রশ্নে \`adj[v].append((u, w))\` লেখা উচিত নয়।
 
@@ -98,9 +98,9 @@ for _ in range(n - 1):
 গাইডেড সমস্যা \`learn-m4-shortest-paths-g1\` (Dijkstra দিয়ে সব দূরত্ব) আর \`learn-m4-shortest-paths-g2\` (ঋণাত্মক ওজনে Bellman-Ford) দিয়ে শুরু করো, এরপর practice আর extra সমস্যাগুলো নিজে চেষ্টা করো।`,
   guidedProblemSlugs: ["learn-m4-shortest-paths-g1","learn-m4-shortest-paths-g2"],
   practiceProblemSlugs: {
-    easy: ["learn-m4-shortest-paths-e1"],
-    medium: ["learn-m4-shortest-paths-m1"],
-    hard: ["learn-m4-shortest-paths-h1"],
+    easy: ["learn-m4-shortest-paths-e1","learn-m4-shortest-paths-e2","learn-m4-shortest-paths-e3"],
+    medium: ["learn-m4-shortest-paths-m1","learn-m4-shortest-paths-m2","learn-m4-shortest-paths-m3"],
+    hard: ["learn-m4-shortest-paths-h1","learn-m4-shortest-paths-h2"],
   },
   extraProblemSlugs: ["learn-m4-shortest-paths-x1","learn-m4-shortest-paths-x2"],
 };

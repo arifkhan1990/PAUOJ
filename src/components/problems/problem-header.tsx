@@ -2,8 +2,11 @@ import Link from "next/link";
 import {
   BookMarked,
   BookOpen,
+  Clock3,
+  HardDrive,
   ListChecks,
   MessageSquare,
+  Sparkles,
   Trophy,
   type LucideIcon,
 } from "lucide-react";
@@ -78,9 +81,6 @@ export function ProblemHeader({
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <DifficultyBadge difficulty={problem.difficulty} />
-        <span className="rounded border border-border bg-muted/60 px-2 py-0.5 font-mono text-xs">
-          {problem.points} points
-        </span>
         <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
           <SolveStatus
             solved={problem.solvedByMe}
@@ -107,6 +107,28 @@ export function ProblemHeader({
       <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
         {problem.title}
       </h1>
+      <dl className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
+        <div className="inline-flex items-center gap-1.5">
+          <dt className="inline-flex items-center gap-1.5">
+            <Clock3 className="size-3.5" aria-hidden="true" /> Time
+          </dt>
+          <dd className="font-mono text-foreground">{problem.timeLimitMs} ms</dd>
+        </div>
+        <div className="inline-flex items-center gap-1.5">
+          <dt className="inline-flex items-center gap-1.5">
+            <HardDrive className="size-3.5" aria-hidden="true" /> Memory
+          </dt>
+          <dd className="font-mono text-foreground">
+            {problem.memoryLimitMb} MB
+          </dd>
+        </div>
+        <div className="inline-flex items-center gap-1.5">
+          <dt className="inline-flex items-center gap-1.5">
+            <Sparkles className="size-3.5" aria-hidden="true" /> Points
+          </dt>
+          <dd className="font-mono text-foreground">{problem.points}</dd>
+        </div>
+      </dl>
       <ProblemTags tags={problem.tags} limit={8} className="mt-3" />
       <nav
         aria-label="Problem sections"

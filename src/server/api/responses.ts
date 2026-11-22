@@ -1,18 +1,9 @@
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { postgresErrorCode } from "@/lib/db-errors";
 import { ApiError } from "./errors";
 
 type ApiMeta = Record<string, unknown>;
-
-type PostgresError = {
-  code?: string;
-  constraint_name?: string;
-  detail?: string;
-};
-
-function isPostgresError(error: unknown): error is PostgresError {
-  return typeof error === "object" && error !== null && "code" in error;
-}
 
 export function apiOk(
   data: unknown,
@@ -56,8 +47,22 @@ export function apiError(error: unknown): NextResponse {
     );
   }
 
-  if (isPostgresError(error)) {
-    if (error.code === "23505") {
+  const postgresCode = postgresErrorCode(error);
+  if (postgresCode) {
+    if (postgresCode === "42P01" || postgresCode === "42703") {
+      console.error("Database migration missing for this request", error);
+      return NextResponse.json(
+        {
+          error: {
+            code: "SERVICE_UNAVAILABLE",
+            message:
+              "This feature is not ready yet. Apply the latest database migration.",
+          },
+        },
+        { status: 503 },
+      );
+    }
+    if (postgresCode === "23505") {
       return NextResponse.json(
         {
           error: {
@@ -68,7 +73,7 @@ export function apiError(error: unknown): NextResponse {
         { status: 409 },
       );
     }
-    if (error.code === "23503") {
+    if (postgresCode === "23503") {
       return NextResponse.json(
         {
           error: {

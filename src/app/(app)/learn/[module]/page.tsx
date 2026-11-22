@@ -5,6 +5,7 @@ import { ContentInProduction } from "@/components/learning/content-in-production
 import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSteps } from "@/components/learning/learning-steps";
 import { ModuleHeader } from "@/components/learning/module-header";
+import { ModuleDiagram } from "@/components/learning/module-diagram";
 import { TopicCard } from "@/components/learning/topic-card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
@@ -33,7 +34,8 @@ export default async function LearningModulePage({
   params: Promise<{ module: string }>;
 }) {
   const { module: moduleSlug } = await params;
-  if (!getLearningModuleDefinition(moduleSlug)) notFound();
+  const definition = getLearningModuleDefinition(moduleSlug);
+  if (!definition) notFound();
   const user = await getCurrentUser();
   const track = await getLearningModule(moduleSlug, user);
   if (!track) notFound();
@@ -45,6 +47,24 @@ export default async function LearningModulePage({
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <ModuleHeader module={track} />
         <LearningLocked hint={track.unlockHint} className="mt-6" />
+
+        <section className="mt-10">
+          <SectionHeading
+            title="What's inside"
+            description="Preview the curriculum now — topics and problems open once the previous checkpoint is cleared."
+          />
+          <ul role="list" className="mt-4 grid gap-2.5">
+            {track.topics.map((topic, index) => (
+              <TopicCard
+                key={topic.slug}
+                topic={topic}
+                moduleSlug={track.slug}
+                position={index + 1}
+                locked
+              />
+            ))}
+          </ul>
+        </section>
       </div>
     );
   }
@@ -53,29 +73,40 @@ export default async function LearningModulePage({
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
       <ModuleHeader module={track} />
 
-      {track.description ? (
-        <p
-          lang="bn"
-          className="mt-4 border-l-2 border-primary/25 pl-4 text-sm leading-relaxed text-muted-foreground"
-        >
-          {track.description}
-        </p>
+      {isLive ? null : <ContentInProduction className="mt-6" />}
+
+      <section className="mt-10">
+        <SectionHeading
+          title="How this track works"
+          description="Five steps from the first concept note to the timed checkpoint."
+        />
+        <LearningSteps muted={!isLive} className="mt-4" />
+      </section>
+
+      {isLive && definition.diagram ? (
+        <section className="mt-10">
+          <SectionHeading
+            title="Track map"
+            description="How the topics in this track connect and build on each other."
+          />
+          <ModuleDiagram
+            src={definition.diagram.src}
+            alt={definition.diagram.alt}
+            className="mt-4"
+          />
+        </section>
       ) : null}
 
-      <LearningSteps muted={!isLive} className="mt-6" />
-
-      {isLive ? null : <ContentInProduction className="mt-4" />}
-
-      <section className="mt-8">
+      <section className="mt-10">
         <SectionHeading
           title="Topics"
           description={
             isLive
-              ? "Read the concept note, then work through the guided and tiered practice sets."
-              : "The published outline for this track."
+              ? "Work through them in order — each topic has a concept note, guided problems and tiered practice."
+              : "The published outline — concept notes and problem sets are being authored."
           }
         />
-        <ul className="mt-4 grid gap-3 md:grid-cols-2">
+        <ul role="list" className="mt-4 grid gap-2.5">
           {track.topics.map((topic, index) => (
             <TopicCard
               key={topic.slug}
@@ -93,7 +124,7 @@ export default async function LearningModulePage({
           checkpoint={track.checkpoint}
           moduleSlug={track.slug}
           signedIn={Boolean(user)}
-          className="mt-8"
+          className="mt-10"
         />
       ) : null}
     </div>

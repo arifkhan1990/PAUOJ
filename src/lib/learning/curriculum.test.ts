@@ -24,44 +24,36 @@ describe("learning curriculum shape", () => {
     );
   });
 
-  it("ships Module 1 with the full 3/3/2 practice tier", () => {
-    const track = LEARNING_MODULES.find(
-      (item) => item.slug === "basic-programming-math",
-    );
-    expect(track?.practiceTier).toBe("FULL");
-    expect(track?.topics).toHaveLength(5);
-
-    for (const topic of track?.topics ?? []) {
-      expect(topic.guidedProblemSlugs).toHaveLength(2);
-      expect(topic.practiceProblemSlugs.easy).toHaveLength(3);
-      expect(topic.practiceProblemSlugs.medium).toHaveLength(3);
-      expect(topic.practiceProblemSlugs.hard).toHaveLength(2);
-      expect(topic.extraProblemSlugs).toHaveLength(2);
-      expect(topic.concept.length).toBeGreaterThan(1_000);
-    }
-
-    expect(track?.checkpoint?.problemSlugs).toHaveLength(3);
-    expect(track?.checkpoint?.durationMinutes).toBe(45);
-    expect(track?.checkpoint?.badge.slug).toBe("foundation-coder");
-    expect(new Set(refs(track!)).size).toBe(63);
-  });
-
-  it("keeps every later track at seven problems per topic plus a checkpoint", () => {
-    for (const track of LEARNING_MODULES.filter(
-      (item) => item.slug !== "basic-programming-math",
-    )) {
+  it("gives every topic the full 3E/3M/2H practice tier", () => {
+    for (const track of LEARNING_MODULES) {
+      expect(track.practiceTier).toBe("FULL");
+      expect(track.topics.length).toBeGreaterThan(0);
       expect(track.checkpoint?.problemSlugs).toHaveLength(3);
       expect(track.checkpoint?.durationMinutes).toBe(45);
+
       for (const topic of track.topics) {
         expect(topic.guidedProblemSlugs).toHaveLength(2);
-        expect(topic.practiceProblemSlugs.easy).toHaveLength(1);
-        expect(topic.practiceProblemSlugs.medium).toHaveLength(1);
-        expect(topic.practiceProblemSlugs.hard).toHaveLength(1);
-        expect(topic.extraProblemSlugs).toHaveLength(2);
+        expect(topic.practiceProblemSlugs.easy).toHaveLength(3);
+        expect(topic.practiceProblemSlugs.medium).toHaveLength(3);
+        expect(topic.practiceProblemSlugs.hard).toHaveLength(2);
+        expect(topic.extraProblemSlugs.length).toBeGreaterThanOrEqual(2);
+        expect(topic.extraProblemSlugs.length).toBeLessThanOrEqual(3);
         expect(topic.concept.length).toBeGreaterThan(1_000);
       }
+
       const unique = new Set(refs(track));
-      expect(unique.size).toBe(track.topics.length * 7 + 3);
+      const expected =
+        track.topics.reduce(
+          (sum, topic) =>
+            sum +
+            2 +
+            3 +
+            3 +
+            2 +
+            topic.extraProblemSlugs.length,
+          0,
+        ) + 3;
+      expect(unique.size).toBe(expected);
     }
   });
 });
