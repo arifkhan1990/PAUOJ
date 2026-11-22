@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { assertSameOrigin, requireApiUser } from "@/server/api/auth";
 import { apiError, apiOk } from "@/server/api/responses";
-import { deleteLessonComment } from "@/server/services/lesson-discussions";
+import { deleteLessonComment } from "@/server/services/lesson-comment-mutations";
 
 export async function DELETE(
   request: NextRequest,

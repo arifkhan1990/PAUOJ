@@ -256,6 +256,7 @@ export function LessonSocial({
                 comment={comment}
                 viewer={viewer}
                 onChanged={() => void reloadComments()}
+                reportBase={`${base}/comments`}
               />
             ))}
           </div>

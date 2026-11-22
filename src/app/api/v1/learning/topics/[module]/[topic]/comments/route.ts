@@ -12,10 +12,8 @@ import {
   createCommentSchema,
 } from "@/lib/schemas/discussion";
 import { LESSON_DISCUSSION_PAGE_SIZE } from "@/lib/learning/social";
-import {
-  createLessonComment,
-  listLessonComments,
-} from "@/server/services/lesson-discussions";
+import { listLessonComments } from "@/server/services/lesson-discussions";
+import { createLessonComment } from "@/server/services/lesson-comment-mutations";
 
 export async function GET(
   request: NextRequest,

@@ -8,6 +8,7 @@ import {
   FileCode2,
   Flag,
   ListChecks,
+  MessageSquareOff,
 } from "lucide-react";
 import { LessonProgressDonut } from "@/components/learning/lesson-progress-donut";
 import { Badge } from "@/components/ui/badge";
@@ -238,5 +239,24 @@ export function CheckpointCta({
         </Link>
       </div>
     </Card>
+  );
+}
+
+/** Shown when the social tables are missing because a deploy skipped migrations. */
+export function LessonSocialUnavailable() {
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-5">
+      <MessageSquareOff
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
+      <div>
+        <p className="text-sm font-medium">Discussion is being set up</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+          Reactions and comments become available as soon as the next
+          maintenance update is applied. The lesson itself works normally.
+        </p>
+      </div>
+    </div>
   );
 }

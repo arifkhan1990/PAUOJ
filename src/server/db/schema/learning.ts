@@ -93,6 +93,12 @@ export const lessonComments = pgTable(
       table.topicSlug,
       table.createdAt,
     ),
+    index("lesson_comments_topic_parent_created_idx").on(
+      table.moduleSlug,
+      table.topicSlug,
+      table.parentId,
+      table.createdAt,
+    ),
     index("lesson_comments_parent_idx").on(table.parentId),
     index("lesson_comments_user_idx").on(table.userId),
   ],
@@ -125,8 +131,34 @@ export const lessonCommentVotes = pgTable(
   ],
 );
 
+export const lessonCommentReports = pgTable(
+  "lesson_comment_reports",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    commentId: uuid("comment_id")
+      .notNull()
+      .references(() => lessonComments.id, { onDelete: "cascade" }),
+    reporterId: uuid("reporter_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    reason: text("reason").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("lesson_comment_reports_comment_reporter_unique").on(
+      table.commentId,
+      table.reporterId,
+    ),
+    index("lesson_comment_reports_comment_idx").on(table.commentId),
+    index("lesson_comment_reports_reporter_idx").on(table.reporterId),
+  ],
+);
+
 export type LearningCheckpointAttempt =
   typeof learningCheckpointAttempts.$inferSelect;
 export type LessonReaction = typeof lessonReactions.$inferSelect;
 export type LessonComment = typeof lessonComments.$inferSelect;
 export type LessonCommentVote = typeof lessonCommentVotes.$inferSelect;
+export type LessonCommentReport = typeof lessonCommentReports.$inferSelect;

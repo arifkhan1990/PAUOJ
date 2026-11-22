@@ -125,6 +125,15 @@ Every live lesson has a like/dislike reaction and a content-based discussion:
   `/api/v1/learning/topics/<module>/<topic>/comments` for updates. Posting
   requires a signed-in session (`401` otherwise); deleting another user's
   comment is `403`; an unknown track or topic is `404`.
+- Signed-in learners can report another user's comment (one report per user
+  and comment). Reports are audit-logged and admins get an in-app `SYSTEM`
+  notification pointing at the lesson discussion.
+- If the social tables are missing (a deploy skipped migrations), the API
+  answers `503` with a clear message and the lesson page renders a neutral
+  "Discussion is being set up" panel instead of failing.
+- Reads are bounded: the reaction summary is one aggregate query, the first
+  comment page fetches top-level rows with a window count and replies in a
+  second indexed query.
 - The lesson header shows solved progress as a donut instead of a linear bar.
 
 ## Release checklist

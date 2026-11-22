@@ -10,6 +10,7 @@ import {
   CheckpointCta,
   LessonHeader,
   LessonNav,
+  LessonSocialUnavailable,
 } from "@/components/learning/topic-lesson-parts";
 import { Markdown } from "@/components/shared/markdown";
 import { Card } from "@/components/ui/card";
@@ -254,22 +255,26 @@ export default async function LearningTopicPage({
               description="Ask questions, share an approach or leave a study tip for this lesson."
               isLast
             >
-              <LessonSocial
-                moduleSlug={moduleSlug}
-                topicSlug={topicSlug}
-                viewer={
-                  user
-                    ? {
-                        id: user.id,
-                        username: user.username,
-                        displayName: user.displayName,
-                        role: user.role,
-                      }
-                    : null
-                }
-                reactions={social.reactions}
-                comments={social.comments}
-              />
+              {social ? (
+                <LessonSocial
+                  moduleSlug={moduleSlug}
+                  topicSlug={topicSlug}
+                  viewer={
+                    user
+                      ? {
+                          id: user.id,
+                          username: user.username,
+                          displayName: user.displayName,
+                          role: user.role,
+                        }
+                      : null
+                  }
+                  reactions={social.reactions}
+                  comments={social.comments}
+                />
+              ) : (
+                <LessonSocialUnavailable />
+              )}
             </LearningSection>
           </div>
         </div>

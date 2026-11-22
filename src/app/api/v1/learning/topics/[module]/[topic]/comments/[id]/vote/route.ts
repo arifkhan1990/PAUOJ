@@ -4,7 +4,7 @@ import { enforceRateLimit } from "@/server/api/rate-limit";
 import { apiError, apiOk } from "@/server/api/responses";
 import { parseJson } from "@/server/api/validation";
 import { commentVoteSchema } from "@/lib/schemas/discussion";
-import { voteLessonComment } from "@/server/services/lesson-discussions";
+import { voteLessonComment } from "@/server/services/lesson-comment-mutations";
 
 export async function POST(
   request: NextRequest,
