@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-labelledby="m2-title m2-title-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif">
+  <title id="m2-title">Module 2: Basic Data Structures concept map</title>
+  <desc id="m2-title-desc">Concept flow of the second track: stacks and queues, linked lists, hash maps, and STL containers, each storage model building on the one before it.</desc>
+  <defs>
+    <pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#cbd5e1" opacity="0.45"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" refX="10" refY="6" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="320" fill="#f8fafc"/>
+  <rect width="1200" height="320" fill="url(#dots)"/>
+  <rect x="48" y="36" width="118" height="36" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="107" y="60" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309" letter-spacing="2">MODULE 2</text>
+  <text x="186" y="60" font-size="26" font-weight="700" fill="#0f172a">Basic Data Structures</text>
+  <rect x="46" y="128" width="244" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="62" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="79" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">01</text>
+  <text x="168" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Stack &amp; Queue</text>
+  <text x="168" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">LIFO · FIFO</text>
+  <line x1="298" y1="206" x2="321" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="334" y="128" width="244" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="350" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="367" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">02</text>
+  <text x="456" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Linked List</text>
+  <text x="456" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">nodes &amp; pointers</text>
+  <line x1="586" y1="206" x2="609" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="622" y="128" width="244" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="638" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="655" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">03</text>
+  <text x="744" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Hash Map</text>
+  <text x="744" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">O(1) lookup</text>
+  <line x1="874" y1="206" x2="897" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <rect x="910" y="128" width="244" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="926" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="943" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">04</text>
+  <text x="1032" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">STL Containers</text>
+  <text x="1032" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">vector · map · set</text>
+</svg>

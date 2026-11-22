@@ -4,6 +4,7 @@ import { CheckpointCard } from "@/components/learning/checkpoint-card";
 import { ContentInProduction } from "@/components/learning/content-in-production";
 import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSteps } from "@/components/learning/learning-steps";
+import { ModuleDiagram } from "@/components/learning/module-diagram";
 import { ModuleHeader } from "@/components/learning/module-header";
 import { TopicCard } from "@/components/learning/topic-card";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -33,7 +34,8 @@ export default async function LearningModulePage({
   params: Promise<{ module: string }>;
 }) {
   const { module: moduleSlug } = await params;
-  if (!getLearningModuleDefinition(moduleSlug)) notFound();
+  const definition = getLearningModuleDefinition(moduleSlug);
+  if (!definition) notFound();
   const user = await getCurrentUser();
   const track = await getLearningModule(moduleSlug, user);
   if (!track) notFound();
@@ -60,6 +62,14 @@ export default async function LearningModulePage({
         >
           {track.description}
         </p>
+      ) : null}
+
+      {isLive && definition.diagram ? (
+        <ModuleDiagram
+          src={definition.diagram.src}
+          alt={definition.diagram.alt}
+          className="mt-6"
+        />
       ) : null}
 
       <LearningSteps muted={!isLive} className="mt-6" />

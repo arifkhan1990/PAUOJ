@@ -10,6 +10,10 @@ export const module7: LearningModuleDefinition = {
   description: "KMP, Z-algorithm, Rabin-Karp, network flow, bipartite matching, Euler's totient, matrix exponentiation আর Nim/Grundy।",
   estimatedHours: 26,
   status: "LIVE",
+  diagram: {
+    src: "/learning/module-7.svg",
+    alt: "মডিউল ৭-এর শেখার ধারা: স্ট্রিং ম্যাচিং, নেটওয়ার্ক ফ্লো ও ম্যাচিং, নাম্বার থিওরি এবং গেম থিওরি (Nim/Grundy)।",
+  },
   topics: module7Topics,
   checkpoint: module7Checkpoint,
 };

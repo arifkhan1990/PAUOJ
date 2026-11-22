@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "learning:check": "tsx scripts/validate-learning.ts",
+    "learning:audit": "tsx scripts/audit-learning.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:seed": "tsx src/server/db/seed.ts",

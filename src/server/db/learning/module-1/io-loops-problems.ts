@@ -26,7 +26,7 @@ print(f"Hello {name}, your seat is {seat}.")
 \`\`\`
 
 ## কমপ্লেক্সিটি
-সময় ও মেমোরি দুটোই ইনপুটের দৈর্ঘ্যের সমানুপাতিক: \`O(len(name))\`।
+সময় ও মেমোরি দুটোই ইনপুটের দৈর্ঘ্যের সমানুপাতিক: \`O(len(name) + len(seat))\` — পুরো লাইনটা একবার পড়তে হয় আর মাঝে রাখতে হয়।
 
 ## সাধারণ ভুল
 - স্পেস, কমা বা ফুলস্টপ বদলালে জাজ গ্রহণ করবে না — নমুনায় যেভাবে দেখা গেছে হুবহু সেভাবেই ছাপাও।
@@ -83,7 +83,7 @@ print(total)
 সময় \`O(n)\` — প্রতিটি দাম একবার দেখা হয়। অতিরিক্ত মেমোরি \`O(n)\` (সব সংখ্যা একসাথে পড়লে); এক এক করে \`input()\` দিয়ে পড়লে \`O(1)\`।
 
 ## সাধারণ ভুল
-- শুরুতে \`total = 0\` না দিয়ে প্রথম দাম দিয়ে শুরু করলে কখনো প্রথম দামটা দুইবার যোগ হয়, কখনো শূন্য ইনপুটে ভুল হয়।
+- শুরুতে \`total = 0\` না দিয়ে প্রথম দাম দিয়ে শুরু করলে লুপে আবার যোগ হওয়ায় প্রথম দামটা দুইবার ধরা পড়ে।
 - \`n\` না দেখে পুরো লাইন ঘুরে গেলে বাড়তি সংখ্যা যোগ হয়ে যেতে পারে — ঠিক \`n\` বার লুপ চালাও।`,
     difficulty: "EASY",
     points: 100,
@@ -201,6 +201,8 @@ print(subtotal, discount, subtotal - discount)
       { input: "1\n999 1\n", expectedOutput: "999 0 999\n", isSample: false },
       { input: "1\n1005 1\n", expectedOutput: "1005 100 905\n", isSample: false },
       { input: "1\n1 1\n", expectedOutput: "1 0 1\n", isSample: false },
+      { input: "2\n600 1\n500 1\n", expectedOutput: "1100 110 990\n", isSample: false },
+      { input: "1\n10000 50\n", expectedOutput: "500000 50000 450000\n", isSample: false },
       { input: "50\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2\n1000 2", expectedOutput: "100000 10000 90000", isSample: false },
     ],
     referencePython:
@@ -373,20 +375,20 @@ else:
 
 ## সাধারণ ভুল
 - সীমার নম্বর ভুল দিকে যায়: \`79\` হলে \`A\`, \`80\` হলে \`A+\` — \`>=\` না লিখে \`>\` লিখলে \`80\` নিচের গ্রেডে চলে যায়।
-- শর্তগুলো ছোট থেকে বড় ক্রমে লিখলে প্রথম শর্তটাই অনেক সময় মিলে যায়; তাই উপরের ক্রমটাই রাখুন।`,
+- শর্তগুলো ছোট থেকে বড় ক্রমে লিখলে প্রথম শর্তটাই অনেক সময় মিলে যায়; তাই বড় থেকে ছোট ক্রমটাই রেখো।`,
     difficulty: "EASY",
     points: 100,
     timeLimitMs: 1000,
     memoryLimitMb: 256,
     tags: ["Implementation", "Conditionals"],
     tests: [
-      { input: "85\n", expectedOutput: "A+\n", isSample: true },
-      { input: "32\n", expectedOutput: "F\n", isSample: true },
+      { input: "100\n", expectedOutput: "A+\n", isSample: true },
+      { input: "0\n", expectedOutput: "F\n", isSample: true },
       { input: "80\n", expectedOutput: "A+\n", isSample: false },
-      { input: "79\n", expectedOutput: "A\n", isSample: false },
-      { input: "69\n", expectedOutput: "A-\n", isSample: false },
+      { input: "70\n", expectedOutput: "A\n", isSample: false },
+      { input: "60\n", expectedOutput: "A-\n", isSample: false },
       { input: "50\n", expectedOutput: "B\n", isSample: false },
-      { input: "49\n", expectedOutput: "C\n", isSample: false },
+      { input: "40\n", expectedOutput: "C\n", isSample: false },
       { input: "33\n", expectedOutput: "D\n", isSample: false },
     ],
     referencePython:

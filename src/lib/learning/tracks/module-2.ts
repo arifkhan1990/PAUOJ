@@ -7,9 +7,13 @@ export const module2: LearningModuleDefinition = {
   title: "Basic Data Structures",
   subtitle: "মেমোরিতে ডাটা সাজানোর প্রথম কৌশল",
   goal: "Learn how stacks, queues, linked lists, hash maps and STL containers store data.",
-  description: "স্ট্যাক, কিউ, লিংকড লিস্ট, হ্যাশিং আর STL—কোন সমস্যায় কোন ডাটা স্ট্রাকচার ব্যবহার করবেন, সেটা বুঝতে শিখবেন।",
+  description: "স্ট্যাক, কিউ, লিংকড লিস্ট, হ্যাশিং আর STL—কোন সমস্যায় কোন ডাটা স্ট্রাকচার ব্যবহার করবে, সেটা বুঝতে শিখবে।",
   estimatedHours: 16,
   status: "LIVE",
+  diagram: {
+    src: "/learning/module-2.svg",
+    alt: "মডিউল ২-এর শেখার ধারা: স্ট্যাক ও কিউ, লিংকড লিস্ট, হ্যাশ ম্যাপ এবং STL কন্টেইনার—প্রতিটি আগের স্টোরেজ মডেলের উপর গড়া।",
+  },
   topics: module2Topics,
   checkpoint: module2Checkpoint,
 };

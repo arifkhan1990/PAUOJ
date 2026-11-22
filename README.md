@@ -40,9 +40,10 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Reviewer leaderboard** — a public `/reviewers` board ranks reviewers by completed
   contribution decisions, with 7/30/all-time filters, approval rate, turnaround time, a top-3
   podium and a mobile-safe table.
-- **Learning tracks** — a seven-track curriculum at `/learn` with Bangla concept notes, guided
-  problems, tiered practice, extra self-try problems and timed checkpoint badges. Tracks unlock
-  sequentially, and earned/locked badges appear on the profile.
+- **Learning tracks** — a seven-track curriculum at `/learn` with Bangla concept notes,
+  professional concept-map diagrams, guided problems, tiered practice, extra self-try problems
+  and timed checkpoint badges. Tracks unlock sequentially, and earned/locked badges appear on
+  the profile.
 - **Study plans and daily practice** — curated lists with progress, a deterministic daily challenge
   with a streak, and category/subcategory/company filters.
 - **Discussions** — one-level threads with votes, moderation and auto-lock during live contests or
@@ -293,6 +294,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm learning:check
+pnpm learning:audit
 pnpm build
 pnpm build:worker
 curl http://localhost:3000/health

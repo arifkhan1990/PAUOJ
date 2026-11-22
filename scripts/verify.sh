@@ -12,6 +12,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm learning:check
+pnpm learning:audit
 pnpm build
 pnpm build:worker
 

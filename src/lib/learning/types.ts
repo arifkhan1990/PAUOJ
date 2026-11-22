@@ -47,6 +47,10 @@ export type LearningModuleDefinition = {
   description: string;
   estimatedHours: number;
   status: LearningModuleStatus;
+  diagram?: {
+    src: string;
+    alt: string;
+  };
   practiceTier?: LearningPracticeTier;
   topics: LearningTopicDefinition[];
   checkpoint: LearningCheckpointDefinition | null;

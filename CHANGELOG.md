@@ -6,8 +6,8 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [0.8.0] - 2026-11-22
 
 ### Added
-- A complete seven-track learning curriculum at `/learn`: 34 topics, **284 original problems**
-  with **1,815 tests**, Bangla concept notes, guided problems, tiered practice, extra
+- A complete seven-track learning curriculum at `/learn`: 34 topics, **285 original problems**
+  with **1,839 tests**, Bangla concept notes, guided problems, tiered practice, extra
   self-try problems, reference Python solutions and Bangla editorials. Module 1 has the full
   3-easy / 3-medium / 2-hard practice tier; tracks 2–7 use the compact 1/1/1 tier plus two
   extra problems per topic.
@@ -22,8 +22,14 @@ All notable changes to PAU OJ are documented here. The format follows
   locked with the earned date and a link back to the track.
 - `pnpm learning:check` executes every reference solution against every test, validates tier
   counts, slugs, Bangla statements and editorial code blocks, and runs in `verify.sh` and CI.
-  Large fixed tests are generated from expressions, so declared maximum bounds are exercised
-  without 100 KB literals.
+  `pnpm learning:audit` adds the stricter content gate: concept/editorial sections, tables and
+  diagrams, tier/difficulty/points mapping, names/person/honorific consistency, and every
+  editorial's full Python block against every test. Large fixed tests are generated from
+  expressions, so declared maximum bounds are exercised without 100 KB literals.
+- Every module page now has a professional SVG concept-map diagram with accessible title,
+  description and alt text, plus a review pass across all 34 concept notes and 285 problems
+  covering Bangla grammar, tense/person, difficulty calibration, diagrams and editorial
+  accuracy.
 - A learning release checklist in `docs/learning.md` and `deploy/README.md` covering the
   additive checkpoint migration, idempotent curriculum seed, judge rebuild and smoke checks.
 

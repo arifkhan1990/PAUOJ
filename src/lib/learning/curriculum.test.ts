@@ -36,14 +36,15 @@ describe("learning curriculum shape", () => {
       expect(topic.practiceProblemSlugs.easy).toHaveLength(3);
       expect(topic.practiceProblemSlugs.medium).toHaveLength(3);
       expect(topic.practiceProblemSlugs.hard).toHaveLength(2);
-      expect(topic.extraProblemSlugs).toHaveLength(2);
+      expect(topic.extraProblemSlugs.length).toBeGreaterThanOrEqual(2);
+      expect(topic.extraProblemSlugs.length).toBeLessThanOrEqual(3);
       expect(topic.concept.length).toBeGreaterThan(1_000);
     }
 
     expect(track?.checkpoint?.problemSlugs).toHaveLength(3);
     expect(track?.checkpoint?.durationMinutes).toBe(45);
     expect(track?.checkpoint?.badge.slug).toBe("foundation-coder");
-    expect(new Set(refs(track!)).size).toBe(63);
+    expect(new Set(refs(track!)).size).toBe(refs(track!).length);
   });
 
   it("keeps every later track at seven problems per topic plus a checkpoint", () => {
@@ -57,11 +58,23 @@ describe("learning curriculum shape", () => {
         expect(topic.practiceProblemSlugs.easy).toHaveLength(1);
         expect(topic.practiceProblemSlugs.medium).toHaveLength(1);
         expect(topic.practiceProblemSlugs.hard).toHaveLength(1);
-        expect(topic.extraProblemSlugs).toHaveLength(2);
+        expect(topic.extraProblemSlugs.length).toBeGreaterThanOrEqual(2);
+        expect(topic.extraProblemSlugs.length).toBeLessThanOrEqual(3);
         expect(topic.concept.length).toBeGreaterThan(1_000);
       }
       const unique = new Set(refs(track));
-      expect(unique.size).toBe(track.topics.length * 7 + 3);
+      const expected =
+        track.topics.reduce(
+          (sum, topic) =>
+            sum +
+            2 +
+            1 +
+            1 +
+            1 +
+            topic.extraProblemSlugs.length,
+          0,
+        ) + 3;
+      expect(unique.size).toBe(expected);
     }
   });
 });

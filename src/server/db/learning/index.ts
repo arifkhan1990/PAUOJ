@@ -36,7 +36,7 @@ import { TRIE_PROBLEMS } from "./module-6/trie-problems";
 import { SEGMENT_TREE_PROBLEMS } from "./module-6/segment-tree-problems";
 import { FENWICK_TREE_PROBLEMS } from "./module-6/fenwick-tree-problems";
 import { SPARSE_TABLE_LCA_PROBLEMS } from "./module-6/sparse-table-lca-problems";
-import { HLD_PROBLEMS } from "./module-6/hld-problems";
+import { HLD_PROBLEMS } from "./module-6/hld-problems-final";
 import { MODULE7_CHECKPOINT_PROBLEMS } from "./module-7/checkpoint-problems";
 import { STRING_MATCHING_PROBLEMS } from "./module-7/string-matching-problems";
 import { NETWORK_FLOW_PROBLEMS } from "./module-7/network-flow-problems";

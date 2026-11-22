@@ -22,15 +22,15 @@ Every live module follows the same four-step loop:
 | 3. Tiered practice | Easy, medium and hard problems | Build real control of the topic |
 | 4. Checkpoint | A timed three-problem set and a badge | Prove readiness and unlock the reward |
 
-Each topic also carries two extra "try it yourself" problems after the practice
+Each topic also carries two or three extra "try it yourself" problems after the practice
 set. Progress is derived from accepted, non-assessment submissions, so nothing
 extra is stored per learner.
 
 ## Current release
 
 **All seven tracks ship in this release.** The curriculum contains 34 topics,
-**284 original problems** and **1,815 tests**. Module 1 has the full practice
-tier: three easy, three medium and two hard problems per topic, plus two extra
+**285 original problems** and **1,839 tests**. Module 1 has the full practice
+tier: three easy, three medium and two hard problems per topic, plus two or three extra
 problems. Tracks 2–7 use a compact starter tier: one easy, one medium and one
 hard practice problem per topic, plus two extra problems. Every track ends with
 a mixed three-problem checkpoint and a module badge.
@@ -44,8 +44,14 @@ Module 1 contains five topics:
 - Strings & 1D/2D Arrays
 
 Every topic has one Bangla concept note, guided problems, a tiered practice set,
-two extra problems and a mixed three-problem checkpoint. Every problem has
+two or three extra problems and a mixed three-problem checkpoint. Every problem has
 hidden tests, a reference Python solution and a Bangla editorial.
+
+Difficulty is calibrated within the track's prerequisite. In an advanced track,
+a direct application of the newly taught structure is Easy, one additional
+combined invariant is Medium, and multiple structures or phases is Hard. This is
+why a direct segment-tree query or a small direct HLD path can be Easy/Medium in
+Module 6 while remaining advanced material overall.
 
 ## Checkpoint rules and progression
 
@@ -100,10 +106,18 @@ problem counts per tier, verifies that every curriculum slug resolves, and
 requires Bangla statements plus a fenced solution in the editorial. CI runs it
 after the unit tests.
 
+`pnpm learning:audit` is the stricter content gate. It checks every concept
+note's required sections, table and diagram; every problem's editorial sections
+and fenced Python block; the tier/difficulty/points mapping; names, person and
+honorific forms; and it runs the editorial's full Python solution against every
+test. The release checklist runs both `learning:check` and `learning:audit`.
+
 ## Release checklist
 
 1. `pnpm db:migrate` — applies the additive checkpoint migration.
-2. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
+2. `pnpm learning:check && pnpm learning:audit` — validates every solution,
+   editorial and difficulty label.
+3. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
    seed is idempotent; run it twice on staging before a release.
 3. Rebuild the judge image after a harness change (`pnpm judge:build`), then
    deploy the web and worker images.
