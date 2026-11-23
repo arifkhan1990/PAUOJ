@@ -28,6 +28,9 @@ export type SeedProblem = {
   tags: string[];
   tests: SeedTest[];
   referencePython: string;
+  referenceSql?: string;
+  judgeLanguage?: "sql";
+  premiumModuleSlug?: string;
   category?: string;
   subcategory?: string;
 };

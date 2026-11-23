@@ -63,6 +63,25 @@ export async function createSubmission(
   const { problem, contestContext, assessmentContext } =
     await getProblemForSubmission(input.problemId, user.id, isAdmin);
 
+  if (
+    problem.judgeLanguage === "sql" &&
+    !["sql", "mysql", "postgresql"].includes(input.language)
+  ) {
+    throw errors.validation(
+      "This problem accepts SQL, MySQL or PostgreSQL solutions.",
+    );
+  }
+  if (problem.premiumModuleSlug && !isAdmin) {
+    const { hasModuleEntitlement } = await import(
+      "@/server/services/learning-payments"
+    );
+    if (!(await hasModuleEntitlement(user.id, problem.premiumModuleSlug))) {
+      throw errors.forbidden(
+        "This problem is part of a premium module. Unlock it from the learning pricing page.",
+      );
+    }
+  }
+
   let assessmentId = input.assessmentId ?? null;
   if (assessmentId) {
     await getAssessmentForSubmission(assessmentId, problem.id, user.id);

@@ -362,7 +362,7 @@ export default async function LearnPage() {
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-semibold">
-              SQL Labs · project practice
+              SQL Labs · ShopSphere project
             </span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
               Query the TechNest marketplace with real SQL. Basic tasks are free;

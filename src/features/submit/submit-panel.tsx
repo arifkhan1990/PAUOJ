@@ -106,6 +106,9 @@ fun main() {
 let input = String(data: FileHandle.standardInput.readDataToEndOfFile(), encoding: .utf8) ?? ""
 // write your solution here
 `,
+  sql: "-- Write a SQL query against the ShopSphere dataset\nSELECT ...\n",
+  mysql: "-- Write a MySQL-style query\nSELECT ...\n",
+  postgresql: "-- Write a PostgreSQL-style query\nSELECT ...\n",
 };
 
 function draftKey(problemId: string, language: string): string {
@@ -138,6 +141,7 @@ export function SubmitPanel({
   sampleInput,
   canSubmit,
   loginNext,
+  judgeLanguage = null,
   defaultLanguage = "cpp",
 }: {
   problemId: string;
@@ -149,10 +153,19 @@ export function SubmitPanel({
   sampleInput: string;
   canSubmit: boolean;
   loginNext: string;
+  judgeLanguage?: string | null;
   defaultLanguage?: LanguageId;
 }) {
-  const [language, setLanguage] = useState<LanguageId>(defaultLanguage);
-  const [source, setSource] = useState(STARTERS[defaultLanguage]);
+  const languageOptions =
+    judgeLanguage === "sql"
+      ? LANGUAGES.filter((item) =>
+          ["sql", "mysql", "postgresql"].includes(item.id),
+        )
+      : LANGUAGES;
+  const initialLanguage: LanguageId =
+    judgeLanguage === "sql" ? "sql" : defaultLanguage;
+  const [language, setLanguage] = useState<LanguageId>(initialLanguage);
+  const [source, setSource] = useState(STARTERS[initialLanguage]);
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -300,7 +313,7 @@ export function SubmitPanel({
             <SearchableSelect
               value={language}
               onValueChange={(next) => changeLanguage(next as LanguageId)}
-              options={LANGUAGES.map((item) => ({
+              options={languageOptions.map((item) => ({
                 value: item.id,
                 label: item.label,
               }))}

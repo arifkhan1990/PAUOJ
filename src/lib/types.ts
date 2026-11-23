@@ -82,6 +82,8 @@ export type ProblemDetail = {
   editorialLocked: boolean;
   difficulty: Difficulty;
   points: number;
+  judgeLanguage: string | null;
+  premiumModuleSlug: string | null;
   timeLimitMs: number;
   memoryLimitMb: number;
   authorId: string | null;

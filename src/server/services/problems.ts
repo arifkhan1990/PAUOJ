@@ -8,6 +8,7 @@ import {
   exists,
   ilike,
   inArray,
+  isNull,
   notInArray,
   or,
   sql,
@@ -79,6 +80,22 @@ export async function listProblems(
   const db = getDb();
   const restricted = await getRestrictedProblemIds(input.userId, input.isAdmin);
   const conditions = [eq(problems.isPublic, true)];
+  if (!input.isAdmin) {
+    const { getEntitledModuleSlugs } = await import(
+      "@/server/services/learning-payments"
+    );
+    const entitled = input.userId
+      ? [...(await getEntitledModuleSlugs(input.userId))] 
+      : [];
+    conditions.push(
+      entitled.length > 0
+        ? or(
+            isNull(problems.premiumModuleSlug),
+            inArray(problems.premiumModuleSlug, entitled),
+          )!
+        : isNull(problems.premiumModuleSlug),
+    );
+  }
 
   if (restricted.length > 0) {
     conditions.push(notInArray(problems.id, restricted));
@@ -204,6 +221,12 @@ export async function getProblemBySlug(
   if (!problem.isPublic && !isAdmin && !contestAllowed && !assessmentAllowed) {
     return null;
   }
+  if (problem.premiumModuleSlug && !isAdmin) {
+    const { hasModuleEntitlement } = await import("@/server/services/learning-payments");
+    if (!userId || !(await hasModuleEntitlement(userId, problem.premiumModuleSlug))) {
+      return null;
+    }
+  }
   const hasActiveContext =
     contestAllowed ||
     contestAccess.restricted ||
@@ -285,6 +308,8 @@ export async function getProblemBySlug(
     editorialLocked: Boolean(problem.editorial) && !solvedByMe && !isAdmin,
     difficulty: problem.difficulty,
     points: problem.points,
+    judgeLanguage: problem.judgeLanguage,
+    premiumModuleSlug: problem.premiumModuleSlug,
     timeLimitMs: problem.timeLimitMs,
     memoryLimitMb: problem.memoryLimitMb,
     authorId: problem.authorId,

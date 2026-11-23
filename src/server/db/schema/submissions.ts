@@ -24,6 +24,9 @@ export const languageEnum = pgEnum("language", [
   "php",
   "kotlin",
   "swift",
+  "sql",
+  "mysql",
+  "postgresql",
 ]);
 
 export const submissionStatusEnum = pgEnum("submission_status", [

@@ -13,6 +13,7 @@ import {
 } from "./schema";
 import { seedStudyLists } from "./seed-study-lists";
 import { SEED_PROBLEMS, type SeededProblem } from "./seed-problems";
+import { SQL_PROBLEMS } from "./sql-problems";
 import { ASSESSMENT_PROBLEMS } from "./seed-assessment-problems";
 import { LEARNING_PROBLEMS } from "./learning";
 import { DEMO_PASSWORD, DEMO_USERS, seedDemoData } from "./seed-demo";
@@ -65,6 +66,7 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
 
   for (const definition of [
     ...SEED_PROBLEMS,
+    ...SQL_PROBLEMS,
     ...ASSESSMENT_PROBLEMS,
     ...LEARNING_PROBLEMS,
   ]) {
@@ -90,6 +92,8 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           editorial: definition.editorial,
           category: definition.category ?? null,
           subcategory: definition.subcategory ?? null,
+          judgeLanguage: definition.judgeLanguage ?? null,
+          premiumModuleSlug: definition.premiumModuleSlug ?? null,
           difficulty: definition.difficulty,
           points: definition.points,
           timeLimitMs: definition.timeLimitMs,
@@ -116,6 +120,8 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           editorial: definition.editorial,
           category: definition.category ?? null,
           subcategory: definition.subcategory ?? null,
+          judgeLanguage: definition.judgeLanguage ?? null,
+          premiumModuleSlug: definition.premiumModuleSlug ?? null,
           difficulty: definition.difficulty,
           points: definition.points,
           timeLimitMs: definition.timeLimitMs,

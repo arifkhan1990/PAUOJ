@@ -11,6 +11,9 @@ export const languageSchema = z.enum([
   "php",
   "kotlin",
   "swift",
+  "sql",
+  "mysql",
+  "postgresql",
 ]);
 
 export const createSubmissionSchema = z.object({

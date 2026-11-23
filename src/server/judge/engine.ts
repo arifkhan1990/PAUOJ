@@ -12,16 +12,10 @@ import {
 } from "./types";
 
 const LANGUAGE_SOURCE: Record<JudgeLanguage, string> = {
-  c: "main.c",
-  cpp: "main.cpp",
-  python: "main.py",
-  javascript: "main.js",
-  java: "Main.java",
-  csharp: "main.cs",
-  go: "main.go",
-  php: "main.php",
-  kotlin: "Main.kt",
-  swift: "main.swift",
+  c: "main.c", cpp: "main.cpp", python: "main.py", javascript: "main.js",
+  java: "Main.java", csharp: "main.cs", go: "main.go", php: "main.php",
+  kotlin: "Main.kt", swift: "main.swift",
+  sql: "main.sql", mysql: "main.sql", postgresql: "main.sql",
 };
 
 const COMPILE_COMMANDS: Record<JudgeLanguage, string[]> = {
@@ -39,6 +33,7 @@ const COMPILE_COMMANDS: Record<JudgeLanguage, string[]> = {
   php: ["php", "-l", "main.php"],
   kotlin: ["kotlinc", "Main.kt", "-include-runtime", "-d", "main.jar"],
   swift: ["swiftc", "-O", "-o", "main", "main.swift"],
+  sql: ["python3", "-c", "import sqlite3"], mysql: ["python3", "-c", "import sqlite3"], postgresql: ["python3", "-c", "import sqlite3"],
 };
 
 const COMPILE_MEMORY_MB = 1024;
@@ -58,6 +53,7 @@ function memoryWithOverhead(
     go: 128,
     php: 96,
     kotlin: 512,
+    sql: 64, mysql: 64, postgresql: 64,
     swift: 256,
   };
   return Math.min(2048, Math.max(192, memoryMb + overhead[language]));

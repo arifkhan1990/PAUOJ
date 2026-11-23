@@ -178,25 +178,25 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
   accepted practice submission or completed checkpoint in a premium module;
   add `--apply` to grant those modules as scholarships.
 
-## SQL Labs
+## SQL Labs (ShopSphere project)
 
-`/learn/sql` is a project-first SQL lab built on the TechNest multi-vendor
-marketplace (vendors, products, orders, order items). Queries run against a
-fresh in-memory SQLite copy of the fixture in the browser, so learners see the
-exact rows a dashboard would use without a round trip to the judge.
+`/learn/sql` is a project-first SQL track built on the ShopSphere multi-vendor
+marketplace (vendors, products, categories, orders, order items, reviews,
+referrals). Unlike the earlier browser lab, every task is a **normal judge
+problem** with points, time and memory limits, visible in the problem list.
 
-- `src/lib/sql-lab/project.ts` owns the schema and seed data.
-- `src/lib/sql-lab/tasks.ts` owns the six project tasks and their expected
-  result rows. Basic tasks (vendor directory, low-stock shelf, paid order
-  totals) are free; advanced tasks (top vendor per category with `RANK`,
-  repeat customers with `HAVING`, cumulative revenue with a window `SUM`)
-  require the `advanced-sql` entitlement, sold separately for ৳500.
-- Completion is stored in Redis (`sql-lab:completed:<userId>`) through
-  `POST /api/v1/learning/sql-lab/progress`; only a matching result can be
-  saved. The lab is practice, not a judged submission — the query never leaves
-  the browser.
-- Advanced SQL is a separate payment product (not part of the ৳700 code
-  bundle) and can also be granted from `/admin/payments`.
+- Basic SQL is free: vendor directory, low-stock shelf, vendor revenue and
+  order receipts (`SELECT/WHERE/ORDER BY`, joins, aggregates, `HAVING`).
+- Advanced SQL costs ৳500 (separate from the ৳700 code bundle): top product per
+  category (`RANK`), running revenue (`SUM OVER`), category trees and referral
+  chains (recursive CTEs). Access uses the `advanced-sql` entitlement and is
+  enforced on the problem page, the problem list and submission creation.
+- The judge runs SQL in a read-only SQLite copy of `judge/shopsphere.sql`. The
+  SQL, MySQL and PostgreSQL language options all use this engine, with small
+  syntax normalisation (`ILIKE`, MySQL `LIMIT offset,count`, backticks); use
+  portable standard SQL for the widest compatibility.
+- Problems are seeded with `judge_language = 'sql'` and an optional
+  `premium_module_slug`; the submit panel only shows supported languages.
 
 ## Release checklist
 

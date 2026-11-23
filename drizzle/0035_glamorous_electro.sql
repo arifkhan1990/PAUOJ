@@ -1,0 +1,1 @@
+ALTER TABLE "problems" ADD COLUMN "premium_module_slug" text;

@@ -286,3 +286,20 @@ export async function listAdminOrders({
     total: Number(totals[0]?.value ?? 0),
   };
 }
+
+export async function hasModuleEntitlement(
+  userId: string,
+  moduleSlug: string,
+): Promise<boolean> {
+  const [row] = await getDb()
+    .select({ id: lessonEntitlements.id })
+    .from(lessonEntitlements)
+    .where(
+      and(
+        eq(lessonEntitlements.userId, userId),
+        eq(lessonEntitlements.moduleSlug, moduleSlug),
+      ),
+    )
+    .limit(1);
+  return Boolean(row);
+}

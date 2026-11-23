@@ -73,6 +73,9 @@ const WRONG_SOURCE: Record<LanguageId, string> = {
   php: '<?php echo "not quite";\n',
   kotlin: "fun main() {}\n",
   swift: 'print("not quite")\n',
+  sql: 'SELECT 1;\n',
+  mysql: 'SELECT 1;\n',
+  postgresql: 'SELECT 1;\n', 
 };
 
 async function insertWrongAttempt(input: {

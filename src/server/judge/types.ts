@@ -10,7 +10,10 @@ export type JudgeLanguage =
   | "go"
   | "php"
   | "kotlin"
-  | "swift";
+  | "swift"
+  | "sql"
+  | "mysql"
+  | "postgresql";
 
 export type JudgeTest = {
   id: string;

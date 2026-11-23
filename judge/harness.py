@@ -84,6 +84,14 @@ def command_for(args: argparse.Namespace) -> list[str]:
         return [os.path.join(work, "main")]
     if args.language == "php":
         return ["php", os.path.join(work, "main.php")]
+    if args.language in ("sql", "sqlite", "mysql", "postgresql"):
+        return [
+            "python3",
+            "-B",
+            "/sql-runner.py",
+            os.path.join(work, "main.sql"),
+            args.language,
+        ]
     raise SystemExit(f"unsupported language: {args.language}")
 
 

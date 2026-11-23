@@ -48,6 +48,8 @@ export const problems = pgTable(
     category: text("category"),
     subcategory: text("subcategory"),
     companies: text("companies").array().notNull().default([]),
+    judgeLanguage: text("judge_language"),
+    premiumModuleSlug: text("premium_module_slug"),
     checkerType: problemCheckerEnum("checker_type").notNull().default("EXACT"),
     checkerSource: text("checker_source"),
     floatTolerance: real("float_tolerance").notNull().default(0.000001),

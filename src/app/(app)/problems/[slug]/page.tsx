@@ -378,6 +378,7 @@ export default async function ProblemPage({
             sampleInput={sampleInput}
             canSubmit={canSubmit}
             loginNext={`/problems/${problem.slug}`}
+            judgeLanguage={problem.judgeLanguage}
           />
         </div>
       </section>

@@ -28,6 +28,8 @@ RUN node --version \
     && test -x /usr/bin/timeout
 
 COPY harness.py /harness.py
+COPY sql-runner.py /sql-runner.py
+COPY shopsphere.sql /shopsphere.sql
 
 LABEL org.opencontainers.image.title="PAUOJ judge sandbox"
 LABEL org.opencontainers.image.description="Universal language image for sandboxed PAUOJ runs"
