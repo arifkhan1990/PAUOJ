@@ -178,6 +178,26 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
   accepted practice submission or completed checkpoint in a premium module;
   add `--apply` to grant those modules as scholarships.
 
+## SQL Labs
+
+`/learn/sql` is a project-first SQL lab built on the TechNest multi-vendor
+marketplace (vendors, products, orders, order items). Queries run against a
+fresh in-memory SQLite copy of the fixture in the browser, so learners see the
+exact rows a dashboard would use without a round trip to the judge.
+
+- `src/lib/sql-lab/project.ts` owns the schema and seed data.
+- `src/lib/sql-lab/tasks.ts` owns the six project tasks and their expected
+  result rows. Basic tasks (vendor directory, low-stock shelf, paid order
+  totals) are free; advanced tasks (top vendor per category with `RANK`,
+  repeat customers with `HAVING`, cumulative revenue with a window `SUM`)
+  require the `advanced-sql` entitlement, sold separately for ৳500.
+- Completion is stored in Redis (`sql-lab:completed:<userId>`) through
+  `POST /api/v1/learning/sql-lab/progress`; only a matching result can be
+  saved. The lab is practice, not a judged submission — the query never leaves
+  the browser.
+- Advanced SQL is a separate payment product (not part of the ৳700 code
+  bundle) and can also be granted from `/admin/payments`.
+
 ## Release checklist
 
 1. `pnpm db:migrate && pnpm db:check` — applies every additive migration (0027–0030) and

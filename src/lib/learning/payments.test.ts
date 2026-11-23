@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ADVANCED_SQL,
   BUNDLE_PRICE_BDT,
   MODULE_PRICE_BDT,
   PAID_MODULES,
@@ -29,6 +30,16 @@ describe("pricing", () => {
     );
     expect(modulesForProduct("MODULE", "trees-graphs")).toEqual(["trees-graphs"]);
     expect(modulesForProduct("MODULE", "basic-programming-math")).toEqual([]);
+  });
+
+  it("sells Advanced SQL separately for 500", () => {
+    expect(priceForProduct("MODULE", ADVANCED_SQL.slug)).toBe(
+      ADVANCED_SQL.priceBdt,
+    );
+    expect(modulesForProduct("MODULE", ADVANCED_SQL.slug)).toEqual([
+      ADVANCED_SQL.slug,
+    ]);
+    expect(modulesForProduct("BUNDLE")).not.toContain(ADVANCED_SQL.slug);
   });
 });
 

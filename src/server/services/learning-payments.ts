@@ -9,6 +9,7 @@ import {
 } from "@/server/db/schema";
 import { isUniqueViolation } from "@/lib/db-errors";
 import {
+  ADVANCED_SQL,
   PAID_MODULES,
   isValidTrxId,
   modulesForProduct,
@@ -114,7 +115,8 @@ export async function getEntitledModuleSlugs(
   userId: string | null,
   role?: string,
 ): Promise<Set<string>> {
-  if (role === "ADMIN") return new Set(PAID_MODULES.map((m) => m.slug));
+  if (role === "ADMIN")
+    return new Set([...PAID_MODULES.map((m) => m.slug), ADVANCED_SQL.slug]);
   if (!userId) return new Set();
   const rows = await getDb()
     .select({ moduleSlug: lessonEntitlements.moduleSlug })

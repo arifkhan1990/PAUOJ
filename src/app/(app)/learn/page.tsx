@@ -4,6 +4,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   Award,
   Clock3,
+  Database,
   Compass,
   FileCode2,
   Layers3,
@@ -347,6 +348,30 @@ export default async function LearnPage() {
         percent={percent}
         signedIn={Boolean(user)}
       />
+
+      <Link
+        href="/learn/sql"
+        className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.04] px-4 py-3 transition-colors hover:border-primary/45"
+      >
+        <span className="flex min-w-0 items-start gap-3">
+          <span
+            className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <Database className="size-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">
+              SQL Labs · project practice
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+              Query the TechNest marketplace with real SQL. Basic tasks are free;
+              advanced window functions unlock for ৳500.
+            </span>
+          </span>
+        </span>
+        <span className="text-xs font-medium text-primary">Open SQL Labs →</span>
+      </Link>
 
       {user ? null : <SignInNote />}
 

@@ -4,6 +4,14 @@ export type PaidModule = {
   title: string;
 };
 
+/** Advanced SQL is sold separately (৳500) and is not part of the bundle. */
+export const ADVANCED_SQL = {
+  slug: "advanced-sql",
+  order: 8,
+  title: "Advanced SQL",
+  priceBdt: 500,
+} as const;
+
 /** Learning modules that require a purchase (modules 1-2 stay free). */
 export const PAID_MODULES: PaidModule[] = [
   {
@@ -34,6 +42,15 @@ export function isPaidModule(slug: string): boolean {
   return getPaidModule(slug) !== null;
 }
 
+export function isPurchasableModule(slug: string): boolean {
+  return getPaidModule(slug) !== null || slug === ADVANCED_SQL.slug;
+}
+
+export function modulePriceBdt(slug: string): number | null {
+  if (slug === ADVANCED_SQL.slug) return ADVANCED_SQL.priceBdt;
+  return getPaidModule(slug) ? MODULE_PRICE_BDT : null;
+}
+
 /** Server-side price for a product; returns null for an invalid module. */
 export function priceForProduct(
   product: PaidProduct,
@@ -41,7 +58,7 @@ export function priceForProduct(
 ): number | null {
   if (product === "BUNDLE") return BUNDLE_PRICE_BDT;
   if (!moduleSlug) return null;
-  return getPaidModule(moduleSlug) ? MODULE_PRICE_BDT : null;
+  return modulePriceBdt(moduleSlug);
 }
 
 export function productLabel(
@@ -50,6 +67,9 @@ export function productLabel(
 ): string {
   if (product === "BUNDLE") {
     return `All 5 premium modules (৳${BUNDLE_PRICE_BDT})`;
+  }
+  if (moduleSlug === ADVANCED_SQL.slug) {
+    return `Advanced SQL (৳${ADVANCED_SQL.priceBdt})`;
   }
   const paid = moduleSlug ? getPaidModule(moduleSlug) : null;
   return paid
@@ -72,5 +92,5 @@ export function modulesForProduct(
   moduleSlug?: string | null,
 ): string[] {
   if (product === "BUNDLE") return PAID_MODULES.map((paid) => paid.slug);
-  return moduleSlug && getPaidModule(moduleSlug) ? [moduleSlug] : [];
+  return moduleSlug && isPurchasableModule(moduleSlug) ? [moduleSlug] : [];
 }

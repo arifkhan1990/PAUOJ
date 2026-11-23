@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
+  ADVANCED_SQL,
   BUNDLE_PRICE_BDT,
   MODULE_PRICE_BDT,
   PAID_MODULES,
@@ -113,7 +114,7 @@ export default async function LearningPricingPage() {
         </span>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="flex flex-col p-5">
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -151,10 +152,23 @@ export default async function LearningPricingPage() {
           <p className="mt-2 text-2xl font-semibold">৳{BUNDLE_PRICE_BDT}</p>
           <FeatureList
             items={[
-              "All five premium modules",
+              "All five code modules (3–7)",
               `Save ৳${PAID_MODULES.length * MODULE_PRICE_BDT - BUNDLE_PRICE_BDT}`,
               "Lifetime access",
             ]}
+          />
+        </Card>
+
+        <Card className="flex flex-col p-5">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Advanced SQL
+            </p>
+            <Badge variant="outline">SQL Labs</Badge>
+          </div>
+          <p className="mt-2 text-2xl font-semibold">৳{ADVANCED_SQL.priceBdt}</p>
+          <FeatureList
+            items={["Project-based SQL lab", "Window functions & CTEs", "Sold separately"]}
           />
         </Card>
       </div>

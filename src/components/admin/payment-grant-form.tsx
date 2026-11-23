@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ApiClientError, apiPost } from "@/lib/api-client";
 import {
+  ADVANCED_SQL,
   BUNDLE_PRICE_BDT,
   MODULE_PRICE_BDT,
   PAID_MODULES,
@@ -22,6 +23,10 @@ const GRANT_OPTIONS = [
     value: module.slug,
     label: `Module ${module.order}: ${module.title} (৳${MODULE_PRICE_BDT})`,
   })),
+  {
+    value: ADVANCED_SQL.slug,
+    label: `Advanced SQL (৳${ADVANCED_SQL.priceBdt})`,
+  },
 ];
 
 export function PaymentGrantForm() {

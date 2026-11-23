@@ -1,7 +1,15 @@
+import { createHash } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { getSql } from "@/server/db";
 import { SESSION_COOKIE } from "@/lib/auth-cookie";
 import { isLearningRoute } from "@/lib/learning/route-slugs";
+
+/** Sessions store the SHA-256 of the raw cookie token, never the token itself. */
+function sessionTokenHash(request: NextRequest): string | null {
+  const token = request.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  return createHash("sha256").update(token).digest("hex");
+}
 
 /**
  * `notFound()` inside the page runs after the `(app)/loading.tsx` boundary has
@@ -17,7 +25,10 @@ import { isLearningRoute } from "@/lib/learning/route-slugs";
  * content into the proxy.
  */
 /** Non-module pages below /learn that the static route index must allow. */
-const RESERVED_LEARNING_SEGMENTS = new Set(["pricing"]);
+const RESERVED_LEARNING_SEGMENTS = new Set(["pricing", "sql"]);
+
+/** Non-plan pages below /lists that the slug check must allow. */
+const RESERVED_STUDY_LIST_SEGMENTS = new Set(["new"]);
 
 export async function proxy(request: NextRequest) {
   const learningMatch = /^\/learn\/([^/]+)(?:\/([^/]+))?\/?$/.exec(
@@ -48,20 +59,47 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const listMatch = /^\/lists\/([^/]+)\/?$/.exec(request.nextUrl.pathname);
+  const listMatch = /^\/lists\/([^/]+)(\/edit)?\/?$/.exec(
+    request.nextUrl.pathname,
+  );
   if (listMatch) {
+    const isEdit = Boolean(listMatch[2]);
     let slug: string;
     try {
       slug = decodeURIComponent(listMatch[1] ?? "");
     } catch {
       return new NextResponse(null, { status: 404 });
     }
+    if (!isEdit && RESERVED_STUDY_LIST_SEGMENTS.has(slug)) {
+      return NextResponse.next();
+    }
+    const tokenHash = sessionTokenHash(request);
     try {
-      const rows = await getSql()`select is_public from study_lists where slug = ${slug} limit 1`;
-      if (rows.length === 0 || rows[0]?.is_public === false) {
+      const rows = await getSql()`
+        select l.is_public, l.created_by, s.user_id as session_user_id
+        from study_lists l
+        left join sessions s
+          on s.token_hash = ${tokenHash}
+         and s.expires_at > now()
+        where l.slug = ${slug}
+        limit 1`;
+      const row = rows[0];
+      if (!row) {
         return NextResponse.rewrite(new URL("/_not-found", request.url), {
           status: 404,
         });
+      }
+      const isOwner =
+        tokenHash !== null &&
+        typeof row.created_by === "string" &&
+        row.session_user_id === row.created_by;
+      // The edit page is owner-only; private pages are owner-only for everyone.
+      if (isEdit || row.is_public === false) {
+        if (!isOwner) {
+          return NextResponse.rewrite(new URL("/_not-found", request.url), {
+            status: 404,
+          });
+        }
       }
     } catch {
       // A database outage should not turn every study plan into a 404.
@@ -107,5 +145,6 @@ export const config = {
     "/learn/:module",
     "/learn/:module/:topic",
     "/lists/:slug",
+    "/lists/:slug/edit",
   ],
 };

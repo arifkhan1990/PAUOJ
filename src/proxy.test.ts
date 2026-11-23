@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
@@ -89,14 +90,112 @@ describe("study plan slug proxy", () => {
     expect(response.headers.get("x-middleware-next")).toBe("1");
   });
 
-  it("returns a real 404 for a private study plan", async () => {
+  it("returns a real 404 for a private study plan without a session", async () => {
     sql.mockResolvedValue([{ is_public: false }]);
     const response = await proxy(request("/lists/private-plan"));
     expect(response.status).toBe(404);
   });
 
+  it("passes a private study plan to its owner", async () => {
+    sql.mockResolvedValue([
+      {
+        is_public: false,
+        created_by: "user-1",
+        session_user_id: "user-1",
+      },
+    ]);
+    const response = await proxy(
+      request("/lists/private-plan", "pauoj_session=owner-token"),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("returns 404 for another user's private study plan", async () => {
+    sql.mockResolvedValue([
+      {
+        is_public: false,
+        created_by: "user-1",
+        session_user_id: "user-2",
+      },
+    ]);
+    const response = await proxy(
+      request("/lists/private-plan", "pauoj_session=other-token"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 404 when the session cookie does not resolve to a user", async () => {
+    sql.mockResolvedValue([
+      { is_public: false, created_by: "user-1", session_user_id: null },
+    ]);
+    const response = await proxy(
+      request("/lists/private-plan", "pauoj_session=expired-token"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("passes an owned plan's edit page", async () => {
+    sql.mockResolvedValue([
+      {
+        is_public: false,
+        created_by: "user-1",
+        session_user_id: "user-1",
+      },
+    ]);
+    const response = await proxy(
+      request("/lists/private-plan/edit", "pauoj_session=owner-token"),
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("returns 404 for a non-owner edit page on a public plan", async () => {
+    sql.mockResolvedValue([
+      {
+        is_public: true,
+        created_by: "user-1",
+        session_user_id: "user-2",
+      },
+    ]);
+    const response = await proxy(
+      request("/lists/public-plan/edit", "pauoj_session=other-token"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 404 for a non-owner edit page on a private plan", async () => {
+    sql.mockResolvedValue([
+      {
+        is_public: false,
+        created_by: "user-1",
+        session_user_id: "user-2",
+      },
+    ]);
+    const response = await proxy(
+      request("/lists/private-plan/edit", "pauoj_session=other-token"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("hashes the session token before querying", async () => {
+    sql.mockResolvedValue([{ is_public: true }]);
+    await proxy(request("/lists/getting-started", "pauoj_session=secret-token"));
+    const params = (sql.mock.calls[0] as unknown[]).slice(1);
+    expect(params).toContain(
+      createHash("sha256").update("secret-token").digest("hex"),
+    );
+    expect(params).not.toContain("secret-token");
+  });
+
   it("does not query the database for the study plan index", async () => {
     const response = await proxy(request("/lists"));
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("allows the create-plan page without a slug lookup", async () => {
+    const response = await proxy(request("/lists/new"));
     expect(response.status).toBe(200);
     expect(sql).not.toHaveBeenCalled();
   });
@@ -143,6 +242,12 @@ describe("learning route proxy", () => {
 
   it("allows the reserved learning pricing page", async () => {
     const response = await proxy(request("/learn/pricing"));
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("allows the SQL lab page", async () => {
+    const response = await proxy(request("/learn/sql"));
     expect(response.status).toBe(200);
     expect(sql).not.toHaveBeenCalled();
   });

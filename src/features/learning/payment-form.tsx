@@ -16,9 +16,11 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiClientError, apiPost } from "@/lib/api-client";
 import {
+  ADVANCED_SQL,
   BUNDLE_PRICE_BDT,
   MODULE_PRICE_BDT,
   PAID_MODULES,
+  modulePriceBdt,
 } from "@/lib/learning/payments";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +34,11 @@ const PRODUCT_OPTIONS = [
     value: module.slug,
     label: `Module ${module.order}: ${module.title} — ৳${MODULE_PRICE_BDT}`,
   })),
+  {
+    value: ADVANCED_SQL.slug,
+    label: `Advanced SQL — ৳${ADVANCED_SQL.priceBdt}`,
+    description: "Project-based SQL lab, paid separately",
+  },
 ];
 
 function productPayload(value: string) {
@@ -51,7 +58,10 @@ export function PaymentForm() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
-  const amount = product === "BUNDLE" ? BUNDLE_PRICE_BDT : MODULE_PRICE_BDT;
+  const amount =
+    product === "BUNDLE"
+      ? BUNDLE_PRICE_BDT
+      : (modulePriceBdt(product) ?? MODULE_PRICE_BDT);
   const isPurchase = tab === "PURCHASE";
   const canSubmitPurchase =
     trxId.trim().length >= 6 && senderNumber.trim().length >= 8;
