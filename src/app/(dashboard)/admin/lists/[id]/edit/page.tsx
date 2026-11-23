@@ -5,7 +5,10 @@ import { ArrowLeft } from "lucide-react";
 import { StudyListForm } from "@/components/admin/study-list-form";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
-import { listProblemOptions } from "@/server/services/problem-options";
+import {
+  listProblemOptionsByIds,
+  listPublishedProblemOptions,
+} from "@/server/services/problem-options";
 import { getAdminStudyList } from "@/server/services/study-lists";
 
 export const metadata: Metadata = { title: "Edit study list" };
@@ -16,18 +19,26 @@ export default async function EditStudyListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [initial, options] = await Promise.all([
-    getAdminStudyList(id),
-    listProblemOptions(),
-  ]);
+  const initial = await getAdminStudyList(id);
   if (!initial) notFound();
+
+  const options = await listPublishedProblemOptions();
+  const known = new Set(options.map((option) => option.id));
+  const storedIds = initial.sections
+    .flatMap((section) => section.problemIds)
+    .filter((problemId) => !known.has(problemId));
+  const stored = await listProblemOptionsByIds(storedIds);
+  if (stored.length > 0) {
+    options.push(...stored);
+    options.sort((left, right) => left.title.localeCompare(right.title));
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Curated practice"
         title={initial.title}
-        description="Update the description, visibility or ordered problem set."
+        description="Update the details, sections and ordered problem path."
         actions={
           <Link
             href="/admin/lists"

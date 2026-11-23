@@ -48,6 +48,27 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const listMatch = /^\/lists\/([^/]+)\/?$/.exec(request.nextUrl.pathname);
+  if (listMatch) {
+    let slug: string;
+    try {
+      slug = decodeURIComponent(listMatch[1] ?? "");
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
+    try {
+      const rows = await getSql()`select is_public from study_lists where slug = ${slug} limit 1`;
+      if (rows.length === 0 || rows[0]?.is_public === false) {
+        return NextResponse.rewrite(new URL("/_not-found", request.url), {
+          status: 404,
+        });
+      }
+    } catch {
+      // A database outage should not turn every study plan into a 404.
+    }
+    return NextResponse.next();
+  }
+
   const match = /^\/problems\/([^/]+)(\/contribute)?\/?$/.exec(
     request.nextUrl.pathname,
   );
@@ -85,5 +106,6 @@ export const config = {
     "/problems/:slug/contribute",
     "/learn/:module",
     "/learn/:module/:topic",
+    "/lists/:slug",
   ],
 };

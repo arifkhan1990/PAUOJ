@@ -10,9 +10,14 @@ export type { RatingHistoryItem } from "./rating-types";
 import type { Verdict } from "./verdicts";
 export type {
   AdminStudyListDetail,
+  AdminStudyListSection,
   AdminStudyListSummary,
+  StudyDifficultyCounts,
   StudyListDetail,
+  StudyListLevel,
+  StudyListNextProblem,
   StudyListProblem,
+  StudyListSectionView,
   StudyListSummary,
 } from "./study-list-types";
 

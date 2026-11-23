@@ -44,8 +44,9 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   professional concept-map diagrams, guided problems, tiered practice, extra self-try problems
   and timed checkpoint badges. Tracks unlock sequentially, and earned/locked badges appear on
   the profile.
-- **Study plans and daily practice** — curated lists with progress, a deterministic daily challenge
-  with a streak, and category/subcategory/company filters.
+- **Study plans and daily practice** — sectioned, level-tagged plans with estimated duration,
+  featured picks, enrollment, per-section progress and next-problem resume; a deterministic
+  daily challenge with a streak; and category/subcategory/company filters.
 - **Discussions** — one-level threads with votes, moderation and auto-lock during live contests or
   assessments.
 - **Editor** — self-hosted Monaco with language-aware drafts saved in the browser.

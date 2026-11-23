@@ -1,4 +1,4 @@
-import { and, asc, eq, isNotNull, notInArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, notInArray, or } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { problemTags, problems, tags } from "@/server/db/schema";
 import type { ProblemOption, ProblemTag } from "@/lib/types";
@@ -28,6 +28,47 @@ export async function listProblemOptions(
     )
     .orderBy(asc(problems.title));
   return rows;
+}
+
+/** Curated/vendor lists may only reference fully published public problems. */
+export async function listPublishedProblemOptions(): Promise<ProblemOption[]> {
+  return getDb()
+    .select({
+      id: problems.id,
+      title: problems.title,
+      slug: problems.slug,
+      difficulty: problems.difficulty,
+    })
+    .from(problems)
+    .where(
+      and(
+        eq(problems.isPublic, true),
+        eq(problems.publicationStatus, "PUBLISHED"),
+      ),
+    )
+    .orderBy(asc(problems.title));
+}
+
+/**
+ * Admin-only: resolves labels for problems already stored in a list, even when
+ * they were withdrawn later, so the edit form shows the real title instead of
+ * silently dropping the row.
+ */
+export async function listProblemOptionsByIds(
+  ids: readonly string[],
+): Promise<ProblemOption[]> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+  return getDb()
+    .select({
+      id: problems.id,
+      title: problems.title,
+      slug: problems.slug,
+      difficulty: problems.difficulty,
+    })
+    .from(problems)
+    .where(inArray(problems.id, unique))
+    .orderBy(asc(problems.title));
 }
 
 export async function listProblemTags(

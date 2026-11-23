@@ -14,8 +14,17 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import type { ProblemOption } from "@/lib/types";
 
-function labelFor(index: number): string {
+type PickerLabelStyle = "letters" | "numbers";
+
+function labelFor(index: number, style: PickerLabelStyle): string {
+  if (style === "numbers") return String(index + 1).padStart(2, "0");
   return String.fromCharCode(65 + index);
+}
+
+function emptyHint(style: PickerLabelStyle): string {
+  return style === "numbers"
+    ? "Add problems from the left. The order becomes 01, 02, 03…"
+    : "Add problems from the left. The order determines labels A, B, C…";
 }
 
 export function ProblemPicker({
@@ -23,11 +32,20 @@ export function ProblemPicker({
   selected,
   onChange,
   selectedLabel = "Contest problems",
+  max = 26,
+  labelStyle = "letters",
+  orderHint,
 }: {
   options: ProblemOption[];
   selected: string[];
   onChange: (ids: string[]) => void;
   selectedLabel?: string;
+  /** Maximum number of problems that can be selected. */
+  max?: number;
+  /** "letters" (contest) or "numbers" (study plan). */
+  labelStyle?: PickerLabelStyle;
+  /** Replaces the default order hint shown in the selected panel. */
+  orderHint?: string;
 }) {
   const [search, setSearch] = useState("");
   const byId = useMemo(
@@ -42,7 +60,7 @@ export function ProblemPicker({
   });
 
   const add = (id: string) => {
-    if (selected.length >= 26 || selected.includes(id)) return;
+    if (selected.length >= max || selected.includes(id)) return;
     onChange([...selected, id]);
   };
 
@@ -78,6 +96,11 @@ export function ProblemPicker({
           </div>
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
+          {selected.length >= max ? (
+            <p className="px-2 pb-2 text-[11px] font-medium text-amber-700 dark:text-amber-300">
+              Limit of {max} problems reached.
+            </p>
+          ) : null}
           {available.length === 0 ? (
             <p className="p-3 text-xs text-muted-foreground">
               No more problems available.
@@ -89,7 +112,8 @@ export function ProblemPicker({
                   <button
                     type="button"
                     onClick={() => add(option.id)}
-                    className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted"
+                    disabled={selected.length >= max}
+                    className="flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">
@@ -110,14 +134,16 @@ export function ProblemPicker({
       </div>
 
       <div className="rounded-lg border border-border">
-        <div className="flex items-center justify-between border-b border-border p-3">
-          <p className="text-sm font-medium">{selectedLabel}</p>
-          <span className="text-xs text-muted-foreground">{selected.length}/26</span>
+        <div className="flex items-center justify-between gap-2 border-b border-border p-3">
+          <p className="min-w-0 truncate text-sm font-medium" title={selectedLabel}>{selectedLabel}</p>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {selected.length}/{max}
+          </span>
         </div>
         <div className="max-h-80 overflow-y-auto p-2">
           {selected.length === 0 ? (
             <p className="p-3 text-xs text-muted-foreground">
-              Add problems from the left. The order determines labels A, B, C…
+              {orderHint ?? emptyHint(labelStyle)}
             </p>
           ) : (
             <ul className="space-y-1">
@@ -134,7 +160,7 @@ export function ProblemPicker({
                         index === 0 && "border-primary text-primary",
                       )}
                     >
-                      {labelFor(index)}
+                      {labelFor(index, labelStyle)}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-xs font-medium">
                       {option?.title ?? "Unknown problem"}

@@ -1,18 +1,17 @@
 import "dotenv/config";
-import { count, eq, inArray } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { hashPassword } from "@/server/auth/password";
 import { getDb, getSql } from "./index";
 import { getEnv } from "../env";
 import {
   problemTags,
   problems,
-  studyListItems,
-  studyLists,
   submissions,
   tags,
   testCases,
   users,
 } from "./schema";
+import { seedStudyLists } from "./seed-study-lists";
 import { SEED_PROBLEMS, type SeededProblem } from "./seed-problems";
 import { ASSESSMENT_PROBLEMS } from "./seed-assessment-problems";
 import { LEARNING_PROBLEMS } from "./learning";
@@ -168,69 +167,6 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
   }
 
   return result;
-}
-
-async function seedStudyLists(adminId: string): Promise<void> {
-  const definitions = [
-    {
-      slug: "getting-started",
-      title: "Getting started",
-      description:
-        "A short warm-up path: input/output, arrays and a first simulation problem.",
-      problemSlugs: ["a-plus-b", "reverse-array", "array-rotation"],
-    },
-    {
-      slug: "dp-starter",
-      title: "Dynamic programming starter",
-      description:
-        "Move from matrix basics to classic DP and shortest paths.",
-      problemSlugs: ["matrix-multiplication", "longest-increasing-subsequence", "shortest-path"],
-    },
-  ];
-  const db = getDb();
-  for (const definition of definitions) {
-    const rows = await db
-      .select({ id: studyLists.id })
-      .from(studyLists)
-      .where(eq(studyLists.slug, definition.slug))
-      .limit(1);
-    let listId = rows[0]?.id;
-    if (!listId) {
-      const [created] = await db
-        .insert(studyLists)
-        .values({
-          slug: definition.slug,
-          title: definition.title,
-          description: definition.description,
-          isPublic: true,
-          createdBy: adminId,
-        })
-        .returning({ id: studyLists.id });
-      listId = created?.id;
-    }
-    if (!listId) continue;
-    const [itemCount] = await db
-      .select({ value: count() })
-      .from(studyListItems)
-      .where(eq(studyListItems.listId, listId));
-    if (Number(itemCount?.value ?? 0) > 0) continue;
-    const problemRows = await db
-      .select({ id: problems.id, slug: problems.slug })
-      .from(problems)
-      .where(inArray(problems.slug, definition.problemSlugs));
-    const bySlug = new Map(problemRows.map((row) => [row.slug, row.id]));
-    const items = definition.problemSlugs
-      .map((slug, index) => {
-        const problemId = bySlug.get(slug);
-        return problemId
-          ? { listId, problemId, position: index + 1 }
-          : null;
-      })
-      .filter((item): item is { listId: string; problemId: string; position: number } => item !== null);
-    if (items.length > 0) {
-      await db.insert(studyListItems).values(items);
-    }
-  }
 }
 
 async function recomputeCounts(): Promise<void> {

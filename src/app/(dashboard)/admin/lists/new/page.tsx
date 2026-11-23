@@ -4,18 +4,18 @@ import { ArrowLeft } from "lucide-react";
 import { StudyListForm } from "@/components/admin/study-list-form";
 import { PageHeader } from "@/components/shared/page-header";
 import { buttonVariants } from "@/components/ui/button";
-import { listProblemOptions } from "@/server/services/problem-options";
+import { listPublishedProblemOptions } from "@/server/services/problem-options";
 
 export const metadata: Metadata = { title: "New study list" };
 
 export default async function NewStudyListPage() {
-  const options = await listProblemOptions();
+  const options = await listPublishedProblemOptions();
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Curated practice"
         title="New study list"
-        description="Choose a title, description and ordered problem set."
+        description="Choose a title, level and the sectioned problem path."
         actions={
           <Link
             href="/admin/lists"

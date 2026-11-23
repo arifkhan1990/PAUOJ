@@ -270,11 +270,19 @@ read. Verified resources live in `problem_resources` and are editable by admins
 and the problem author. Related problems are computed from shared tags with the
 same restriction rules as the problem list, so contest problems never leak.
 
-Study plans are ordered `study_lists`/`study_list_items`; progress is derived
-from accepted submissions rather than stored separately. The daily challenge is
-deterministic per UTC date (an MD5 ordering over eligible public problems), and
-the streak reuses the accepted-submission activity heatmap. Category,
-subcategory and company tags live on `problems`; companies use a GIN index.
+Study plans are ordered `study_lists` → `study_list_sections` → `study_list_items`. Each
+plan carries a level, an optional admin time estimate and a featured flag; the effective
+duration falls back to a difficulty-based estimate when the admin leaves it blank.
+`study_list_enrollments` stores one row per `(user, plan)` for the "My plans" shelf. Solved
+and attempted state, section progress, difficulty mix, topics and the next unsolved problem
+are all derived from non-assessment submissions rather than stored per item. Items created
+before sections existed have a null `section_id` and render as a leading "General" section.
+Public plans only load published public problems, so withdrawing a problem removes it from
+the plan instead of leaking it. The catalog and detail use a fixed set of aggregate queries
+(no N+1); cache the public plan structure or paginate when the number of public plans grows
+beyond roughly 50. The daily challenge is deterministic per UTC date (an MD5 ordering over
+eligible public problems), and the streak reuses the accepted-submission activity heatmap.
+Category, subcategory and company tags live on `problems`; companies use a GIN index.
 
 ## Learning tracks
 

@@ -1,5 +1,7 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   pgTable,
@@ -9,6 +11,7 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import type { StudyListLevel } from "@/lib/study-list-types";
 import { users } from "./auth";
 import { problems } from "./problems";
 
@@ -20,6 +23,9 @@ export const studyLists = pgTable(
     title: text("title").notNull(),
     description: text("description").notNull(),
     isPublic: boolean("is_public").notNull().default(true),
+    level: text("level").$type<StudyListLevel>().notNull().default("BEGINNER"),
+    estimatedMinutes: integer("estimated_minutes"),
+    isFeatured: boolean("is_featured").notNull().default(false),
     createdBy: uuid("created_by").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -30,7 +36,40 @@ export const studyLists = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [uniqueIndex("study_lists_slug_unique").on(table.slug)],
+  (table) => [
+    uniqueIndex("study_lists_slug_unique").on(table.slug),
+    check(
+      "study_lists_level_check",
+      sql`${table.level} in ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')`,
+    ),
+    check(
+      "study_lists_estimated_minutes_check",
+      sql`${table.estimatedMinutes} is null or ${table.estimatedMinutes} > 0`,
+    ),
+  ],
+);
+
+export const studyListSections = pgTable(
+  "study_list_sections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => studyLists.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    position: integer("position").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("study_list_sections_position_unique").on(
+      table.listId,
+      table.position,
+    ),
+    index("study_list_sections_list_idx").on(table.listId),
+  ],
 );
 
 export const studyListItems = pgTable(
@@ -42,6 +81,9 @@ export const studyListItems = pgTable(
     problemId: uuid("problem_id")
       .notNull()
       .references(() => problems.id, { onDelete: "cascade" }),
+    sectionId: uuid("section_id").references(() => studyListSections.id, {
+      onDelete: "set null",
+    }),
     position: integer("position").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -54,8 +96,30 @@ export const studyListItems = pgTable(
       table.position,
     ),
     index("study_list_items_problem_idx").on(table.problemId),
+    index("study_list_items_section_idx").on(table.sectionId),
+  ],
+);
+
+export const studyListEnrollments = pgTable(
+  "study_list_enrollments",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => studyLists.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.listId] }),
+    index("study_list_enrollments_list_idx").on(table.listId),
   ],
 );
 
 export type StudyList = typeof studyLists.$inferSelect;
+export type StudyListSection = typeof studyListSections.$inferSelect;
 export type StudyListItem = typeof studyListItems.$inferSelect;
+export type StudyListEnrollment = typeof studyListEnrollments.$inferSelect;

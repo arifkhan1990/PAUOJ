@@ -313,6 +313,30 @@ checkpoint start with a non-admin account. Confirm an unknown track returns
 Migration `0026` is additive; a rollback to the previous app image keeps the new
 table and seeded problems harmless.
 
+### Study plans release
+
+Migration `0032` adds sections, enrollment and plan metadata (`level`,
+`estimated_minutes`, `is_featured`) and is additive. The app container runs the
+migration before `server.js`, so a normal deploy applies it; seed once after the
+migration to create or upgrade the four curated plans:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  --profile seed run --rm seed
+```
+
+The seed is idempotent and preserves admin edits: it creates a missing seeded
+plan, upgrades a legacy flat seeded plan once, and leaves a plan that already
+has sections untouched. Study plans accept only published public problems; the
+admin API rejects draft/private problems with `422`, and the public pages hide
+a problem if it is withdrawn later.
+
+Smoke-check `/lists`, one plan detail, the start/leave enrollment flow with a
+signed-in non-admin account, and an unknown plan slug returning `404`. In the
+admin queue, open `/admin/lists`, edit a plan's sections and confirm the public
+page reflects the change. Rollback to the previous app image keeps the new
+tables/columns and is harmless; no down migration is required.
+
 ## 7. CI/CD
 
 `.github/workflows/deploy.yml` is a manual `workflow_dispatch` job that runs on a

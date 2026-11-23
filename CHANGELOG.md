@@ -3,6 +3,33 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [Unreleased]
+
+### Added
+- Study plans now support ordered sections, beginner/intermediate/advanced levels, an optional
+  admin duration estimate (with a difficulty-based fallback), featured plans, topics, a
+  difficulty mix, learner enrollment and per-section progress.
+- `study_list_sections` and `study_list_enrollments`; `study_lists` gains `level`,
+  `estimated_minutes` and `is_featured`, and `study_list_items` gains a nullable `section_id`.
+  Existing flat plans keep working under a leading "General" section.
+- A "My plans" shelf, search/level/sort filters, a start/leave enrollment action and a
+  continue-with-the-next-unsolved-problem CTA on `/lists` and `/lists/:slug`.
+- Four curated seed plans with sections: Getting started, Dynamic programming starter,
+  Array foundations and Graph and DP sprint.
+
+### Changed
+- The admin study-list editor now manages sections, per-section problem pickers, ordering,
+  duplicate detection, live difficulty counts and an estimated duration.
+- The admin study-list table shows level, sections, duration, featured state and visibility.
+- The curated seed now preserves admin edits to plans that already have sections, while
+  upgrading legacy flat plans once.
+
+### Fixed
+- Study plans accept only published public problems; draft/private problems are rejected by
+  the admin API and hidden from public plans if a problem is withdrawn later.
+- Unknown and private study-plan routes return a real `404` instead of a streamed not-found
+  page with a `200` status.
+
 ## [0.8.0] - 2026-11-22
 
 ### Added

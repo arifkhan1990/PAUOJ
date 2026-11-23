@@ -1,260 +1,191 @@
-import { and, asc, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
+import type { UserRole } from "@/lib/types";
+import type { StudyListDetail, StudyListSummary } from "@/lib/study-list-types";
 import { errors } from "@/server/api/errors";
 import { getDb } from "@/server/db";
+import { studyListEnrollments, studyLists } from "@/server/db/schema";
 import {
-  problems,
-  studyListItems,
-  studyLists,
-  submissions,
-} from "@/server/db/schema";
-import type {
-  AdminStudyListDetail,
-  AdminStudyListSummary,
-  StudyListDetail,
-  StudyListSummary,
-} from "@/lib/types";
-import type { StudyListInput } from "@/lib/schemas/study-list";
-import { slugify } from "@/lib/utils";
+  buildStudyListSections,
+  buildStudyListSummary,
+  collectListTopics,
+  countListSections,
+  groupItemsByList,
+  groupListProblems,
+  loadProblemTopics,
+  loadStudyListItems,
+  loadStudyListSections,
+  loadViewerEnrollments,
+  loadViewerProblemState,
+} from "./study-list-data";
 
-async function listSolvedCounts(
-  viewerId: string | null,
-): Promise<Map<string, number>> {
-  if (!viewerId) return new Map();
-  const rows = await getDb()
-    .select({
-      listId: studyListItems.listId,
-      solved: sql<number>`count(distinct ${studyListItems.problemId})::int`,
-    })
-    .from(studyListItems)
-    .innerJoin(
-      submissions,
-      and(
-        eq(submissions.problemId, studyListItems.problemId),
-        eq(submissions.userId, viewerId),
-        eq(submissions.status, "ACCEPTED"),
-      ),
-    )
-    .groupBy(studyListItems.listId);
-  return new Map(rows.map((row) => [row.listId, Number(row.solved)]));
+export {
+  createStudyList,
+  getAdminStudyList,
+  listAdminStudyLists,
+  updateStudyList,
+} from "./study-list-admin";
+
+export type StudyListViewer = { id: string; role: UserRole } | null;
+
+type ListRow = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  level: StudyListDetail["level"];
+  estimatedMinutes: number | null;
+  isFeatured: boolean;
+  isPublic: boolean;
+  updatedAt: Date;
+};
+
+function publicListColumns() {
+  return {
+    id: studyLists.id,
+    slug: studyLists.slug,
+    title: studyLists.title,
+    description: studyLists.description,
+    level: studyLists.level,
+    estimatedMinutes: studyLists.estimatedMinutes,
+    isFeatured: studyLists.isFeatured,
+    isPublic: studyLists.isPublic,
+    updatedAt: studyLists.updatedAt,
+  };
 }
 
-async function listProblemCounts(): Promise<Map<string, number>> {
-  const rows = await getDb()
-    .select({ listId: studyListItems.listId, value: count() })
-    .from(studyListItems)
-    .groupBy(studyListItems.listId);
-  return new Map(rows.map((row) => [row.listId, Number(row.value)]));
+function sectionTitlesOf(
+  sections: ReadonlyArray<{ id: string; title: string }>,
+): Map<string, string> {
+  return new Map(sections.map((section) => [section.id, section.title]));
 }
 
 export async function listStudyLists(
-  viewer: { id: string; role: "USER" | "TEACHER" | "ADMIN" } | null,
+  viewer: StudyListViewer,
 ): Promise<StudyListSummary[]> {
-  const isAdmin = viewer?.role === "ADMIN";
-  const where = isAdmin ? undefined : eq(studyLists.isPublic, true);
-  const [rows, solved] = await Promise.all([
-    getDb()
-      .select({
-        id: studyLists.id,
-        slug: studyLists.slug,
-        title: studyLists.title,
-        description: studyLists.description,
-        isPublic: studyLists.isPublic,
-      })
-      .from(studyLists)
-      .where(where)
-      .orderBy(asc(studyLists.title)),
-    listSolvedCounts(viewer?.id ?? null),
+  const viewerId = viewer?.id ?? null;
+  const lists: ListRow[] = await getDb()
+    .select(publicListColumns())
+    .from(studyLists)
+    .where(eq(studyLists.isPublic, true))
+    .orderBy(desc(studyLists.isFeatured), asc(studyLists.title));
+  if (lists.length === 0) return [];
+
+  const listIds = lists.map((list) => list.id);
+  const [items, sectionsByList, enrollments] = await Promise.all([
+    loadStudyListItems(listIds),
+    loadStudyListSections(listIds),
+    loadViewerEnrollments(viewerId, listIds),
   ]);
-  const counts = await listProblemCounts();
-  return rows.map((row) => ({
-    ...row,
-    problemCount: counts.get(row.id) ?? 0,
-    solvedCount: solved.get(row.id) ?? 0,
-  }));
+  const [problemState, problemTopics] = await Promise.all([
+    loadViewerProblemState(
+      viewerId,
+      items.map((item) => item.problemId),
+    ),
+    loadProblemTopics(items.map((item) => item.slug)),
+  ]);
+
+  const itemsByList = groupItemsByList(items);
+  return lists.map((list) => {
+    const listItems = itemsByList.get(list.id) ?? [];
+    const sections = sectionsByList.get(list.id) ?? [];
+    const problems = groupListProblems(
+      listItems,
+      sectionTitlesOf(sections),
+      problemState,
+    );
+    return buildStudyListSummary({
+      list,
+      problems,
+      sectionCount: countListSections(sections, problems),
+      topics: collectListTopics(problems, problemTopics),
+      startedAt: enrollments.get(list.id) ?? null,
+    });
+  });
 }
 
 export async function getStudyList(
   slug: string,
-  viewer: { id: string; role: "USER" | "TEACHER" | "ADMIN" } | null,
+  viewer: StudyListViewer,
 ): Promise<StudyListDetail | null> {
-  const db = getDb();
-  const rows = await db
-    .select()
+  const [list]: ListRow[] = await getDb()
+    .select(publicListColumns())
     .from(studyLists)
     .where(eq(studyLists.slug, slug))
     .limit(1);
-  const list = rows[0];
   if (!list) return null;
   if (!list.isPublic && viewer?.role !== "ADMIN") return null;
 
-  const items = await db
-    .select({
-      slug: problems.slug,
-      title: problems.title,
-      difficulty: problems.difficulty,
-      points: problems.points,
-      position: studyListItems.position,
-    })
-    .from(studyListItems)
-    .innerJoin(problems, eq(problems.id, studyListItems.problemId))
-    .where(eq(studyListItems.listId, list.id))
-    .orderBy(asc(studyListItems.position));
-
-  const solved = new Set<string>();
-  if (viewer && items.length > 0) {
-    const solvedRows = await db
-      .selectDistinct({ slug: problems.slug })
-      .from(submissions)
-      .innerJoin(problems, eq(problems.id, submissions.problemId))
-      .where(
-        and(
-          eq(submissions.userId, viewer.id),
-          eq(submissions.status, "ACCEPTED"),
-          inArray(
-            problems.slug,
-            items.map((item) => item.slug),
-          ),
-        ),
-      );
-    for (const row of solvedRows) solved.add(row.slug);
-  }
-
-  return {
-    id: list.id,
-    slug: list.slug,
-    title: list.title,
-    description: list.description,
-    isPublic: list.isPublic,
-    problemCount: items.length,
-    solvedCount: solved.size,
-    problems: items.map((item) => ({
-      ...item,
-      solved: solved.has(item.slug),
-    })),
-  };
-}
-
-export async function listAdminStudyLists(): Promise<AdminStudyListSummary[]> {
-  const db = getDb();
-  const [rows, counts] = await Promise.all([
-    db
-      .select({
-        id: studyLists.id,
-        slug: studyLists.slug,
-        title: studyLists.title,
-        isPublic: studyLists.isPublic,
-        updatedAt: studyLists.updatedAt,
-      })
-      .from(studyLists)
-      .orderBy(desc(studyLists.updatedAt)),
-    listProblemCounts(),
+  const [items, sectionsByList] = await Promise.all([
+    loadStudyListItems([list.id]),
+    loadStudyListSections([list.id]),
   ]);
-  return rows.map((row) => ({
-    ...row,
-    updatedAt: row.updatedAt.toISOString(),
-    problemCount: counts.get(row.id) ?? 0,
-  }));
-}
+  const [problemState, problemTopics, enrollments] = await Promise.all([
+    loadViewerProblemState(
+      viewer?.id ?? null,
+      items.map((item) => item.problemId),
+    ),
+    loadProblemTopics(items.map((item) => item.slug)),
+    loadViewerEnrollments(viewer?.id ?? null, [list.id]),
+  ]);
 
-export async function getAdminStudyList(
-  id: string,
-): Promise<AdminStudyListDetail | null> {
-  const db = getDb();
-  const [list] = await db
-    .select()
-    .from(studyLists)
-    .where(eq(studyLists.id, id))
-    .limit(1);
-  if (!list) return null;
-  const items = await db
-    .select({ problemId: studyListItems.problemId })
-    .from(studyListItems)
-    .where(eq(studyListItems.listId, id))
-    .orderBy(asc(studyListItems.position));
+  const sections = sectionsByList.get(list.id) ?? [];
+  const problems = groupListProblems(
+    items,
+    sectionTitlesOf(sections),
+    problemState,
+  );
+  const startedAt = enrollments.get(list.id) ?? null;
+  const summary = buildStudyListSummary({
+    list,
+    problems,
+    sectionCount: countListSections(sections, problems),
+    topics: collectListTopics(problems, problemTopics),
+    startedAt,
+  });
+
   return {
-    id: list.id,
-    slug: list.slug,
-    title: list.title,
-    description: list.description,
-    isPublic: list.isPublic,
-    problemIds: items.map((item) => item.problemId),
+    ...summary,
+    sections: buildStudyListSections(sections, problems),
+    startedAt,
+    updatedAt: list.updatedAt.toISOString(),
   };
 }
 
-async function assertSlugAvailable(slug: string, excludeId?: string) {
-  const [row] = await getDb()
+async function findEnrollableListId(slug: string): Promise<string> {
+  const rows = await getDb()
     .select({ id: studyLists.id })
     .from(studyLists)
-    .where(eq(studyLists.slug, slug))
+    .where(and(eq(studyLists.slug, slug), eq(studyLists.isPublic, true)))
     .limit(1);
-  if (row && row.id !== excludeId) {
-    throw errors.conflict("A study list with that slug already exists.");
-  }
+  const listId = rows[0]?.id;
+  if (!listId) throw errors.notFound("Study list not found.");
+  return listId;
 }
 
-export async function createStudyList(
-  adminId: string,
-  input: StudyListInput,
-): Promise<{ id: string; slug: string }> {
-  const slug = input.slug || slugify(input.title);
-  if (!slug) throw errors.validation("Give the list a valid slug.");
-  await assertSlugAvailable(slug);
-  const db = getDb();
-  const id = await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(studyLists)
-      .values({
-        slug,
-        title: input.title,
-        description: input.description,
-        isPublic: input.isPublic,
-        createdBy: adminId,
-      })
-      .returning({ id: studyLists.id });
-    if (!created) throw errors.unavailable("Could not create the list.");
-    await tx.insert(studyListItems).values(
-      input.problemIds.map((problemId, index) => ({
-        listId: created.id,
-        problemId,
-        position: index + 1,
-      })),
-    );
-    return created.id;
-  });
-  return { id, slug };
+export async function enrollStudyList(
+  slug: string,
+  userId: string,
+): Promise<{ enrolled: boolean }> {
+  const listId = await findEnrollableListId(slug);
+  await getDb()
+    .insert(studyListEnrollments)
+    .values({ userId, listId })
+    .onConflictDoNothing();
+  return { enrolled: true };
 }
 
-export async function updateStudyList(
-  id: string,
-  input: StudyListInput,
-): Promise<{ id: string; slug: string }> {
-  const slug = input.slug || slugify(input.title);
-  if (!slug) throw errors.validation("Give the list a valid slug.");
-  await assertSlugAvailable(slug, id);
-  const db = getDb();
-  await db.transaction(async (tx) => {
-    const [updated] = await tx
-      .update(studyLists)
-      .set({
-        slug,
-        title: input.title,
-        description: input.description,
-        isPublic: input.isPublic,
-        updatedAt: new Date(),
-      })
-      .where(eq(studyLists.id, id))
-      .returning({ id: studyLists.id });
-    if (!updated) throw errors.notFound("Study list not found.");
-    await tx
-      .delete(studyListItems)
-      .where(eq(studyListItems.listId, id));
-    await tx.insert(studyListItems).values(
-      input.problemIds.map((problemId, index) => ({
-        listId: id,
-        problemId,
-        position: index + 1,
-      })),
+export async function leaveStudyList(
+  slug: string,
+  userId: string,
+): Promise<{ enrolled: boolean }> {
+  const listId = await findEnrollableListId(slug);
+  await getDb()
+    .delete(studyListEnrollments)
+    .where(
+      and(
+        eq(studyListEnrollments.userId, userId),
+        eq(studyListEnrollments.listId, listId),
+      ),
     );
-  });
-  return { id, slug };
+  return { enrolled: false };
 }

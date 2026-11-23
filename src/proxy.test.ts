@@ -71,6 +71,43 @@ describe("problem slug proxy", () => {
   });
 });
 
+describe("study plan slug proxy", () => {
+  beforeEach(() => {
+    sql.mockReset();
+  });
+
+  it("returns a real 404 for an unknown study plan slug", async () => {
+    sql.mockResolvedValue([]);
+    const response = await proxy(request("/lists/this-plan-does-not-exist"));
+    expect(response.status).toBe(404);
+  });
+
+  it("passes an existing study plan slug through to the page", async () => {
+    sql.mockResolvedValue([{ is_public: true }]);
+    const response = await proxy(request("/lists/getting-started"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
+
+  it("returns a real 404 for a private study plan", async () => {
+    sql.mockResolvedValue([{ is_public: false }]);
+    const response = await proxy(request("/lists/private-plan"));
+    expect(response.status).toBe(404);
+  });
+
+  it("does not query the database for the study plan index", async () => {
+    const response = await proxy(request("/lists"));
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("does not 404 every study plan when the lookup fails", async () => {
+    sql.mockRejectedValue(new Error("database unavailable"));
+    const response = await proxy(request("/lists/getting-started"));
+    expect(response.status).toBe(200);
+  });
+});
+
 describe("learning route proxy", () => {
   beforeEach(() => {
     sql.mockReset();

@@ -263,10 +263,43 @@ The contribution pipeline follows the same content lock: `POST /problems/:slug/c
 
 ### Study plans
 
-Public pages: `GET /lists` and `GET /lists/:slug` (HTML). Progress is derived
-from accepted submissions, so no extra progress table is needed. The problem
-list accepts `category`, `subcategory` and `company` filters in addition to
-search, difficulty and tag.
+Public pages: `GET /lists` and `GET /lists/:slug` (HTML). Plans are ordered
+`sections` of problems with a level, an optional admin duration estimate and a
+featured flag. Progress, attempts, section counts, difficulty mix and the next
+unsolved problem are derived from non-assessment submissions, so there is no
+per-item progress table. `study_list_enrollments` only records that a signed-in
+learner started a plan.
+
+- `POST /lists/:slug/enroll` and `DELETE /lists/:slug/enroll` require a session
+  and the same-origin check. Both are idempotent and return `{ "enrolled": true }`
+  or `{ "enrolled": false }`. Unknown or private plans return `404`; anonymous
+  callers get `401`; repeated calls are rate limited.
+- The problem list accepts `category`, `subcategory` and `company` filters in
+  addition to search, difficulty and tag.
+
+Admin payloads for `POST /admin/lists` and `PUT /admin/lists/:id` now use:
+
+```json
+{
+  "title": "Array foundations",
+  "slug": "array-foundations",
+  "description": "Traversal, counting and two-pointer patterns.",
+  "level": "BEGINNER",
+  "estimatedMinutes": 75,
+  "isFeatured": true,
+  "isPublic": true,
+  "sections": [
+    { "title": "Traversal", "description": "Scan every element once.", "problemIds": ["uuid"] }
+  ]
+}
+```
+
+`sections` is required (1–20), every section needs at least one problem, a
+problem may appear only once in a plan, a section holds at most 100 problems and
+a plan at most 300. `level` is `BEGINNER`, `INTERMEDIATE` or `ADVANCED`;
+`estimatedMinutes` is nullable. Only published public problems are accepted; a
+draft, private or withdrawn problem returns `422`. Invalid payloads return `422`;
+a duplicate slug returns `409`.
 
 ## Submissions
 
