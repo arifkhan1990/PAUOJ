@@ -46,7 +46,7 @@ export default async function LearningPricingPage() {
       <PageHeader
         eyebrow="Premium"
         title="Unlock modules 3–7"
-        description="Modules 1–2 are free forever. Premium modules are unlocked with a bKash/Nagad transfer and a manual TrxID check — no card or payment gateway required."
+        description="Modules 1–2 are free forever. Premium modules are unlocked with bKash Send Money or a City Bank transfer and a manual TrxID check — no card or payment gateway required."
         actions={
           <Link
             href="/learn"
@@ -138,7 +138,7 @@ export default async function LearningPricingPage() {
                         alt={`${method.label} QR code`}
                         width={144}
                         height={144}
-                        className="mt-2 size-36 rounded-md bg-white p-1"
+                        className="mt-2 size-36 rounded-md bg-white object-contain p-1"
                         loading="lazy"
                       />
                     ) : null}
