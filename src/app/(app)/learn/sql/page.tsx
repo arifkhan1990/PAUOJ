@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Award,
+  BookOpen,
   CheckCircle2,
   Clock3,
   Database,
@@ -158,6 +159,31 @@ export default async function SqlLabPage() {
           ))}
         </div>
       </Card>
+
+      <Link
+        href="/sql-handbook"
+        className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/[0.04] px-4 py-3 transition-colors hover:border-primary/45"
+      >
+        <span className="flex min-w-0 items-start gap-3">
+          <span
+            className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <BookOpen className="size-4" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">
+              Production database handbook
+            </span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
+              DDL, constraints, indexes/EXPLAIN, transactions, views, security,
+              partitioning and dialect differences — the project layer around
+              the queries.
+            </span>
+          </span>
+        </span>
+        <span className="text-xs font-medium text-primary">Read handbook →</span>
+      </Link>
 
       {SQL_MODULES.map((module) => {
         const locked = module.slug === "advanced-sql" && !advancedUnlocked;

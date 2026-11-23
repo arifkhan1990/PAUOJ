@@ -11,8 +11,11 @@ import {
   windowConcept,
 } from "./sql-concepts";
 import { BASIC_SQL_EXTRA_TOPICS } from "./sql-basic-extra";
+import { BASIC_SQL_EXTRA2_TOPICS } from "./sql-basic-extra2";
 import { ADVANCED_SQL_ANALYTICS_TOPICS } from "./sql-advanced-analytics";
 import { ADVANCED_SQL_DATA_TOPICS } from "./sql-advanced-data";
+import { ADVANCED_SQL_WINDOW_TOPICS } from "./sql-advanced-windows";
+import { ADVANCED_SQL_PERFORMANCE_TOPICS } from "./sql-advanced-performance";
 
 const basicCheckpoint = {
   title: "Basic SQL checkpoint",
@@ -58,7 +61,7 @@ export const basicSqlModule: LearningModuleDefinition = {
   goal: "Go from filtered lists and joins to sets, text/date search, payments, shipments and returns — the queries a marketplace runs every day.",
   description:
     "ShopSphere মাল্টি-ভেন্ডর দোকানের ডেটা দিয়ে SQL শেখা শুরু। ভেন্ডর-প্রোডাক্ট খোঁজা, অর্ডার ও আইটেম জোড়া লাগিয়ে রেভিনিউ, dead stock, subquery, set operations, টেক্সট/তারিখ সার্চ, পেমেন্ট-শিপমেন্ট-রিটার্ন—প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু, তারপর সেই প্রশ্নের query।",
-  estimatedHours: 20,
+  estimatedHours: 24,
   status: "LIVE",
   track: "sql",
   practiceTier: "COMPACT",
@@ -111,6 +114,7 @@ export const basicSqlModule: LearningModuleDefinition = {
       extraProblemSlugs: [],
     },
     ...BASIC_SQL_EXTRA_TOPICS,
+    ...BASIC_SQL_EXTRA2_TOPICS,
   ],
   checkpoint: basicCheckpoint,
 };
@@ -123,7 +127,7 @@ export const advancedSqlModule: LearningModuleDefinition = {
   goal: "Turn marketplace data into analytics: rankings, moving windows, funnels, coupons, JSON inventory, payout reconciliation and retention.",
   description:
     "এবার ShopSphere-এর অ্যানালিটিক্স টিমে কাজ। Window function দিয়ে র্যাংকিং, চলমান রেভিনিউ ও moving average; recursive CTE দিয়ে ক্যাটাগরি ও রেফারেল; CTE দিয়ে ফানেল, কুপন attribution, JSON/ইনভেন্টরি reconciliation, ভেন্ডর payout ও retention—সব বাস্তব project প্রশ্ন ধরে ধরে।",
-  estimatedHours: 26,
+  estimatedHours: 30,
   status: "LIVE",
   track: "sql",
   practiceTier: "COMPACT",
@@ -172,6 +176,8 @@ export const advancedSqlModule: LearningModuleDefinition = {
     },
     ...ADVANCED_SQL_ANALYTICS_TOPICS,
     ...ADVANCED_SQL_DATA_TOPICS,
+    ...ADVANCED_SQL_WINDOW_TOPICS,
+    ...ADVANCED_SQL_PERFORMANCE_TOPICS,
     {
       slug: "capstone",
       title: "Capstone: vendor & retention",

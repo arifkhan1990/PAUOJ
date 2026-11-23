@@ -1,6 +1,9 @@
 import type { SeedProblem } from "./seed-problems";
 import { SQL_PROBLEMS_BASIC } from "./sql-problems-basic";
+import { SQL_PROBLEMS_BASIC_DATES } from "./sql-problems-basic-dates";
+import { SQL_PROBLEMS_BASIC_JOINS } from "./sql-problems-basic-joins";
 import { SQL_PROBLEMS_BASIC_LIFECYCLE } from "./sql-problems-basic-lifecycle";
+import { SQL_PROBLEMS_BASIC_PAGINATION } from "./sql-problems-basic-pagination";
 import { SQL_PROBLEMS_BASIC_MISSING } from "./sql-problems-basic-missing";
 import { SQL_PROBLEMS_BASIC_SETOPS } from "./sql-problems-basic-setops";
 import { SQL_PROBLEMS_BASIC_SUBQUERIES } from "./sql-problems-basic-subqueries";
@@ -11,6 +14,9 @@ import { SQL_PROBLEMS_ADVANCED_FINANCE } from "./sql-problems-advanced-finance";
 import { SQL_PROBLEMS_ADVANCED_FUNNELS } from "./sql-problems-advanced-funnels";
 import { SQL_PROBLEMS_ADVANCED_JSON } from "./sql-problems-advanced-json";
 import { SQL_PROBLEMS_ADVANCED_METRICS } from "./sql-problems-advanced-metrics";
+import { SQL_PROBLEMS_ADVANCED_PERFORMANCE } from "./sql-problems-advanced-performance";
+import { SQL_PROBLEMS_ADVANCED_PIVOT } from "./sql-problems-advanced-pivot";
+import { SQL_PROBLEMS_ADVANCED_WINDOWS2 } from "./sql-problems-advanced-windows2";
 import { SQL_PROBLEMS_ADVANCED_TIMELINES } from "./sql-problems-advanced-timelines";
 import { SQL_PROBLEMS_CHECKPOINTS_BASIC } from "./sql-problems-checkpoints-basic";
 import { SQL_PROBLEMS_CHECKPOINTS_ADVANCED } from "./sql-problems-checkpoints-advanced";
@@ -23,12 +29,18 @@ export const SQL_PROBLEMS: SeedProblem[] = [
   ...SQL_PROBLEMS_BASIC_SETOPS,
   ...SQL_PROBLEMS_BASIC_TEXTDATE,
   ...SQL_PROBLEMS_BASIC_LIFECYCLE,
+  ...SQL_PROBLEMS_BASIC_JOINS,
+  ...SQL_PROBLEMS_BASIC_PAGINATION,
+  ...SQL_PROBLEMS_BASIC_DATES,
   ...SQL_PROBLEMS_ADVANCED,
   ...SQL_PROBLEMS_ADVANCED_METRICS,
   ...SQL_PROBLEMS_ADVANCED_TIMELINES,
   ...SQL_PROBLEMS_ADVANCED_FUNNELS,
   ...SQL_PROBLEMS_ADVANCED_JSON,
   ...SQL_PROBLEMS_ADVANCED_FINANCE,
+  ...SQL_PROBLEMS_ADVANCED_WINDOWS2,
+  ...SQL_PROBLEMS_ADVANCED_PIVOT,
+  ...SQL_PROBLEMS_ADVANCED_PERFORMANCE,
   ...SQL_PROBLEMS_ADVANCED_CAPSTONE,
   ...SQL_PROBLEMS_CHECKPOINTS_BASIC,
   ...SQL_PROBLEMS_CHECKPOINTS_ADVANCED,

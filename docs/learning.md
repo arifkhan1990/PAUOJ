@@ -181,12 +181,12 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
 ## SQL Labs (ShopSphere project)
 
 `/learn/sql` is the ShopSphere hub; the actual curriculum lives in two formal
-learning modules (16 topics, 30 guided problems, 2 checkpoints, 36 judge
+learning modules (21 topics, 42 guided problems, 2 checkpoints, 48 judge
 problems total) so progress, checkpoints and badges behave like the other
 tracks. Every task is a **normal judge problem** with points, time and memory
 limits, visible in the problem list.
 
-- **Basic SQL** (`basic-sql`, track 08, free, 20h): vendor directory, low stock,
+- **Basic SQL** (`basic-sql`, track 08, free, 24h): vendor directory, low stock,
   revenue/receipts, dead stock, stock buckets, above-category-average prices,
   customers without orders, set operations/data quality, case-insensitive
   search + date ranges, and the order lifecycle (payments, shipments, returns).
@@ -195,12 +195,13 @@ limits, visible in the problem list.
   and lifecycle reconciliation, plus the 45-minute *ShopSphere Analyst*
   checkpoint.
 - **Advanced SQL** (`advanced-sql`, track 09, ৳500, separate from the ৳700 code
-  bundle, 26h): ranking, running totals and 7-row moving averages, recursive
+  bundle, 30h): ranking, running totals and 7-row moving averages, recursive
   category/referral trees, category share and month-over-month growth, cart
   funnels, coupon attribution, JSON product attributes, inventory-ledger
   reconciliation, vendor payout reconciliation, refund impact and a
-  vendor/cohort capstone. Covers `RANK`, `LAG`, window frames/partitions,
-  recursive CTEs, conditional aggregation, JSON1, multi-step CTEs and finance
+  vendor/cohort capstone. Covers `RANK`, `LAG`/`LEAD`, `NTILE`, named windows,
+  frames/partitions, recursive CTEs, pivot/conditional aggregation, JSON1,
+  multi-step CTEs, keyset pagination, sargable date filters and finance
   reconciliation, plus the *ShopSphere Architect* checkpoint. Access uses the
   `advanced-sql` entitlement and is enforced on the module and problem pages,
   the problem list and submission creation.
@@ -223,6 +224,13 @@ limits, visible in the problem list.
   `JSON_UNQUOTE(JSON_EXTRACT(...))` through the same compatibility layer.
   Engine-specific features outside this subset are not available; portable
   standard SQL is the safest choice.
+- `/sql-handbook` covers the production layer a read-only SELECT judge cannot
+  grade: schema design/constraints/normalization/migrations, DDL/DML safety,
+  ACID/transactions/isolation/locks, views/materialized views, roles/RLS/SQL
+  injection, index/EXPLAIN/statistics, partitioning/full-text/arrays/ranges,
+  stored procedures/triggers and MySQL/PostgreSQL/SQLite differences. The
+  curriculum was audited against roadmap.sh SQL, PostgreSQL 19's SQL Language
+  docs, Use The Index Luke and SQLBolt.
 - Problems are seeded with `judge_language = 'sql'` and an optional
   `premium_module_slug`; the submit panel only shows supported languages.
   `learning:check` / `learning:audit` skip SQL tracks because their reference

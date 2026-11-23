@@ -60,6 +60,9 @@ export const LEARNING_ROUTE_SLUGS: Record<string, string[]> = {
     "set-operations",
     "text-and-dates",
     "order-lifecycle",
+    "joins-in-depth",
+    "pagination",
+    "text-dates-time",
   ],
   "advanced-sql": [
     "window-thinking",
@@ -69,6 +72,9 @@ export const LEARNING_ROUTE_SLUGS: Record<string, string[]> = {
     "funnels-coupons",
     "json-inventory",
     "finance-reconciliation",
+    "advanced-windows",
+    "pivot-grouping",
+    "query-performance",
     "capstone",
   ],
 };

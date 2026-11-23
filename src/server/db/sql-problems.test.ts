@@ -2,14 +2,14 @@ import { describe, expect, it } from "vitest";
 import { SQL_PROBLEMS } from "./sql-problems";
 
 describe("ShopSphere SQL problems", () => {
-  it("ships seventeen free and nineteen advanced project problems", () => {
-    expect(SQL_PROBLEMS).toHaveLength(36);
-    expect(new Set(SQL_PROBLEMS.map((problem) => problem.slug)).size).toBe(36);
+  it("ships twenty-three free and twenty-five advanced project problems", () => {
+    expect(SQL_PROBLEMS).toHaveLength(48);
+    expect(new Set(SQL_PROBLEMS.map((problem) => problem.slug)).size).toBe(48);
     const advanced = SQL_PROBLEMS.filter(
       (problem) => problem.premiumModuleSlug === "advanced-sql",
     );
-    expect(advanced).toHaveLength(19);
-    expect(SQL_PROBLEMS.length - advanced.length).toBe(17);
+    expect(advanced).toHaveLength(25);
+    expect(SQL_PROBLEMS.length - advanced.length).toBe(23);
     for (const problem of advanced) {
       expect(
         problem.slug.startsWith("sql-adv-") ||
