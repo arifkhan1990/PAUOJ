@@ -52,6 +52,13 @@ export const LEARNING_ROUTE_SLUGS: Record<string, string[]> = {
     "advanced-number-theory",
     "game-theory",
   ],
+  "basic-sql": ["orientation", "money-and-orders", "missing-rows", "subqueries"],
+  "advanced-sql": [
+    "window-thinking",
+    "hierarchies",
+    "business-metrics",
+    "capstone",
+  ],
 };
 
 export function isLearningRoute(

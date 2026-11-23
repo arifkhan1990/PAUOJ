@@ -9,6 +9,10 @@ import { module4 } from "./tracks/module-4";
 import { module5 } from "./tracks/module-5";
 import { module6 } from "./tracks/module-6";
 import { module7 } from "./tracks/module-7";
+import {
+  advancedSqlModule,
+  basicSqlModule,
+} from "./tracks/sql-track";
 
 export const LEARNING_MODULES: LearningModuleDefinition[] = [
   module1,
@@ -18,6 +22,8 @@ export const LEARNING_MODULES: LearningModuleDefinition[] = [
   module5,
   module6,
   module7,
+  basicSqlModule,
+  advancedSqlModule,
 ];
 
 export function getLearningModule(

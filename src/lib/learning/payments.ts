@@ -42,6 +42,15 @@ export function isPaidModule(slug: string): boolean {
   return getPaidModule(slug) !== null;
 }
 
+/** Modules that need any purchase, including the separately sold SQL track. */
+export function requiresPurchase(slug: string): boolean {
+  return isPaidModule(slug) || slug === ADVANCED_SQL.slug;
+}
+
+export function purchasePriceBdt(slug: string): number {
+  return modulePriceBdt(slug) ?? MODULE_PRICE_BDT;
+}
+
 export function isPurchasableModule(slug: string): boolean {
   return getPaidModule(slug) !== null || slug === ADVANCED_SQL.slug;
 }

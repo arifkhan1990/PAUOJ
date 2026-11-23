@@ -222,9 +222,23 @@ export async function getProblemBySlug(
     return null;
   }
   if (problem.premiumModuleSlug && !isAdmin) {
-    const { hasModuleEntitlement } = await import("@/server/services/learning-payments");
-    if (!userId || !(await hasModuleEntitlement(userId, problem.premiumModuleSlug))) {
-      return null;
+    const { hasModuleEntitlement } = await import(
+      "@/server/services/learning-payments"
+    );
+    if (
+      !userId ||
+      !(await hasModuleEntitlement(userId, problem.premiumModuleSlug))
+    ) {
+      throw new ApiError(
+        "PREMIUM_LOCKED",
+        "This problem is part of a premium module. Unlock it from the learning pricing page.",
+        403,
+        {
+          slug: problem.slug,
+          title: problem.title,
+          moduleSlug: problem.premiumModuleSlug,
+        },
+      );
     }
   }
   const hasActiveContext =

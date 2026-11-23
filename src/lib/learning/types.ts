@@ -47,6 +47,7 @@ export type LearningModuleDefinition = {
   description: string;
   estimatedHours: number;
   status: LearningModuleStatus;
+  track?: "core" | "sql";
   diagram?: {
     src: string;
     alt: string;

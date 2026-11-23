@@ -180,27 +180,45 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
 
 ## SQL Labs (ShopSphere project)
 
-`/learn/sql` is a project-first SQL track built on the ShopSphere multi-vendor
-marketplace (vendors, products, categories, orders, order items, reviews,
-referrals). Unlike the earlier browser lab, every task is a **normal judge
-problem** with points, time and memory limits, visible in the problem list.
+`/learn/sql` is the ShopSphere hub; the actual curriculum lives in two formal
+learning modules (8 topics, 16 guided problems, 2 checkpoints, 22 judge
+problems total) so progress, checkpoints and badges behave like the other
+tracks. Every task is a **normal judge problem** with points, time and memory
+limits, visible in the problem list.
 
-- Basic SQL is free: vendor directory, low-stock shelf, vendor revenue and
-  order receipts (`SELECT/WHERE/ORDER BY`, joins, aggregates, `HAVING`).
-- Advanced SQL costs ৳500 (separate from the ৳700 code bundle): top product per
-  category (`RANK`), running revenue (`SUM OVER`), category trees and referral
-  chains (recursive CTEs). Access uses the `advanced-sql` entitlement and is
-  enforced on the problem page, the problem list and submission creation.
-- The judge runs SQL in a read-only SQLite copy of `judge/shopsphere.sql`. The
-  SQL, MySQL and PostgreSQL language options all use this engine, with small
-  syntax normalisation (`ILIKE`, MySQL `LIMIT offset,count`, backticks); use
-  portable standard SQL for the widest compatibility.
+- **Basic SQL** (`basic-sql`, track 08, free): vendor directory, low-stock
+  shelf, vendor revenue, order receipts, dead stock, stock buckets,
+  above-category-average prices and customers without orders
+  (`SELECT/WHERE/ORDER BY`, joins, aggregates, `HAVING`, `LEFT JOIN`/`NOT
+  EXISTS`, `CASE`, correlated subqueries), plus a 45-minute checkpoint and the
+  *ShopSphere Analyst* badge.
+- **Advanced SQL** (`advanced-sql`, track 09, ৳500, separate from the ৳700 code
+  bundle): top product per category (`RANK`), running revenue (`SUM OVER`),
+  category trees and referral chains (recursive CTEs), category revenue share,
+  month-over-month growth (`LAG`), a vendor scorecard and signup-cohort
+  retention, plus a checkpoint and the *ShopSphere Architect* badge. Access uses the `advanced-sql` entitlement
+  and is enforced on the module and problem pages, the problem list and
+  submission creation.
+- Every SQL problem ships with five judge tests (two visible samples) so
+  checkpoints meet the normal learning standard. Tests are variant datasets
+  applied before the query; expected rows are generated from
+  `judge/shopsphere.sql`.
+- The judge runs SQL in a read-only SQLite copy of the fixture. The SQL, MySQL
+  and PostgreSQL options share that engine through a compatibility layer:
+  backticks, `ILIKE`, MySQL `LIMIT offset,count`, `FETCH FIRST`, PostgreSQL
+  `::` casts and `EXTRACT`, plus common `CONCAT`, `IF`, `DATE_FORMAT`,
+  `TO_CHAR`, `DATE_TRUNC`, `YEAR`/`MONTH`/`DAY` functions. Engine-specific
+  features outside this subset (for example `DISTINCT ON` or `STRING_AGG`
+  ordering) are not available; portable standard SQL is the safest choice.
 - Problems are seeded with `judge_language = 'sql'` and an optional
   `premium_module_slug`; the submit panel only shows supported languages.
+  `learning:check` / `learning:audit` skip SQL tracks because their reference
+  solutions are SQL rather than the Python editorial pipeline; the SQL judge
+  fixture and expected rows are the source of truth.
 
 ## Release checklist
 
-1. `pnpm db:migrate && pnpm db:check` — applies every additive migration (0027–0030) and
+1. `pnpm db:migrate && pnpm db:check` — applies every additive migration and
    verifies the database matches the shipped drizzle journal.
 2. `pnpm learning:check && pnpm learning:audit` — validates every solution,
    editorial and difficulty label.

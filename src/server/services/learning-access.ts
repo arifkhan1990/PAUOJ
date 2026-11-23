@@ -42,6 +42,7 @@ export function moduleUnlock(
   definition: LearningModuleDefinition,
   badges: Set<string>,
 ): ModuleUnlock {
+  if (definition.track === "sql") return { locked: false, unlockHint: null };
   const ordered = orderedModules();
   const index = ordered.findIndex((item) => item.slug === definition.slug);
   const previous = index > 0 ? ordered[index - 1] : null;
@@ -66,7 +67,9 @@ export async function unlockFor(
   definition: LearningModuleDefinition,
   viewerId: string | null,
 ): Promise<ModuleUnlock> {
-  if (definition.order <= 1) return { locked: false, unlockHint: null };
+  if (definition.track === "sql" || definition.order <= 1) {
+    return { locked: false, unlockHint: null };
+  }
   const ordered = orderedModules();
   const index = ordered.findIndex((item) => item.slug === definition.slug);
   const previous = index > 0 ? ordered[index - 1] : null;

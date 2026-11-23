@@ -12,6 +12,7 @@ import type { ProblemDetail } from "@/lib/types";
 
 export function ProblemDescription({ problem }: { problem: ProblemDetail }) {
   const hasIo = Boolean(problem.inputFormat || problem.outputFormat);
+  const isSql = problem.judgeLanguage === "sql";
 
   return (
     <div className="space-y-5">
@@ -58,9 +59,21 @@ export function ProblemDescription({ problem }: { problem: ProblemDetail }) {
               {problem.samples.length === 1 ? "example" : "examples"}
             </span>
           </div>
+          {isSql ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              SQL samples run against the ShopSphere fixture. When a sample shows
+              dataset setup, the judge applies it before running your query; the
+              expected rows are TSV.
+            </p>
+          ) : null}
           <div className="space-y-3">
             {problem.samples.map((sample, index) => (
-              <SampleCard key={sample.id} sample={sample} index={index} />
+              <SampleCard
+                key={sample.id}
+                sample={sample}
+                index={index}
+                sql={isSql}
+              />
             ))}
           </div>
         </section>

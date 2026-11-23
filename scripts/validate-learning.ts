@@ -39,15 +39,16 @@ function selectedTopics(): Selection[] {
   const moduleSlug = argument("module");
   const topicSlug = argument("topic");
   const includeCheckpoint = !process.argv.includes("--no-checkpoint");
+  const modules = LEARNING_MODULES.filter((module) => module.track !== "sql");
   if (topicSlug) {
-    for (const definition of LEARNING_MODULES) {
+    for (const definition of modules) {
       const topic = definition.topics.find((item) => item.slug === topicSlug);
       if (topic) return [{ module: definition, topic, includeCheckpoint: false }];
     }
     throw new Error(`Unknown topic: ${topicSlug}`);
   }
   if (moduleSlug) {
-    const definition = LEARNING_MODULES.find(
+    const definition = modules.find(
       (item) => item.slug === moduleSlug,
     );
     if (!definition) throw new Error(`Unknown module: ${moduleSlug}`);
@@ -59,9 +60,9 @@ function selectedTopics(): Selection[] {
       },
     ];
   }
-  return LEARNING_MODULES.filter((module) => module.status === "LIVE").map(
-    (module) => ({ module, includeCheckpoint }),
-  );
+  return modules
+    .filter((module) => module.status === "LIVE")
+    .map((module) => ({ module, includeCheckpoint }));
 }
 
 function topicProblemSlugs(topic: LearningTopicDefinition): string[] {

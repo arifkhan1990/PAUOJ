@@ -10,6 +10,7 @@ import { PremiumPaywall } from "@/components/learning/premium-paywall";
 import { TopicCard } from "@/components/learning/topic-card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
+import { purchasePriceBdt } from "@/lib/learning/payments";
 import { getCurrentUser } from "@/server/auth/session";
 import { getLearningModule } from "@/server/services/learning";
 
@@ -47,7 +48,11 @@ export default async function LearningModulePage({
     return (
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <ModuleHeader module={track} />
-        <PremiumPaywall moduleTitle={track.title} className="mt-6" />
+        <PremiumPaywall
+          moduleTitle={track.title}
+          priceBdt={purchasePriceBdt(track.slug)}
+          className="mt-6"
+        />
 
         <section className="mt-10">
           <SectionHeading

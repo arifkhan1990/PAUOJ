@@ -11,7 +11,7 @@ import {
   getLearningModule as findLearningModule,
   getLearningTopic as findLearningTopic,
 } from "@/lib/learning/modules";
-import { isPaidModule } from "@/lib/learning/payments";
+import { requiresPurchase } from "@/lib/learning/payments";
 import type { SafeUser } from "@/server/auth/session";
 import { getEntitledModuleSlugs } from "@/server/services/learning-payments";
 import {
@@ -108,7 +108,7 @@ export async function getLearningOverview(
   ]);
   return modules.map((definition) => {
     const unlockedByPurchase = entitled.has(definition.slug);
-    const paywalled = isPaidModule(definition.slug) && !unlockedByPurchase;
+    const paywalled = requiresPurchase(definition.slug) && !unlockedByPurchase;
     return {
       ...summarizeModule(definition, rows, flags, badges),
       ...(paywalled || unlockedByPurchase
@@ -230,7 +230,7 @@ export async function getLearningModule(
     getEntitledModuleSlugs(viewer?.id ?? null, viewer?.role),
   ]);
   const unlockedByPurchase = entitlements.has(definition.slug);
-  const paywalled = isPaidModule(definition.slug) && !unlockedByPurchase;
+  const paywalled = requiresPurchase(definition.slug) && !unlockedByPurchase;
   const unlock = paywalled || unlockedByPurchase
     ? { locked: false, unlockHint: null }
     : await unlockFor(definition, viewer?.id ?? null);
@@ -290,7 +290,7 @@ export async function getLearningTopic(
     getEntitledModuleSlugs(viewer?.id ?? null, viewer?.role),
   ]);
   const unlockedByPurchase = entitlements.has(found.module.slug);
-  const paywalled = isPaidModule(found.module.slug) && !unlockedByPurchase;
+  const paywalled = requiresPurchase(found.module.slug) && !unlockedByPurchase;
   const unlock = paywalled || unlockedByPurchase
     ? { locked: false, unlockHint: null }
     : await unlockFor(found.module, viewer?.id ?? null);
@@ -333,7 +333,7 @@ export async function startLearningCheckpoint(
   if (definition.status !== "LIVE" || !definition.checkpoint) {
     throw errors.conflict("This module's checkpoint is not available yet.");
   }
-  if (isPaidModule(definition.slug) && user.role !== "ADMIN") {
+  if (requiresPurchase(definition.slug) && user.role !== "ADMIN") {
     const entitled = await getEntitledModuleSlugs(user.id, user.role);
     if (!entitled.has(definition.slug)) {
       throw errors.forbidden(
@@ -343,7 +343,7 @@ export async function startLearningCheckpoint(
   }
   const entitled =
     user.role === "ADMIN" ||
-    (isPaidModule(definition.slug) &&
+    (requiresPurchase(definition.slug) &&
       (await getEntitledModuleSlugs(user.id, user.role)).has(definition.slug));
   const unlock = entitled ? { locked: false, unlockHint: null } : await unlockFor(definition, userId);
   if (unlock.locked) {

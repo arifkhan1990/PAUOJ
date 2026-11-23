@@ -10,9 +10,11 @@ import { cn } from "@/lib/utils";
 
 export function PremiumPaywall({
   moduleTitle,
+  priceBdt = MODULE_PRICE_BDT,
   className,
 }: {
   moduleTitle: string;
+  priceBdt?: number;
   className?: string;
 }) {
   return (
@@ -38,9 +40,8 @@ export function PremiumPaywall({
               {moduleTitle} is part of the paid track
             </h2>
             <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Modules 1–2 stay free. Unlock this module for ৳
-              {MODULE_PRICE_BDT}, or take all five premium modules for ৳
-              {BUNDLE_PRICE_BDT}. Pay by bKash or City Bank, submit the TrxID and an
+              Modules 1–2 stay free. Unlock this module for ৳{priceBdt}, or take all five code modules for
+              ৳{BUNDLE_PRICE_BDT}. Pay by bKash or City Bank, submit the TrxID and an
               admin approves it — no card needed.
             </p>
           </div>
@@ -48,7 +49,7 @@ export function PremiumPaywall({
         <div className="flex shrink-0 flex-col gap-2 sm:items-end">
           <Link href="/learn/pricing" className={buttonVariants()}>
             <Sparkles className="size-4" aria-hidden="true" />
-            Unlock for ৳{MODULE_PRICE_BDT}
+            Unlock for ৳{priceBdt}
           </Link>
           <Link
             href="/learn/pricing#free-access"

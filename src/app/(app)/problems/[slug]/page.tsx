@@ -52,15 +52,18 @@ export const dynamic = "force-dynamic";
 const SUBMISSIONS_PAGE_SIZE = 10;
 
 type LockedProblem = {
-  kind: "contest" | "assessment";
+  kind: "contest" | "assessment" | "premium";
   slug: string;
   title: string;
+  moduleSlug?: string;
 };
 
 function lockedProblemFrom(error: unknown): LockedProblem | null {
   if (
     !(error instanceof ApiError) ||
-    (error.code !== "CONTEST_LOCKED" && error.code !== "ASSESSMENT_LOCKED")
+    (error.code !== "CONTEST_LOCKED" &&
+      error.code !== "ASSESSMENT_LOCKED" &&
+      error.code !== "PREMIUM_LOCKED")
   ) {
     return null;
   }
@@ -73,10 +76,21 @@ function lockedProblemFrom(error: unknown): LockedProblem | null {
     typeof details.slug === "string" &&
     typeof details.title === "string"
   ) {
+    const kind =
+      error.code === "ASSESSMENT_LOCKED"
+        ? "assessment"
+        : error.code === "PREMIUM_LOCKED"
+          ? "premium"
+          : "contest";
+    const moduleSlug =
+      "moduleSlug" in details && typeof details.moduleSlug === "string"
+        ? details.moduleSlug
+        : undefined;
     return {
-      kind: error.code === "ASSESSMENT_LOCKED" ? "assessment" : "contest",
+      kind,
       slug: details.slug,
       title: details.title,
+      moduleSlug,
     };
   }
   return null;
@@ -133,7 +147,9 @@ export default async function ProblemPage({
           description={
             locked.kind === "assessment"
               ? `It is part of the running coding assessment "${locked.title}". Open the assessment and join with your access code.`
-              : `It is part of the running contest "${locked.title}". Register for the contest to open the statement and submit.`
+              : locked.kind === "premium"
+                ? `"${locked.title}" is part of the Advanced SQL track. Unlock it once for ৳500 to open the statement, editorial and submissions.`
+                : `It is part of the running contest "${locked.title}". Register for the contest to open the statement and submit.`
           }
           icon={LockKeyhole}
           action={
@@ -142,15 +158,26 @@ export default async function ProblemPage({
                 href={
                   locked.kind === "assessment"
                     ? `/assessments/${locked.slug}`
-                    : `/contests/${locked.slug}`
+                    : locked.kind === "premium"
+                      ? "/learn/pricing"
+                      : `/contests/${locked.slug}`
                 }
                 className={buttonVariants()}
               >
                 {locked.kind === "assessment"
                   ? "Open assessment"
-                  : "Open contest"}
+                  : locked.kind === "premium"
+                    ? "Unlock Advanced SQL · ৳500"
+                    : "Open contest"}
               </Link>
-              {!user ? (
+              {locked.kind === "premium" ? (
+                <Link
+                  href={`/learn/${locked.moduleSlug ?? "advanced-sql"}`}
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  See the track
+                </Link>
+              ) : !user ? (
                 <Link
                   href={`/login?next=${encodeURIComponent(
                     locked.kind === "assessment"

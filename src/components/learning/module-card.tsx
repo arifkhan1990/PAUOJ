@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type { LearningModuleSummary } from "@/lib/learning/types";
 import { cn } from "@/lib/utils";
+import { purchasePriceBdt } from "@/lib/learning/payments";
 import { LearningProgressBar } from "./learning-progress";
 
 type TrackState = "live" | "locked" | "planned" | "premium";
@@ -41,7 +42,7 @@ function StatusChip({ state }: { state: TrackState }) {
     return (
       <Badge variant="warning">
         <LockKeyhole className="size-3" aria-hidden="true" />
-        Premium ৳200
+        Premium
       </Badge>
     );
   }
@@ -94,7 +95,7 @@ export function ModuleCard({
     state === "planned"
       ? "Preview"
       : state === "premium"
-        ? "Unlock ৳200"
+        ? `Unlock ৳${purchasePriceBdt(module.slug)}`
         : isComplete
           ? "Review"
           : module.progress.solved > 0
@@ -176,7 +177,7 @@ export function ModuleCard({
             {state === "premium" ? (
               <p className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-[11px] text-amber-800 dark:text-amber-300">
                 <LockKeyhole className="size-3.5 shrink-0" aria-hidden="true" />
-                Premium module · ৳200 or ৳700 for all five
+                Premium module · ৳{purchasePriceBdt(module.slug)}
               </p>
             ) : state === "planned" ? (
               <p className="flex items-center gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-[11px] text-muted-foreground">

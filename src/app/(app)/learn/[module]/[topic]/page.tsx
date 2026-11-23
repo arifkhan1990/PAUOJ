@@ -18,6 +18,7 @@ import { Card } from "@/components/ui/card";
 import { LessonToc, type LessonTocItem } from "@/features/learning/lesson-toc";
 import { LessonSocial } from "@/features/learning/lesson-social";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
+import { purchasePriceBdt } from "@/lib/learning/payments";
 import {
   extractMarkdownHeadings,
   type LessonOutlineHeading,
@@ -97,7 +98,11 @@ export default async function LearningTopicPage({
           topicPosition={topicPosition}
           locked={false}
         />
-        <PremiumPaywall moduleTitle={definition.title} className="mt-6" />
+        <PremiumPaywall
+          moduleTitle={definition.title}
+          priceBdt={purchasePriceBdt(definition.slug)}
+          className="mt-6"
+        />
         <Link
           href={`/learn/${moduleSlug}`}
           className="mt-4 inline-flex text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"

@@ -294,6 +294,8 @@ function main(): void {
   const modules = LEARNING_MODULES.filter(
     (module) =>
       module.status === "LIVE" &&
+      // SQL tracks are project problems validated by tests, not the Python editorial pipeline.
+      module.track !== "sql" &&
       (!options.moduleSlug || module.slug === options.moduleSlug),
   );
   if (options.moduleSlug && modules.length === 0) {

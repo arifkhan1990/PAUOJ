@@ -26,7 +26,7 @@ import { getLearningOverview } from "@/server/services/learning";
 export const metadata: Metadata = {
   title: "Learning tracks",
   description:
-    "A seven-track curriculum from basic programming to advanced algorithms, with concept notes, guided practice and timed checkpoints.",
+    "Seven code tracks from basic programming to advanced algorithms, plus two project-driven SQL tracks with concept notes, guided practice and timed checkpoints.",
 };
 
 export const dynamic = "force-dynamic";
@@ -326,8 +326,10 @@ export default async function LearnPage() {
             Learning tracks
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Seven tracks take you from your first loop to advanced algorithms
-            — concept notes, guided practice and a timed checkpoint in each.
+            Seven code tracks take you from your first loop to advanced
+            algorithms. The two SQL tracks apply the same ideas to a real
+            marketplace database — concept notes, guided practice and a timed
+            checkpoint in each.
           </p>
           <p
             lang="bn"
@@ -365,8 +367,9 @@ export default async function LearnPage() {
               SQL Labs · ShopSphere project
             </span>
             <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-              Query the TechNest marketplace with real SQL. Basic tasks are free;
-              advanced window functions unlock for ৳500.
+              Learn SQL on the ShopSphere marketplace with real judge problems.
+              Basic is free; advanced window functions and recursive CTEs unlock
+              for ৳500.
             </span>
           </span>
         </span>

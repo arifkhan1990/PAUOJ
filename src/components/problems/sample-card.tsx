@@ -5,9 +5,11 @@ import type { SampleTest } from "@/lib/types";
 export function SampleCard({
   sample,
   index,
+  sql = false,
 }: {
   sample: SampleTest;
   index: number;
+  sql?: boolean;
 }) {
   return (
     <Card className="overflow-hidden">
@@ -19,16 +21,21 @@ export function SampleCard({
       <div className="grid md:grid-cols-2 md:divide-x md:divide-border">
         <div>
           <div className="flex items-center justify-between px-4 py-2">
-            <span className="text-xs font-medium text-muted-foreground">Input</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              {sql ? "Dataset setup" : "Input"}
+            </span>
             <CopyButton value={sample.input} label="Copy" />
           </div>
           <pre className="max-h-52 overflow-auto border-t border-border bg-background px-4 py-3 font-mono text-xs leading-relaxed">
-            {sample.input || " "}
+            {sample.input ||
+              (sql ? "Base ShopSphere fixture (no changes)" : " ")}
           </pre>
         </div>
         <div>
           <div className="flex items-center justify-between px-4 py-2">
-            <span className="text-xs font-medium text-muted-foreground">Output</span>
+            <span className="text-xs font-medium text-muted-foreground">
+              {sql ? "Expected rows (TSV)" : "Output"}
+            </span>
             <CopyButton value={sample.output} label="Copy" />
           </div>
           <pre className="max-h-52 overflow-auto border-t border-border bg-background px-4 py-3 font-mono text-xs leading-relaxed">

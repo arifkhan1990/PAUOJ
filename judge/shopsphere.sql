@@ -17,7 +17,8 @@ INSERT INTO categories VALUES
 INSERT INTO vendors VALUES
  (1,'TechNest','Dhaka',4.8),(2,'BookBazar','Chattogram',4.3),
  (3,'StyleHub','Dhaka',4.6),(4,'GadgetPoint','Sylhet',4.1),
- (5,'HomeCraft','Khulna',4.9);
+ (5,'HomeCraft','Khulna',4.9),
+ (6,'PaperTrail','Rajshahi',4.0);
 
 INSERT INTO customers VALUES
  (1,'Rahim','Dhaka','2026-01-12'),(2,'Karim','Chattogram','2026-02-03'),
