@@ -152,7 +152,7 @@ export default async function LearningTopicPage({
   ];
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 sm:pb-16 lg:px-8">
       <LessonHeader
         topic={topic}
         definition={definition}
