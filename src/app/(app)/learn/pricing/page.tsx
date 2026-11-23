@@ -3,6 +3,7 @@ import Link from "next/link";
 import { BadgeCheck, QrCode, ShieldCheck, Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { PaymentForm } from "@/features/learning/payment-form";
+import { PaymentMethods } from "@/features/learning/payment-methods";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -114,40 +115,7 @@ export default async function LearningPricingPage() {
 
           {user ? (
             methods.length > 0 ? (
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {methods.map((method) => (
-                  <div
-                    key={method.id}
-                    className="rounded-lg border border-border bg-muted/20 p-3"
-                  >
-                    <p className="text-xs font-semibold">{method.label}</p>
-                    {method.accountNumber ? (
-                      <p className="mt-1 font-mono text-sm font-semibold tracking-wide">
-                        {method.accountNumber}
-                      </p>
-                    ) : null}
-                    {method.accountName ? (
-                      <p className="text-[11px] text-muted-foreground">
-                        {method.accountName}
-                      </p>
-                    ) : null}
-                    {method.qrUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- served from the authenticated private QR route.
-                      <img
-                        src={method.qrUrl}
-                        alt={`${method.label} QR code`}
-                        width={144}
-                        height={144}
-                        className="mt-2 size-36 rounded-md bg-white object-contain p-1"
-                        loading="lazy"
-                      />
-                    ) : null}
-                    <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
-                      {method.instructions}
-                    </p>
-                  </div>
-                ))}
-              </div>
+              <PaymentMethods methods={methods} />
             ) : (
               <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
                 Payment details are being set up. Use the free-access request in

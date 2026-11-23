@@ -4,7 +4,8 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { requireApiUser } from "@/server/api/auth";
 import { apiError } from "@/server/api/responses";
-import { getPaymentQrFile, type PaymentMethodId } from "@/server/services/payment-config";
+import type { PaymentMethodId } from "@/lib/learning/payment-types";
+import { getPaymentQrFile } from "@/server/services/payment-config";
 
 const CONTENT_TYPES: Record<string, string> = {
   png: "image/png",

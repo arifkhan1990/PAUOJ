@@ -1,16 +1,9 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-
-export type PaymentMethodId = "bkash" | "citybank";
-
-export type PaymentMethod = {
-  id: PaymentMethodId;
-  label: string;
-  accountName: string | null;
-  accountNumber: string | null;
-  qrUrl: string | null;
-  instructions: string;
-};
+import type {
+  PaymentMethodId,
+  PaymentMethodView,
+} from "@/lib/learning/payment-types";
 
 const QR_EXTENSIONS = ["png", "webp", "jpg", "jpeg"];
 
@@ -37,19 +30,21 @@ const DEFAULT_INSTRUCTIONS =
  * Payment details come from the environment. QR images are served from a
  * private directory through an authenticated route, never from `public/`.
  */
-export function getPaymentMethods(): PaymentMethod[] {
+export function getPaymentMethods(): PaymentMethodView[] {
   const instructions =
     process.env.PAYMENT_INSTRUCTIONS?.trim() || DEFAULT_INSTRUCTIONS;
 
   const methods: Array<{
     id: PaymentMethodId;
     label: string;
+    shortLabel: string;
     name: string;
     number: string | null;
   }> = [
     {
       id: "bkash",
       label: process.env.PAYMENT_BKASH_LABEL?.trim() || "bKash (Send Money)",
+      shortLabel: "bKash",
       name: process.env.PAYMENT_BKASH_NAME?.trim() || "",
       number: process.env.PAYMENT_BKASH_NUMBER?.trim() || null,
     },
@@ -58,6 +53,7 @@ export function getPaymentMethods(): PaymentMethod[] {
       label:
         process.env.PAYMENT_CITYBANK_LABEL?.trim() ||
         "City Bank (citytouch transfer)",
+      shortLabel: "City Bank",
       name: process.env.PAYMENT_CITYBANK_NAME?.trim() || "",
       number: process.env.PAYMENT_CITYBANK_ACCOUNT?.trim() || null,
     },
@@ -70,11 +66,12 @@ export function getPaymentMethods(): PaymentMethod[] {
       return {
         id: method.id,
         label: method.label,
+        shortLabel: method.shortLabel,
         accountName: method.name || null,
         accountNumber: method.number,
         qrUrl: qrFile ? `/api/learning/payment-qr/${method.id}` : null,
         instructions,
-      } satisfies PaymentMethod;
+      } satisfies PaymentMethodView;
     })
-    .filter((method): method is PaymentMethod => method !== null);
+    .filter((method): method is PaymentMethodView => method !== null);
 }
