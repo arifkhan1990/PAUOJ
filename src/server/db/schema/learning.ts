@@ -210,7 +210,7 @@ export const paymentOrders = pgTable(
     ),
     check(
       "payment_orders_status_check",
-      sql`${table.status} in ('PENDING', 'APPROVED', 'REJECTED')`,
+      sql`${table.status} in ('PENDING', 'APPROVED', 'REJECTED', 'REVOKED')`,
     ),
     check(
       "payment_orders_amount_check",

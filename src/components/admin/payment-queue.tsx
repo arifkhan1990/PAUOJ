@@ -10,17 +10,11 @@ import {
   Wallet,
   X,
 } from "lucide-react";
+import { PaymentGrantForm } from "@/components/admin/payment-grant-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { SearchableSelect } from "@/components/ui/searchable-select";
-import { ApiClientError, apiGetPage, apiPatch, apiPost } from "@/lib/api-client";
-import {
-  BUNDLE_PRICE_BDT,
-  MODULE_PRICE_BDT,
-  PAID_MODULES,
-} from "@/lib/learning/payments";
+import { ApiClientError, apiGetPage, apiPatch } from "@/lib/api-client";
 import { cn, formatDateTime, formatRelative } from "@/lib/utils";
 
 type Order = {
@@ -32,7 +26,7 @@ type Order = {
   trxId: string | null;
   senderNumber: string | null;
   userNote: string | null;
-  status: "PENDING" | "APPROVED" | "REJECTED";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "REVOKED";
   adminNote: string | null;
   reviewedAt: string | null;
   createdAt: string;
@@ -41,14 +35,6 @@ type Order = {
 };
 
 type Filter = "pending" | "all";
-
-const GRANT_OPTIONS = [
-  { value: "BUNDLE", label: `All 5 premium modules (৳${BUNDLE_PRICE_BDT} value)` },
-  ...PAID_MODULES.map((module) => ({
-    value: module.slug,
-    label: `Module ${module.order}: ${module.title} (৳${MODULE_PRICE_BDT})`,
-  })),
-];
 
 export function PaymentQueue() {
   const [filter, setFilter] = useState<Filter>("pending");
@@ -60,10 +46,6 @@ export function PaymentQueue() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [grantUser, setGrantUser] = useState("");
-  const [grantProduct, setGrantProduct] = useState("BUNDLE");
-  const [granting, setGranting] = useState(false);
-  const [grantMessage, setGrantMessage] = useState<string | null>(null);
 
   const load = useCallback(
     async (nextFilter: Filter, nextPage: number, append: boolean) => {
@@ -97,11 +79,18 @@ export function PaymentQueue() {
     void load(filter, 1, false);
   }, [filter, load]);
 
-  const review = async (order: Order, action: "APPROVE" | "REJECT") => {
+  const review = async (
+    order: Order,
+    action: "APPROVE" | "REJECT" | "REVOKE",
+  ) => {
     if (busyId) return;
     let note: string | undefined;
-    if (action === "REJECT") {
-      const reason = window.prompt("Why are you rejecting this payment?");
+    if (action === "REJECT" || action === "REVOKE") {
+      const reason = window.prompt(
+        action === "REJECT"
+          ? "Why are you rejecting this payment?"
+          : "Why are you revoking this access?",
+      );
       if (!reason || reason.trim().length < 3) return;
       note = reason.trim();
     } else if (
@@ -136,35 +125,6 @@ export function PaymentQueue() {
       );
     } finally {
       setBusyId(null);
-    }
-  };
-
-  const grant = async () => {
-    if (granting || grantUser.trim().length < 3) return;
-    setGranting(true);
-    setGrantMessage(null);
-    setError(null);
-    try {
-      const payload =
-        grantProduct === "BUNDLE"
-          ? { product: "BUNDLE" as const, moduleSlug: null }
-          : { product: "MODULE" as const, moduleSlug: grantProduct };
-      const result = await apiPost<{ modules: string[]; granted: number }>(
-        "/api/v1/admin/entitlements",
-        { username: grantUser.trim(), ...payload },
-      );
-      setGrantMessage(
-        `Granted ${result.granted} module${result.granted === 1 ? "" : "s"} to @${grantUser.trim()}.`,
-      );
-      setGrantUser("");
-    } catch (requestError) {
-      setError(
-        requestError instanceof ApiClientError
-          ? requestError.message
-          : "Could not grant access.",
-      );
-    } finally {
-      setGranting(false);
     }
   };
 
@@ -267,7 +227,7 @@ export function PaymentQueue() {
                               : "muted"
                         }
                       >
-                        {order.status}
+                        {order.status === "REVOKED" ? "REVOKED" : order.status}
                       </Badge>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -316,6 +276,13 @@ export function PaymentQueue() {
                 ) : null}
 
                 {order.status === "PENDING" ? (
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Verify in the bKash/City Bank app: TrxID, amount, time and
+                    sender must all match before approving.
+                  </p>
+                ) : null}
+
+                {order.status === "PENDING" ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Button
                       type="button"
@@ -341,6 +308,20 @@ export function PaymentQueue() {
                     </Button>
                   </div>
                 ) : null}
+
+                {order.status === "APPROVED" ? (
+                  <div className="mt-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void review(order, "REVOKE")}
+                      disabled={busyId === order.id}
+                    >
+                      <X className="size-3.5" /> Revoke access
+                    </Button>
+                  </div>
+                ) : null}
               </Card>
             </li>
           ))}
@@ -360,52 +341,7 @@ export function PaymentQueue() {
         </Button>
       ) : null}
 
-      <Card className="p-5">
-        <h2 className="text-sm font-semibold">Grant free access</h2>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Scholarship/manual unlock without a payment. {PAID_MODULES.length}{" "}
-          premium modules are available.
-        </p>
-        <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1.2fr_auto] sm:items-end">
-          <div>
-            <label className="text-xs font-medium" htmlFor="grant-user">
-              Username
-            </label>
-            <Input
-              id="grant-user"
-              value={grantUser}
-              onChange={(event) => setGrantUser(event.target.value)}
-              placeholder="coder123"
-              className="mt-1.5"
-            />
-          </div>
-          <div>
-            <label className="text-xs font-medium" htmlFor="grant-product">
-              Access
-            </label>
-            <SearchableSelect
-              id="grant-product"
-              options={GRANT_OPTIONS}
-              value={grantProduct}
-              onValueChange={setGrantProduct}
-              className="mt-1.5"
-            />
-          </div>
-          <Button
-            type="button"
-            onClick={() => void grant()}
-            disabled={granting || grantUser.trim().length < 3}
-          >
-            {granting ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            Grant
-          </Button>
-        </div>
-        {grantMessage ? (
-          <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
-            {grantMessage}
-          </p>
-        ) : null}
-      </Card>
+      <PaymentGrantForm />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { enforceRateLimit } from "@/server/api/rate-limit";
 import { apiCreated, apiError } from "@/server/api/responses";
 import { parseJson } from "@/server/api/validation";
 import { grantEntitlementSchema } from "@/lib/schemas/learning-payments";
-import { grantEntitlements } from "@/server/services/learning-payments";
+import { grantEntitlements } from "@/server/services/learning-payment-review";
 
 export async function POST(request: NextRequest) {
   try {

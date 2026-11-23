@@ -1,0 +1,2 @@
+ALTER TABLE "payment_orders" DROP CONSTRAINT "payment_orders_status_check";--> statement-breakpoint
+ALTER TABLE "payment_orders" ADD CONSTRAINT "payment_orders_status_check" CHECK ("payment_orders"."status" in ('PENDING', 'APPROVED', 'REJECTED', 'REVOKED'));

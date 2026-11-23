@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "learning:check": "tsx scripts/validate-learning.ts",
     "learning:audit": "tsx scripts/audit-learning.ts",
+    "learning:grant-legacy": "tsx scripts/grant-legacy-access.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:check": "tsx scripts/check-migrations.ts",

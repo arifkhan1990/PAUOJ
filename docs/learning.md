@@ -167,7 +167,16 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
   are re-encoded (metadata stripped) before upload and never committed.
 - Admin verification: match the TrxID in the bKash/City Bank app, the amount,
   the time and the sender number before approving. Reject with a note if
-  anything does not match; approvals and grants are audit-logged.
+  anything does not match; approvals, rejections, revokes and grants are
+  audit-logged. Decisions notify the learner in-app and by email (verified
+  addresses only).
+- Approved access can be revoked from the same queue with a reason; the
+  entitlement rows for that order are removed and the paywall returns. Only
+  approved orders can be revoked (one-way).
+- Existing learners can be grandfathered before the paywall goes live:
+  `pnpm learning:grant-legacy` is a dry run that lists every learner with an
+  accepted practice submission or completed checkpoint in a premium module;
+  add `--apply` to grant those modules as scholarships.
 
 ## Release checklist
 

@@ -146,6 +146,9 @@ shared host may have little free RAM. Raise them only after checking `free -h`.
   anonymous access returns `401` and the page hides the numbers.
 - Prefer a dedicated business/merchant account over a personal bKash or bank
   account; personal accounts can be flagged for business collections.
+- Before the paywall goes live on an existing install, run
+  `pnpm learning:grant-legacy` (dry run) and then `--apply` so current
+  learners keep the modules they were already studying.
 
 ### Backups on the `srv`-managed host
 

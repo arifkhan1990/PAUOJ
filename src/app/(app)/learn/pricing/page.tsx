@@ -30,6 +30,7 @@ const STATUS_VARIANT = {
   PENDING: "warning",
   APPROVED: "success",
   REJECTED: "muted",
+  REVOKED: "muted",
 } as const;
 
 export default async function LearningPricingPage() {
@@ -252,7 +253,9 @@ export default async function LearningPricingPage() {
                         ? "Waiting for approval"
                         : order.status === "APPROVED"
                           ? "Approved"
-                          : "Rejected"}
+                          : order.status === "REVOKED"
+                            ? "Revoked"
+                            : "Rejected"}
                     </Badge>
                   </Card>
                 </li>

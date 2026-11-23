@@ -20,7 +20,7 @@ export const freeAccessRequestSchema = z.object({
 });
 
 export const paymentReviewSchema = z.object({
-  action: z.enum(["APPROVE", "REJECT"]),
+  action: z.enum(["APPROVE", "REJECT", "REVOKE"]),
   note: z.string().trim().max(300).optional(),
 });
 

@@ -3,7 +3,6 @@ import { errors } from "@/server/api/errors";
 import { toOffset } from "@/server/api/validation";
 import { getDb } from "@/server/db";
 import {
-  auditLogs,
   lessonEntitlements,
   paymentOrders,
   users,
@@ -26,7 +25,11 @@ import type {
 
 export const PAYMENT_PAGE_SIZE = 20;
 
-export type PaymentOrderStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type PaymentOrderStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "REVOKED";
 
 export type PaymentOrderView = {
   id: string;
@@ -45,7 +48,7 @@ export type PaymentOrderView = {
   label: string;
 };
 
-type OrderRow = {
+export type OrderRow = {
   id: string;
   kind: string;
   product: string;
@@ -62,7 +65,7 @@ type OrderRow = {
   displayName: string;
 };
 
-function mapOrder(row: OrderRow): PaymentOrderView {
+export function mapOrder(row: OrderRow): PaymentOrderView {
   const product = row.product === "BUNDLE" ? "BUNDLE" : "MODULE";
   return {
     id: row.id,
@@ -78,7 +81,9 @@ function mapOrder(row: OrderRow): PaymentOrderView {
         ? "APPROVED"
         : row.status === "REJECTED"
           ? "REJECTED"
-          : "PENDING",
+          : row.status === "REVOKED"
+            ? "REVOKED"
+            : "PENDING",
     adminNote: row.adminNote,
     reviewedAt: row.reviewedAt ? row.reviewedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
@@ -87,7 +92,7 @@ function mapOrder(row: OrderRow): PaymentOrderView {
   };
 }
 
-const orderSelection = {
+export const orderSelection = {
   id: paymentOrders.id,
   kind: paymentOrders.kind,
   product: paymentOrders.product,
@@ -129,7 +134,7 @@ export async function listOwnOrders(userId: string): Promise<PaymentOrderView[]>
   return rows.map(mapOrder);
 }
 
-function assertProduct(
+export function assertProduct(
   product: PaidProduct,
   moduleSlug: string | null | undefined,
 ): string | null {
@@ -277,132 +282,5 @@ export async function listAdminOrders({
   return {
     items: rows.map(mapOrder),
     total: Number(totals[0]?.value ?? 0),
-  };
-}
-
-export async function reviewPaymentOrder(
-  orderId: string,
-  admin: Pick<SafeUser, "id">,
-  action: "APPROVE" | "REJECT",
-  note?: string,
-): Promise<PaymentOrderView> {
-  const db = getDb();
-  const now = new Date();
-
-  await db.transaction(async (tx) => {
-    const [order] = await tx
-      .select({
-        id: paymentOrders.id,
-        userId: paymentOrders.userId,
-        product: paymentOrders.product,
-        moduleSlug: paymentOrders.moduleSlug,
-        status: paymentOrders.status,
-        kind: paymentOrders.kind,
-      })
-      .from(paymentOrders)
-      .where(eq(paymentOrders.id, orderId))
-      .for("update")
-      .limit(1);
-
-    if (!order) throw errors.notFound("Payment not found.");
-    if (order.status !== "PENDING") {
-      throw errors.conflict("This payment has already been reviewed.");
-    }
-    if (action === "REJECT" && (!note || note.trim().length < 3)) {
-      throw errors.validation("Add a short reason before rejecting.");
-    }
-
-    await tx
-      .update(paymentOrders)
-      .set({
-        status: action === "APPROVE" ? "APPROVED" : "REJECTED",
-        adminNote: note?.trim() || null,
-        reviewedBy: admin.id,
-        reviewedAt: now,
-        updatedAt: now,
-      })
-      .where(eq(paymentOrders.id, orderId));
-
-    if (action === "APPROVE") {
-      const product = order.product === "BUNDLE" ? "BUNDLE" : "MODULE";
-      const modules = modulesForProduct(product, order.moduleSlug);
-      if (modules.length === 0) {
-        throw errors.validation("This payment has no modules to unlock.");
-      }
-      await tx
-        .insert(lessonEntitlements)
-        .values(
-          modules.map((moduleSlug) => ({
-            userId: order.userId,
-            moduleSlug,
-            source: order.kind === "FREE_REQUEST" ? "SCHOLARSHIP" : "PURCHASE",
-            orderId: order.id,
-            grantedBy: admin.id,
-          })),
-        )
-        .onConflictDoNothing();
-    }
-
-    await tx.insert(auditLogs).values({
-      actorId: admin.id,
-      action:
-        action === "APPROVE" ? "payment.approve" : "payment.reject",
-      entityType: "payment_order",
-      entityId: order.id,
-      metadata: { note: note ?? null },
-    });
-  });
-
-  const [row] = await db
-    .select(orderSelection)
-    .from(paymentOrders)
-    .innerJoin(users, eq(users.id, paymentOrders.userId))
-    .where(eq(paymentOrders.id, orderId))
-    .limit(1);
-  if (!row) throw errors.notFound("Payment not found.");
-  return mapOrder(row);
-}
-
-export async function grantEntitlements(
-  admin: Pick<SafeUser, "id">,
-  input: { username: string; product: PaidProduct; moduleSlug?: string | null },
-): Promise<{ userId: string; modules: string[]; granted: number }> {
-  const db = getDb();
-  const [target] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.username, input.username))
-    .limit(1);
-  if (!target) throw errors.notFound("User not found.");
-
-  const moduleSlug = assertProduct(input.product, input.moduleSlug);
-  const modules = modulesForProduct(input.product, moduleSlug);
-  if (modules.length === 0) throw errors.validation("Choose a valid product.");
-
-  const inserted = await db
-    .insert(lessonEntitlements)
-    .values(
-      modules.map((slug) => ({
-        userId: target.id,
-        moduleSlug: slug,
-        source: "SCHOLARSHIP" as const,
-        grantedBy: admin.id,
-      })),
-    )
-    .onConflictDoNothing()
-    .returning({ moduleSlug: lessonEntitlements.moduleSlug });
-
-  await db.insert(auditLogs).values({
-    actorId: admin.id,
-    action: "entitlement.grant",
-    entityType: "user",
-    entityId: target.id,
-    metadata: { product: input.product, moduleSlug, modules },
-  });
-
-  return {
-    userId: target.id,
-    modules,
-    granted: inserted.length,
   };
 }
