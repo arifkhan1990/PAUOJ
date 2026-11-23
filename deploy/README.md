@@ -132,6 +132,25 @@ Memory: the script defaults to `APP_MEM_LIMIT=768m`, `WORKER_MEM_LIMIT=768m`,
 `DB_MEM_LIMIT=384m`, `REDIS_MEM_LIMIT=192m` and `JUDGE_CONCURRENCY=1`, because a
 shared host may have little free RAM. Raise them only after checking `free -h`.
 
+### Backups on the `srv`-managed host
+
+The compose-based `deploy/backup.sh` targets `deploy/.env`, which the `srv`
+project does not use. Take a verified dump before **and** after a release:
+
+```bash
+STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+docker exec srv-pauoj-db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' \
+  > /home/naba/server/projects/pauoj/backups/pre-<version>-$STAMP.dump
+docker exec -i srv-pauoj-db pg_restore --list \
+  < /home/naba/server/projects/pauoj/backups/pre-<version>-$STAMP.dump > /dev/null
+chmod 600 /home/naba/server/projects/pauoj/backups/*.dump
+```
+
+Migrations are **forward-only**. The previous image runs against the newer
+schema (extra tables are ignored), so an image-only rollback is safe; restoring
+the database needs the pre-release dump. New public rows (for example learning
+problems) stay visible to the old image unless the dump is restored.
+
 Rollback: `docker compose --env-file /home/naba/server/pauoj/deploy/.env -f
 deploy/docker-compose.shared.yml -p pauoj down` (keeps volumes), remove the
 Caddy site file and reload the proxy. `deploy-shared.sh` also tags
