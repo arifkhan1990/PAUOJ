@@ -22,7 +22,7 @@ export default async function HomePage() {
 
   const [stats, problemPage, contestPage, rankPage, submissionPage, activity, daily] =
     await Promise.all([
-      getSiteStats(),
+      getSiteStats({ userId: user?.id ?? null, isAdmin }),
       listProblems({
         page: { page: 1, pageSize: 4 },
         userId: user?.id ?? null,

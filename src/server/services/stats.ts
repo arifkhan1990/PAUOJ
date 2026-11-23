@@ -1,17 +1,37 @@
-import { and, count, eq, gte, sql } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { problems, submissions, users } from "@/server/db/schema";
 import type { HeatmapDay, SiteStats } from "@/lib/types";
 import { buildHeatmap } from "./activity";
 import { countedSubmission } from "./submission-filters";
 
-export async function getSiteStats(): Promise<SiteStats> {
+export async function getSiteStats(viewer?: {
+  userId: string | null;
+  isAdmin: boolean;
+}): Promise<SiteStats> {
   const db = getDb();
+  const problemConditions = [eq(problems.isPublic, true)];
+  if (viewer && !viewer.isAdmin) {
+    const { getEntitledModuleSlugs } = await import(
+      "@/server/services/learning-payments"
+    );
+    const entitled = viewer.userId
+      ? [...(await getEntitledModuleSlugs(viewer.userId))]
+      : [];
+    problemConditions.push(
+      entitled.length > 0
+        ? or(
+            isNull(problems.premiumModuleSlug),
+            inArray(problems.premiumModuleSlug, entitled),
+          )!
+        : isNull(problems.premiumModuleSlug),
+    );
+  }
   const [problemRow, userRow, submissionRow, acceptedRow] = await Promise.all([
     db
       .select({ value: count() })
       .from(problems)
-      .where(eq(problems.isPublic, true)),
+      .where(and(...problemConditions)),
     db.select({ value: count() }).from(users),
     db.select({ value: count() }).from(submissions).where(countedSubmission()),
     db

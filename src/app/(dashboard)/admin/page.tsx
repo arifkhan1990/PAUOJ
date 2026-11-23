@@ -91,7 +91,7 @@ export default async function AdminDashboardPage({
   const range = parseReviewRange(firstValue(params.range));
   const [stats, activity, problemPage, contestPage, submissionPage, analytics] =
     await Promise.all([
-      getSiteStats(),
+      getSiteStats({ userId: admin.id, isAdmin: true }),
       getSubmissionActivity(14),
       listAdminProblems({ page: 1, pageSize: 5 }),
       listAdminContests({ page: 1, pageSize: 4 }),
