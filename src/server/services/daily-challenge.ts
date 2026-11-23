@@ -1,4 +1,15 @@
-import { and, asc, count, eq, gte, notInArray, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  notInArray,
+  or,
+  sql,
+} from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { problemTags, problems, submissions, tags } from "@/server/db/schema";
 import type { Difficulty, ProblemTag } from "@/lib/types";
@@ -40,6 +51,22 @@ export async function getDailyChallenge(
   const conditions = [eq(problems.isPublic, true)];
   if (restricted.length > 0) {
     conditions.push(notInArray(problems.id, restricted));
+  }
+  if (!isAdmin) {
+    const { getEntitledModuleSlugs } = await import(
+      "@/server/services/learning-payments"
+    );
+    const entitled = userId
+      ? [...(await getEntitledModuleSlugs(userId))]
+      : [];
+    conditions.push(
+      entitled.length > 0
+        ? or(
+            isNull(problems.premiumModuleSlug),
+            inArray(problems.premiumModuleSlug, entitled),
+          )!
+        : isNull(problems.premiumModuleSlug),
+    );
   }
 
   const [problem] = await db

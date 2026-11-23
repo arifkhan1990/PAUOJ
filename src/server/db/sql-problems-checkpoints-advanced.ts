@@ -65,26 +65,6 @@ TechNest	2026-10	3190000`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: `BookBazar	2026-10	465000
-GadgetPoint	2026-10	150000
-HomeCraft	2026-10	540000
-StyleHub	2026-10	720000
-StyleHub	2026-11	380000
-TechNest	2026-10	3190000`,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `BookBazar	2026-10	465000
-GadgetPoint	2026-10	150000
-HomeCraft	2026-10	540000
-StyleHub	2026-10	720000
-StyleHub	2026-11	380000
-TechNest	2026-10	3190000`,
-        isSample: false,
-      },
-      {
         input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
         expectedOutput: `BookBazar	2026-10	465000
 BookBazar	2026-11	210000
@@ -92,6 +72,26 @@ GadgetPoint	2026-10	150000
 HomeCraft	2026-10	540000
 StyleHub	2026-10	720000
 StyleHub	2026-11	380000
+TechNest	2026-10	3190000`,
+        isSample: false,
+      },
+      {
+        input: `update order_items set unit_price_cents=unit_price_cents*10 where product_id=9;`,
+        expectedOutput: `BookBazar	2026-10	465000
+GadgetPoint	2026-10	1500000
+HomeCraft	2026-10	540000
+StyleHub	2026-10	720000
+StyleHub	2026-11	380000
+TechNest	2026-10	3190000`,
+        isSample: false,
+      },
+      {
+        input: `update orders set ordered_at='2026-12-01' where id=10;`,
+        expectedOutput: `BookBazar	2026-10	465000
+GadgetPoint	2026-10	150000
+HomeCraft	2026-10	540000
+StyleHub	2026-10	720000
+StyleHub	2026-12	380000
 TechNest	2026-10	3190000`,
         isSample: false,
       },
@@ -150,22 +150,23 @@ Rahim	3`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: `Nusrat	2
+        input: `insert into orders (id,customer_id,ordered_at,status) values (11,5,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,9,1,150000);`,
+        expectedOutput: `Mim	2
+Nusrat	2
 Rahim	3`,
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `Nusrat	2
+        input: `insert into orders (id,customer_id,ordered_at,status) values (11,2,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,4,1,180000);`,
+        expectedOutput: `Karim	2
+Nusrat	2
 Rahim	3`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `update orders set status='cancelled' where id=8;`,
         expectedOutput: `Nusrat	2
-Rahim	3
-Tanvir	2`,
+Rahim	3`,
         isSample: false,
       },
     ],
@@ -219,35 +220,35 @@ GadgetPoint	1905000`,
         isSample: true,
       },
       {
-        input: `update orders set status='cancelled' where id in (3,6);`,
+        input: `update products set stock=0 where id in (4,5);`,
         expectedOutput: `TechNest	17110000
 StyleHub	9020000
-BookBazar	8775000
 HomeCraft	3900000
+BookBazar	2520000
 GadgetPoint	1905000`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
+        input: `update products set price_cents=price_cents*2 where id in (5,8);`,
         expectedOutput: `TechNest	17110000
+BookBazar	9630000
 StyleHub	9020000
-BookBazar	8775000
 HomeCraft	3900000
-GadgetPoint	1905000`,
+GadgetPoint	2160000`,
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `TechNest	15760000
-StyleHub	5900000
-BookBazar	4365000
-HomeCraft	2910000
-GadgetPoint	1605000`,
+        input: `update products set stock=20 where stock<10;`,
+        expectedOutput: `TechNest	53800000
+StyleHub	13960000
+BookBazar	9820000
+HomeCraft	8380000
+GadgetPoint	3350000`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
-        expectedOutput: `TechNest	17110000
+        input: `update products set price_cents=price_cents*3 where id in (1,3,12);`,
+        expectedOutput: `TechNest	47810000
 StyleHub	9020000
 BookBazar	8775000
 HomeCraft	3900000

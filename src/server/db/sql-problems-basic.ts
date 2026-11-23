@@ -43,29 +43,29 @@ TechNest	Dhaka`,
         isSample: true,
       },
       {
-        input: `update orders set status='cancelled' where id in (3,6);`,
+        input: `update vendors set rating=4.0 where id=1;`,
         expectedOutput: `HomeCraft	Khulna
-StyleHub	Dhaka
-TechNest	Dhaka`,
+StyleHub	Dhaka`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: `HomeCraft	Khulna
+        input: `update vendors set rating=4.5 where id=2;`,
+        expectedOutput: `BookBazar	Chattogram
+HomeCraft	Khulna
 StyleHub	Dhaka
 TechNest	Dhaka`,
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `HomeCraft	Khulna
-StyleHub	Dhaka
+        input: `update vendors set rating=4.4 where id=5;`,
+        expectedOutput: `StyleHub	Dhaka
 TechNest	Dhaka`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `update vendors set rating=4.7 where id=6;`,
         expectedOutput: `HomeCraft	Khulna
+PaperTrail	Rajshahi
 StyleHub	Dhaka
 TechNest	Dhaka`,
         isSample: false,
@@ -118,29 +118,7 @@ SQL Handbook	9`,
         isSample: true,
       },
       {
-        input: `update orders set status='cancelled' where id in (3,6);`,
-        expectedOutput: `Webcam	2
-Wireless Mouse	3
-27in Monitor	5
-Clay Dinner Set	6
-Denim Jacket	7
-USB-C Hub	8
-SQL Handbook	9`,
-        isSample: true,
-      },
-      {
-        input: `delete from reviews;`,
-        expectedOutput: `Webcam	2
-Wireless Mouse	3
-27in Monitor	5
-Clay Dinner Set	6
-Denim Jacket	7
-USB-C Hub	8
-SQL Handbook	9`,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
+        input: `update products set stock=9 where id in (4,6);`,
         expectedOutput: `Webcam	2
 Wireless Mouse	3
 27in Monitor	5
@@ -149,17 +127,32 @@ Denim Jacket	7
 USB-C Hub	8
 Clean Code	9
 Cotton Panjabi	9
-Dune	9
-Laptop Stand	9
-Leather Wallet	9
-Mechanical Keyboard	9
-SQL Handbook	9
-Table Lamp	9`,
+SQL Handbook	9`,
+        isSample: true,
+      },
+      {
+        input: `update products set stock=10 where id in (2,5);`,
+        expectedOutput: `Webcam	2
+Wireless Mouse	3
+27in Monitor	5
+Clay Dinner Set	6
+Denim Jacket	7`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
-        expectedOutput: `Webcam	2
+        input: `update products set stock=0 where id=3;`,
+        expectedOutput: `27in Monitor	0
+Webcam	2
+Wireless Mouse	3
+Clay Dinner Set	6
+Denim Jacket	7
+USB-C Hub	8
+SQL Handbook	9`,
+        isSample: false,
+      },
+      {
+        input: `update products set stock=1 where id=12;`,
+        expectedOutput: `Webcam	1
 Wireless Mouse	3
 27in Monitor	5
 Clay Dinner Set	6
@@ -225,24 +218,23 @@ HomeCraft	540000`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
+        input: `update order_items set unit_price_cents=unit_price_cents*10 where product_id=9;`,
         expectedOutput: `TechNest	3190000
+GadgetPoint	1500000
 StyleHub	1100000
 HomeCraft	540000`,
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
+        input: `delete from order_items where product_id in (6,7);`,
         expectedOutput: `TechNest	3190000
-StyleHub	1100000
 HomeCraft	540000`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `insert into orders (id,customer_id,ordered_at,status) values (11,5,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,9,1,150000);`,
         expectedOutput: `TechNest	3190000
 StyleHub	1100000
-BookBazar	675000
 HomeCraft	540000`,
         isSample: false,
       },
@@ -312,31 +304,7 @@ order_items বাদ দেওয়া, বা কাস্টমার ধর
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: `1	Rahim	890000
-3	Nusrat	600000
-4	Rahim	2000000
-6	Rahim	605000
-7	Mim	670000
-8	Karim	180000
-9	Nusrat	120000
-10	Tanvir	380000`,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `1	Rahim	890000
-3	Nusrat	600000
-4	Rahim	2000000
-6	Rahim	605000
-7	Mim	670000
-8	Karim	180000
-9	Nusrat	120000
-10	Tanvir	380000`,
-        isSample: false,
-      },
-      {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `insert into orders (id,customer_id,ordered_at,status) values (11,5,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,9,1,150000);`,
         expectedOutput: `1	Rahim	890000
 3	Nusrat	600000
 4	Rahim	2000000
@@ -345,7 +313,31 @@ order_items বাদ দেওয়া, বা কাস্টমার ধর
 8	Karim	180000
 9	Nusrat	120000
 10	Tanvir	380000
-11	Tanvir	210000`,
+11	Mim	150000`,
+        isSample: false,
+      },
+      {
+        input: `update order_items set unit_price_cents=unit_price_cents*10 where product_id=9;`,
+        expectedOutput: `1	Rahim	890000
+3	Nusrat	600000
+4	Rahim	3350000
+6	Rahim	605000
+7	Mim	670000
+8	Karim	180000
+9	Nusrat	120000
+10	Tanvir	380000`,
+        isSample: false,
+      },
+      {
+        input: `update order_items set unit_price_cents=1 where order_id=1 and product_id=1;`,
+        expectedOutput: `1	Rahim	440001
+3	Nusrat	600000
+4	Rahim	2000000
+6	Rahim	605000
+7	Mim	670000
+8	Karim	180000
+9	Nusrat	120000
+10	Tanvir	380000`,
         isSample: false,
       },
     ],

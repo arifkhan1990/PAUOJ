@@ -40,9 +40,10 @@ export function PremiumPaywall({
               {moduleTitle} is part of the paid track
             </h2>
             <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Modules 1–2 stay free. Unlock this module for ৳{priceBdt}, or take all five code modules for
-              ৳{BUNDLE_PRICE_BDT}. Pay by bKash or City Bank, submit the TrxID and an
-              admin approves it — no card needed.
+              Modules 1–2 stay free. Unlock this module for ৳{priceBdt}, or
+              take the five code modules (Advanced SQL is separate) for
+              ৳{BUNDLE_PRICE_BDT}. Pay by bKash or City Bank, submit the TrxID
+              and an admin approves it — no card needed.
             </p>
           </div>
         </div>

@@ -23,6 +23,10 @@ describe("ShopSphere SQL problems", () => {
       expect(problem.judgeLanguage).toBe("sql");
       expect(problem.tests).toHaveLength(5);
       expect(problem.tests.filter((test) => test.isSample)).toHaveLength(2);
+      const expectedRows = new Set(
+        problem.tests.map((test) => test.expectedOutput),
+      );
+      expect(expectedRows.size).toBeGreaterThanOrEqual(3);
       expect(problem.referenceSql?.length).toBeGreaterThan(0);
       expect(problem.referenceSql?.trim()).toMatch(/^(SELECT|WITH)\b/i);
       for (const test of problem.tests) {

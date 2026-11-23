@@ -144,14 +144,134 @@ def substring(value, start, length=None):
     return text[index : index + int(length)]
 
 
+CAST_TYPES = re.compile(
+    r"\s*((?:double\s+precision|character\s+varying|"
+    r"timestamp\s+with\s+time\s+zone|timestamptz|timestamp|"
+    r"smallint|bigint|integer|numeric|decimal|boolean|varchar|"
+    r"real|text|bool|date|time|int)"
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)"
+    r"(?![A-Za-z0-9_])",
+    re.IGNORECASE,
+)
+
+
+def strip_backticks(sql: str) -> str:
+    """Remove MySQL identifier backticks without touching string literals."""
+    result = []
+    quote = None
+    index = 0
+    while index < len(sql):
+        char = sql[index]
+        if quote:
+            result.append(char)
+            if char == quote:
+                if index + 1 < len(sql) and sql[index + 1] == quote:
+                    result.append(sql[index + 1])
+                    index += 2
+                    continue
+                quote = None
+            index += 1
+            continue
+        if char in ("'", '"'):
+            quote = char
+            result.append(char)
+        elif char != "`":
+            result.append(char)
+        index += 1
+    return "".join(result)
+
+
+def outside_quotes(sql: str, position: int) -> bool:
+    quote = None
+    index = 0
+    while index < position:
+        char = sql[index]
+        if quote:
+            if char == quote:
+                if index + 1 < position and sql[index + 1] == quote:
+                    index += 2
+                    continue
+                quote = None
+        elif char in ("'", '"'):
+            quote = char
+        index += 1
+    return quote is None
+
+
+def expression_start(sql: str, end: int) -> int:
+    """Find the start of the expression immediately before a Postgres ::."""
+    index = end - 1
+    while index >= 0 and sql[index].isspace():
+        index -= 1
+    if index < 0:
+        return end
+    if sql[index] == ")":
+        depth = 0
+        cursor = index
+        while cursor >= 0:
+            if sql[cursor] == ")":
+                depth += 1
+            elif sql[cursor] == "(":
+                depth -= 1
+                if depth == 0:
+                    break
+            cursor -= 1
+        if cursor < 0:
+            return end
+        name_end = cursor - 1
+        if name_end >= 0 and (sql[name_end].isalnum() or sql[name_end] in "_.$"):
+            while name_end >= 0 and (
+                sql[name_end].isalnum() or sql[name_end] in "_.$"
+            ):
+                name_end -= 1
+            return name_end + 1
+        return cursor
+    if sql[index] in ("'", '"'):
+        quote = sql[index]
+        cursor = index - 1
+        while cursor >= 0:
+            if sql[cursor] == quote:
+                if cursor > 0 and sql[cursor - 1] == quote:
+                    cursor -= 2
+                    continue
+                return cursor
+            cursor -= 1
+        return 0
+    if sql[index].isalnum() or sql[index] in "_.$":
+        while index >= 0 and (sql[index].isalnum() or sql[index] in "_.$"):
+            index -= 1
+        return index + 1
+    return index
+
+
+def normalize_casts_once(sql: str) -> str:
+    result = []
+    cursor = 0
+    for match in CAST_TYPES.finditer(sql):
+        if sql[match.start() - 2 : match.start()] != "::":
+            continue
+        if not outside_quotes(sql, match.start()):
+            continue
+        start = expression_start(sql, match.start() - 2)
+        if start < cursor:
+            continue
+        expression = sql[start : match.start() - 2].strip()
+        if not expression:
+            continue
+        result.append(sql[cursor:start])
+        result.append(f"CAST({expression} AS {match.group(1)})")
+        cursor = match.end()
+    result.append(sql[cursor:])
+    return "".join(result)
+
+
 def normalize_casts(sql: str) -> str:
-    return re.sub(
-        r"(\b\w+\s*\([^()]*\)|\b[\w.]+|'[^']*'|\d+|\([^()]*\))\s*::\s*"
-        r"(int|integer|bigint|smallint|text|varchar|numeric|decimal|real|boolean)\b",
-        r"CAST(\1 AS \2)",
-        sql,
-        flags=re.IGNORECASE,
-    )
+    for _ in range(3):
+        normalized = normalize_casts_once(sql)
+        if normalized == sql:
+            return normalized
+        sql = normalized
+    return sql
 
 
 def normalize_extract(sql: str) -> str:
@@ -173,7 +293,7 @@ def normalize_extract(sql: str) -> str:
 
 
 def normalize(sql: str, dialect: str) -> str:
-    text = sql.replace("`", "").strip().rstrip(";")
+    text = strip_backticks(sql).strip().rstrip(";")
     text = re.sub(r"\bILIKE\b", "LIKE", text, flags=re.IGNORECASE)
     text = re.sub(
         r"\bFETCH\s+(?:FIRST|NEXT)\s+(\d+)\s+ROWS?\s+ONLY\b",

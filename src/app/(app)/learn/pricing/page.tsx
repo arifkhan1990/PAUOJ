@@ -274,7 +274,11 @@ export default async function LearningPricingPage() {
                     href={`/learn/${slug}`}
                     className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/5 px-3 py-1 text-xs font-medium text-emerald-700 hover:border-emerald-500/50 dark:text-emerald-300"
                   >
-                    Module {paid?.order ?? ""} · {paid?.title ?? slug}
+                    {paid
+                      ? `Module ${paid.order} · ${paid.title}`
+                      : slug === ADVANCED_SQL.slug
+                        ? ADVANCED_SQL.title
+                        : slug}
                   </Link>
                 </li>
               );

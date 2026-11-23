@@ -59,30 +59,21 @@ Men	Cotton Panjabi	480000`,
         isSample: true,
       },
       {
+        input: `update products set price_cents=price_cents*2 where id in (5,8);`,
+        expectedOutput: `Books	SQL Handbook	285000
+Electronics	27in Monitor	1850000
+Fashion	Leather Wallet	240000
+Home	Clay Dinner Set	320000
+Men	Cotton Panjabi	480000`,
+        isSample: true,
+      },
+      {
         input: `update orders set status='cancelled' where id in (3,6);`,
         expectedOutput: `Books	Clean Code	180000
 Electronics	27in Monitor	1850000
 Fashion	Leather Wallet	120000
 Home	Table Lamp	220000
 Men	Denim Jacket	380000`,
-        isSample: true,
-      },
-      {
-        input: `delete from reviews;`,
-        expectedOutput: `Books	SQL Handbook	285000
-Electronics	27in Monitor	1850000
-Fashion	Leather Wallet	240000
-Home	Clay Dinner Set	320000
-Men	Cotton Panjabi	480000`,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `Books	SQL Handbook	285000
-Electronics	27in Monitor	1850000
-Fashion	Leather Wallet	240000
-Home	Clay Dinner Set	320000
-Men	Cotton Panjabi	480000`,
         isSample: false,
       },
       {
@@ -91,6 +82,15 @@ Men	Cotton Panjabi	480000`,
 Electronics	27in Monitor	1850000
 Fashion	Leather Wallet	240000
 Fiction	Dune	210000
+Home	Clay Dinner Set	320000
+Men	Cotton Panjabi	480000`,
+        isSample: false,
+      },
+      {
+        input: `update order_items set unit_price_cents=100000 where product_id=3;`,
+        expectedOutput: `Books	SQL Handbook	285000
+Electronics	Mechanical Keyboard	900000
+Fashion	Leather Wallet	240000
 Home	Clay Dinner Set	320000
 Men	Cotton Panjabi	480000`,
         isSample: false,
@@ -163,27 +163,14 @@ window-এ ORDER BY বাদ দেওয়া, বা বাতিল অর�
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
+        input: `delete from order_items where order_id=10; delete from orders where id=10;`,
         expectedOutput: `2026-10-01	890000	890000
 2026-10-05	600000	1490000
 2026-10-10	2000000	3490000
 2026-10-20	605000	4095000
 2026-10-22	670000	4765000
 2026-10-25	180000	4945000
-2026-10-28	120000	5065000
-2026-11-02	380000	5445000`,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `2026-10-01	890000	890000
-2026-10-05	600000	1490000
-2026-10-10	2000000	3490000
-2026-10-20	605000	4095000
-2026-10-22	670000	4765000
-2026-10-25	180000	4945000
-2026-10-28	120000	5065000
-2026-11-02	380000	5445000`,
+2026-10-28	120000	5065000`,
         isSample: false,
       },
       {
@@ -197,6 +184,18 @@ window-এ ORDER BY বাদ দেওয়া, বা বাতিল অর�
 2026-10-28	120000	5065000
 2026-11-02	380000	5445000
 2026-11-05	210000	5655000`,
+        isSample: false,
+      },
+      {
+        input: `update orders set ordered_at='2026-12-01' where id=10;`,
+        expectedOutput: `2026-10-01	890000	890000
+2026-10-05	600000	1490000
+2026-10-10	2000000	3490000
+2026-10-20	605000	4095000
+2026-10-22	670000	4765000
+2026-10-25	180000	4945000
+2026-10-28	120000	5065000
+2026-12-01	380000	5445000`,
         isSample: false,
       },
     ],
@@ -255,7 +254,7 @@ SELECT id, path FROM tree ORDER BY id;
         isSample: true,
       },
       {
-        input: `update orders set status='cancelled' where id in (3,6);`,
+        input: `update categories set parent_id=4 where id=8;`,
         expectedOutput: `1	Electronics
 2	Electronics > Audio
 3	Electronics > Audio > Headphones
@@ -263,14 +262,14 @@ SELECT id, path FROM tree ORDER BY id;
 5	Books > Fiction
 6	Fashion
 7	Fashion > Men
-8	Home`,
+8	Books > Home`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
+        input: `update categories set name='Audio Gear' where id=2;`,
         expectedOutput: `1	Electronics
-2	Electronics > Audio
-3	Electronics > Audio > Headphones
+2	Electronics > Audio Gear
+3	Electronics > Audio Gear > Headphones
 4	Books
 5	Books > Fiction
 6	Fashion
@@ -279,7 +278,7 @@ SELECT id, path FROM tree ORDER BY id;
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
+        input: `insert into categories (id,name,parent_id) values (9,'Gaming',1);`,
         expectedOutput: `1	Electronics
 2	Electronics > Audio
 3	Electronics > Audio > Headphones
@@ -287,14 +286,15 @@ SELECT id, path FROM tree ORDER BY id;
 5	Books > Fiction
 6	Fashion
 7	Fashion > Men
-8	Home`,
+8	Home
+9	Electronics > Gaming`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `update categories set parent_id=6 where id=3;`,
         expectedOutput: `1	Electronics
 2	Electronics > Audio
-3	Electronics > Audio > Headphones
+3	Fashion > Headphones
 4	Books
 5	Books > Fiction
 6	Fashion
@@ -359,39 +359,37 @@ Sajid	2`,
         isSample: true,
       },
       {
-        input: `update orders set status='cancelled' where id in (3,6);`,
+        input: `update referrals set referred_by=3 where customer_id=6;`,
         expectedOutput: `Rahim	0
 Karim	1
 Nusrat	1
 Mim	2
-Sajid	2`,
+Sajid	2
+Tanvir	2`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
+        input: `insert into customers (id,name,city,signup_date) values (7,'Rafi','Dhaka','2026-05-01'); insert into referrals (customer_id,referred_by) values (7,5);`,
         expectedOutput: `Rahim	0
 Karim	1
 Nusrat	1
 Mim	2
-Sajid	2`,
+Sajid	2
+Rafi	3`,
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
+        input: `delete from referrals where customer_id=2;`,
         expectedOutput: `Rahim	0
-Karim	1
-Nusrat	1
-Mim	2
-Sajid	2`,
+Nusrat	1`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `update referrals set referred_by=6 where customer_id=4;`,
         expectedOutput: `Rahim	0
 Karim	1
 Nusrat	1
-Mim	2
-Sajid	2`,
+Mim	2`,
         isSample: false,
       },
     ],

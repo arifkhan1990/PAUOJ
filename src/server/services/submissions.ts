@@ -239,6 +239,7 @@ export async function listSubmissions(
       totalTests: submissions.totalTests,
       problemSlug: problems.slug,
       problemTitle: problems.title,
+      premiumModuleSlug: problems.premiumModuleSlug,
       username: users.username,
       displayName: users.displayName,
       contestSlug: contests.slug,
@@ -295,6 +296,7 @@ export async function getSubmissionById(
       judgedAt: submissions.judgedAt,
       problemSlug: problems.slug,
       problemTitle: problems.title,
+      premiumModuleSlug: problems.premiumModuleSlug,
       username: users.username,
       displayName: users.displayName,
       contestSlug: contests.slug,
@@ -326,7 +328,10 @@ export async function getSubmissionById(
   const canViewSource =
     isOwner ||
     isAdmin ||
-    (!row.assessmentSlug && !contestActive && !assessmentActive);
+    (!row.premiumModuleSlug &&
+      !row.assessmentSlug &&
+      !contestActive &&
+      !assessmentActive);
 
   const resultRows = await db
     .select({

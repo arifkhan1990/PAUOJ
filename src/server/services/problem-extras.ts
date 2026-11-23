@@ -5,8 +5,10 @@ import {
   desc,
   eq,
   inArray,
+  isNull,
   ne,
   notInArray,
+  or,
   sql,
 } from "drizzle-orm";
 import { errors } from "@/server/api/errors";
@@ -244,6 +246,22 @@ export async function getRelatedProblems(
   ];
   if (restricted.length > 0) {
     conditions.push(notInArray(problems.id, restricted));
+  }
+  if (!isAdmin) {
+    const { getEntitledModuleSlugs } = await import(
+      "@/server/services/learning-payments"
+    );
+    const entitled = userId
+      ? [...(await getEntitledModuleSlugs(userId))]
+      : [];
+    conditions.push(
+      entitled.length > 0
+        ? or(
+            isNull(problems.premiumModuleSlug),
+            inArray(problems.premiumModuleSlug, entitled),
+          )!
+        : isNull(problems.premiumModuleSlug),
+    );
   }
 
   const shared = sql<number>`count(${problemTags.tagId})::int`.as("shared");

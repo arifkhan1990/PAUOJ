@@ -57,22 +57,22 @@ Tanvir	380000`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
+        input: `insert into orders (id,customer_id,ordered_at,status) values (11,4,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,8,1,85000);`,
         expectedOutput: `Rahim	3495000
 Nusrat	720000
 Mim	670000`,
         isSample: false,
       },
       {
-        input: `update products set stock=9 where stock>=10;`,
+        input: `insert into orders (id,customer_id,ordered_at,status) values (11,2,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,4,1,180000);`,
         expectedOutput: `Rahim	3495000
 Nusrat	720000
 Mim	670000`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
-        expectedOutput: `Rahim	3495000
+        input: `update order_items set unit_price_cents=1 where order_id=1 and product_id=1;`,
+        expectedOutput: `Rahim	3045001
 Nusrat	720000
 Mim	670000`,
         isSample: false,
@@ -132,21 +132,20 @@ POstgreSQL-এ \`to_char\` ব্যবহার করা — portable রা�
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: `2026-10	5065000
-2026-11	380000`,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
-        expectedOutput: `2026-10	5065000
-2026-11	380000`,
+        input: `delete from order_items where order_id=10; delete from orders where id=10;`,
+        expectedOutput: `2026-10	5065000`,
         isSample: false,
       },
       {
         input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
         expectedOutput: `2026-10	5065000
 2026-11	590000`,
+        isSample: false,
+      },
+      {
+        input: `update orders set ordered_at='2026-12-01' where id=10;`,
+        expectedOutput: `2026-10	5065000
+2026-12	380000`,
         isSample: false,
       },
     ],
@@ -200,35 +199,35 @@ Leather Wallet	3.0`,
         isSample: true,
       },
       {
-        input: `update orders set status='cancelled' where id in (3,6);`,
-        expectedOutput: `Clay Dinner Set	5.0
-Mechanical Keyboard	5.0
-Clean Code	4.5
-Cotton Panjabi	4.0
-Leather Wallet	3.0`,
+        input: `delete from reviews;`,
+        expectedOutput: ``,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: ``,
-        isSample: false,
-      },
-      {
-        input: `update products set stock=9 where stock>=10;`,
+        input: `insert into reviews (id,product_id,customer_id,rating,created_at) values (7,1,2,3,'2026-11-01');`,
         expectedOutput: `Clay Dinner Set	5.0
-Mechanical Keyboard	5.0
 Clean Code	4.5
 Cotton Panjabi	4.0
+Mechanical Keyboard	4.0
 Leather Wallet	3.0`,
         isSample: false,
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,6,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,13,1,210000);`,
+        input: `update reviews set rating=5;`,
+        expectedOutput: `Clay Dinner Set	5.0
+Clean Code	5.0
+Cotton Panjabi	5.0
+Leather Wallet	5.0
+Mechanical Keyboard	5.0`,
+        isSample: false,
+      },
+      {
+        input: `update reviews set rating=1 where product_id=7;`,
         expectedOutput: `Clay Dinner Set	5.0
 Mechanical Keyboard	5.0
 Clean Code	4.5
 Cotton Panjabi	4.0
-Leather Wallet	3.0`,
+Leather Wallet	1.0`,
         isSample: false,
       },
     ],
