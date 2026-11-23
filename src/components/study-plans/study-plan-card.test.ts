@@ -38,7 +38,11 @@ function render(planValue: StudyListSummary, signedIn = true) {
 
 /** Flattens markup to text so labels can be asserted without tag noise. */
 function text(html: string): string {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\s%/g, "%")
+    .trim();
 }
 
 describe("StudyPlanCard", () => {
@@ -131,6 +135,13 @@ describe("StudyPlanCard", () => {
     expect(plain).not.toContain("Expert");
     expect(plain).toContain("2 of 12 solved");
     expect(plain).toContain("17%");
+  });
+
+  it("uses a progress ring instead of a thin bar", () => {
+    const html = render(plan({ solvedCount: 2 }));
+
+    expect(html).toContain('role="img"');
+    expect(html).not.toContain('role="progressbar"');
   });
 
   it("mutes progress and asks guests to sign in", () => {

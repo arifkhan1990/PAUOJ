@@ -31,6 +31,9 @@ const navItems = [
   { href: "/rank", label: "Rank" },
 ];
 
+/** 44px touch target on phones, current icon density from md up. */
+const iconTouchTarget = "min-h-11 min-w-11 md:min-h-9 md:min-w-9";
+
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -93,10 +96,14 @@ export function UserMenu({
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        className="flex items-center gap-2 rounded-md p-1 pr-2 transition hover:bg-muted"
+        className={cn(
+          "flex items-center gap-2 rounded-md p-1 pr-2 transition hover:bg-muted",
+          iconTouchTarget,
+        )}
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
+        aria-label={`Open user menu for ${user.displayName}`}
       >
         <UserAvatar name={user.displayName} username={user.username} size="sm" />
         <span className="hidden max-w-28 truncate text-sm font-medium sm:block">
@@ -210,7 +217,14 @@ export function HeaderNav({
   return (
     <header id="site-header" className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="mr-2 flex shrink-0 items-center gap-2.5">
+        <Link
+          href="/"
+          aria-label="PAU OJ home"
+          className={cn(
+            "mr-2 flex shrink-0 items-center gap-2.5",
+            iconTouchTarget,
+          )}
+        >
           <Image
             src="/brand/pauoj-mark.png"
             alt=""
@@ -256,6 +270,7 @@ export function HeaderNav({
               className={cn(
                 buttonVariants({ variant: "ghost", size: "icon" }),
                 "relative",
+                iconTouchTarget,
               )}
             >
               <Bell className="size-4" />
@@ -292,7 +307,7 @@ export function HeaderNav({
             type="button"
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className={cn("lg:hidden", iconTouchTarget)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
             onClick={() => setMobileOpen((value) => !value)}
@@ -326,7 +341,7 @@ export function HeaderNav({
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "rounded-md px-3 py-2.5 text-sm font-medium",
+                  "flex min-h-11 items-center rounded-md px-3 py-2.5 text-sm font-medium",
                   isActive(pathname, item.href)
                     ? "bg-muted text-foreground"
                     : "text-muted-foreground hover:bg-muted",
@@ -340,11 +355,11 @@ export function HeaderNav({
             <div className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3">
               <Link
                 href="/login"
-                className={buttonVariants({ variant: "outline" })}
+                className={cn(buttonVariants({ variant: "outline" }), "min-h-11")}
               >
                 Log in
               </Link>
-              <Link href="/register" className={buttonVariants()}>
+              <Link href="/register" className={cn(buttonVariants(), "min-h-11")}>
                 Sign up
               </Link>
             </div>

@@ -14,6 +14,7 @@ import {
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiClientError, apiDelete, apiPut } from "@/lib/api-client";
 import { studyListNoteInputSchema } from "@/lib/schemas/study-list";
 
@@ -24,8 +25,9 @@ type NoteResponse = { note: string | null };
 type PendingAction = "save" | "delete";
 
 /**
- * Private per-problem note inside a study plan. Rendered below the problem
- * link for signed-in viewers only; guests never see note UI.
+ * Private per-problem note for signed-in viewers. The trigger sits in the
+ * problem row (outside the problem link); the preview and editor span the row
+ * underneath, so opening a note never nests a button inside a link.
  */
 export function ProblemNote({
   planSlug,
@@ -41,13 +43,16 @@ export function ProblemNote({
   const router = useRouter();
   const { toast } = useToast();
   const textareaId = useId();
+  const panelId = `${textareaId}-panel`;
   const errorId = `${textareaId}-error`;
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLButtonElement | null>(null);
 
   const [savedNote, setSavedNote] = useState(note);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(note ?? "");
   const [pending, setPending] = useState<PendingAction | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,15 +61,19 @@ export function ProblemNote({
 
   const apiPath = `/api/v1/lists/${encodeURIComponent(planSlug)}/notes/${encodeURIComponent(problemSlug)}`;
 
-  const openEditor = () => {
+  const openEditor = (from?: HTMLButtonElement | null) => {
+    returnFocusRef.current = from ?? triggerRef.current;
     setDraft(savedNote ?? "");
     setError(null);
     setEditing(true);
   };
 
-  const closeEditor = () => {
+  const closeEditor = (focusRowTrigger = false) => {
     setEditing(false);
-    requestAnimationFrame(() => triggerRef.current?.focus());
+    const target = focusRowTrigger
+      ? triggerRef.current
+      : (returnFocusRef.current ?? triggerRef.current);
+    requestAnimationFrame(() => target?.focus());
   };
 
   const cancelEditor = () => {
@@ -107,15 +116,14 @@ export function ProblemNote({
 
   const remove = async () => {
     if (pending) return;
-    if (!window.confirm("Delete this note? This cannot be undone.")) return;
-
     setError(null);
     setPending("delete");
     try {
       await apiDelete<NoteResponse>(apiPath);
       setSavedNote(null);
       setDraft("");
-      closeEditor();
+      setConfirmOpen(false);
+      closeEditor(true);
       toast({ title: "Note deleted", variant: "success" });
       router.refresh();
     } catch (requestError) {
@@ -130,128 +138,153 @@ export function ProblemNote({
     }
   };
 
+  const triggerLabel = savedNote
+    ? `Edit note for ${problemTitle}`
+    : `Add a private note for ${problemTitle}`;
+  const TriggerIcon = savedNote ? FileText : Plus;
+
   return (
-    <div className="border-t border-border/60 px-4 py-2.5 sm:px-5">
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        ref={triggerRef}
+        onClick={(event) => openEditor(event.currentTarget)}
+        aria-label={triggerLabel}
+        aria-expanded={editing}
+        aria-controls={editing ? panelId : undefined}
+        title={savedNote ? "Edit note" : "Add note"}
+        className="col-start-2 row-start-1 my-1 mr-1.5 min-h-11 min-w-11 gap-1.5 self-center px-2.5 text-muted-foreground sm:min-h-9 sm:min-w-9"
+      >
+        <TriggerIcon aria-hidden="true" />
+        <span className="hidden sm:inline">
+          {savedNote ? "Note" : "Add note"}
+        </span>
+      </Button>
+
       {editing ? (
-        <div className="max-w-2xl">
-          <label htmlFor={textareaId} className="sr-only">
-            Private note for {problemTitle}
-          </label>
-          <Textarea
-            id={textareaId}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setError(null);
-            }}
-            rows={4}
-            maxLength={NOTE_LIMIT}
-            placeholder="Note the key idea, invariant or the bug you keep hitting."
-            className="min-h-24 text-sm"
-            aria-invalid={Boolean(error)}
-            aria-describedby={error ? errorId : undefined}
-            disabled={pending !== null}
-            autoFocus
-          />
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] tabular-nums text-muted-foreground">
-              {draft.length}/{NOTE_LIMIT}
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Button
-                type="button"
-                size="sm"
-                className="min-h-11 sm:min-h-8"
-                onClick={() => void save()}
-                disabled={pending !== null}
-                aria-busy={pending === "save"}
-              >
-                {pending === "save" ? (
-                  <Loader2 className="animate-spin" aria-hidden="true" />
-                ) : (
-                  <Save aria-hidden="true" />
-                )}
-                {pending === "save" ? "Saving…" : "Save"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="min-h-11 sm:min-h-8"
-                onClick={cancelEditor}
-                disabled={pending !== null}
-              >
-                <X aria-hidden="true" />
-                Cancel
-              </Button>
-              {savedNote ? (
+        <div
+          id={panelId}
+          className="col-span-2 row-start-2 border-t border-border/60 bg-muted/20 px-4 py-3 sm:px-5"
+        >
+          <div className="max-w-2xl" aria-busy={pending !== null}>
+            <label htmlFor={textareaId} className="sr-only">
+              Private note for {problemTitle}
+            </label>
+            <Textarea
+              id={textareaId}
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setError(null);
+              }}
+              rows={4}
+              maxLength={NOTE_LIMIT}
+              placeholder="Note the key idea, invariant or the bug you keep hitting."
+              className="min-h-24 text-sm"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? errorId : undefined}
+              disabled={pending !== null}
+              autoFocus
+            />
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[11px] tabular-nums text-muted-foreground">
+                {draft.length}/{NOTE_LIMIT}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5">
                 <Button
                   type="button"
                   size="sm"
-                  variant="ghost"
-                  className="min-h-11 text-destructive hover:text-destructive sm:min-h-8"
-                  onClick={() => void remove()}
+                  className="min-h-11 sm:min-h-8"
+                  onClick={() => void save()}
                   disabled={pending !== null}
-                  aria-busy={pending === "delete"}
+                  aria-busy={pending === "save"}
                 >
-                  {pending === "delete" ? (
+                  {pending === "save" ? (
                     <Loader2 className="animate-spin" aria-hidden="true" />
                   ) : (
-                    <Trash2 aria-hidden="true" />
+                    <Save aria-hidden="true" />
                   )}
-                  {pending === "delete" ? "Deleting…" : "Delete"}
+                  {pending === "save" ? "Saving…" : "Save"}
                 </Button>
-              ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="min-h-11 sm:min-h-8"
+                  onClick={cancelEditor}
+                  disabled={pending !== null}
+                >
+                  <X aria-hidden="true" />
+                  Cancel
+                </Button>
+                {savedNote ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="min-h-11 min-w-11 text-destructive hover:text-destructive sm:min-h-8"
+                    onClick={() => setConfirmOpen(true)}
+                    disabled={pending !== null}
+                    aria-busy={pending === "delete"}
+                  >
+                    {pending === "delete" ? (
+                      <Loader2 className="animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Trash2 aria-hidden="true" />
+                    )}
+                    {pending === "delete" ? "Deleting…" : "Delete"}
+                  </Button>
+                ) : null}
+              </div>
             </div>
+            {error ? (
+              <p
+                id={errorId}
+                role="alert"
+                className="mt-1 text-[11px] font-medium text-rose-700 dark:text-rose-300"
+              >
+                {error}
+              </p>
+            ) : null}
           </div>
-          {error ? (
-            <p
-              id={errorId}
-              role="alert"
-              className="mt-1 text-[11px] font-medium text-rose-700 dark:text-rose-300"
-            >
-              {error}
-            </p>
-          ) : null}
         </div>
       ) : savedNote ? (
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            <p className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
-              <FileText className="size-3.5 shrink-0" aria-hidden="true" />
-              Your note
-            </p>
-            <p className="mt-0.5 line-clamp-3 whitespace-pre-line break-words text-xs leading-relaxed text-foreground/90">
-              {savedNote}
-            </p>
+        <div className="col-span-2 row-start-2 border-t border-border/60 bg-muted/20 px-4 py-2.5 sm:px-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
+                <FileText className="size-3.5 shrink-0" aria-hidden="true" />
+                Your note
+              </p>
+              <p className="mt-0.5 line-clamp-2 whitespace-pre-line break-words text-xs leading-relaxed text-foreground/90">
+                {savedNote}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="min-h-11 min-w-11 shrink-0 sm:min-h-8"
+              onClick={(event) => openEditor(event.currentTarget)}
+              aria-label={`Edit note for ${problemTitle}`}
+            >
+              <Pencil aria-hidden="true" />
+              <span className="hidden sm:inline">Edit note</span>
+            </Button>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="min-h-11 shrink-0 sm:min-h-8"
-            onClick={openEditor}
-            ref={triggerRef}
-            aria-label={`Edit note for ${problemTitle}`}
-          >
-            <Pencil aria-hidden="true" />
-            Edit note
-          </Button>
         </div>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="min-h-11 sm:min-h-8"
-          onClick={openEditor}
-          ref={triggerRef}
-          aria-label={`Add a private note for ${problemTitle}`}
-        >
-          <Plus aria-hidden="true" />
-          Add note
-        </Button>
-      )}
-    </div>
+      ) : null}
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Delete this note?"
+        description="The note will be removed from this problem. This cannot be undone."
+        confirmLabel="Delete note"
+        pending={pending === "delete"}
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 }

@@ -53,6 +53,7 @@ export default async function EditStudyPlanPage({
           <>
             <Link
               href={`/lists/${initial.slug}`}
+              prefetch={false}
               className={buttonVariants({ variant: "outline" })}
             >
               <ArrowLeft className="size-4" aria-hidden="true" /> Back to plan

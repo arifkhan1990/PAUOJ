@@ -6,7 +6,12 @@ import type {
   StudyListProblem,
   StudyListSectionView,
 } from "@/lib/study-list-types";
-import { PlanSectionCard, PlanSectionNav, sectionAnchorId } from "./plan-sections";
+import {
+  PlanSectionCard,
+  PlanSectionChips,
+  PlanSectionRail,
+  sectionAnchorId,
+} from "./plan-sections";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -54,6 +59,21 @@ function render(sectionValue: StudyListSectionView, index = 0) {
   );
 }
 
+function renderSignedIn(sectionValue: StudyListSectionView) {
+  return renderToStaticMarkup(
+    createElement(
+      ToastProvider,
+      null,
+      createElement(PlanSectionCard, {
+        section: sectionValue,
+        index: 0,
+        signedIn: true,
+        planSlug: "arrays-plan",
+      }),
+    ),
+  );
+}
+
 function text(html: string): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -67,9 +87,7 @@ describe("sectionAnchorId", () => {
 
 describe("PlanSectionCard", () => {
   it("renders the title, index, description and solved count", () => {
-    const html = render(
-      section({ solvedCount: 2, problemCount: 5 }),
-    );
+    const html = render(section({ solvedCount: 2, problemCount: 5 }));
     const plain = text(html);
 
     expect(html).toContain('id="section-arrays"');
@@ -77,7 +95,7 @@ describe("PlanSectionCard", () => {
     expect(plain).toContain("01");
     expect(plain).toContain("Arrays");
     expect(plain).toContain("Store and index values efficiently.");
-    expect(plain).toContain("2/5 solved");
+    expect(plain).toContain("2 of 5 solved");
   });
 
   it("uses the general anchor for legacy sections with a null id", () => {
@@ -98,7 +116,12 @@ describe("PlanSectionCard", () => {
         solvedCount: 1,
         problems: [
           problem({ slug: "solved-one", title: "Solved one", solved: true }),
-          problem({ slug: "attempted-one", title: "Attempted one", attempted: true, position: 2 }),
+          problem({
+            slug: "attempted-one",
+            title: "Attempted one",
+            attempted: true,
+            position: 2,
+          }),
           problem({ slug: "fresh-one", title: "Fresh one", position: 3 }),
         ],
       }),
@@ -130,13 +153,14 @@ describe("PlanSectionCard", () => {
     expect(plain).toContain("Hard");
   });
 
-  it("shows a progress bar with aria values", () => {
+  it("uses an accessible progress ring instead of a thin bar", () => {
     const html = render(section({ solvedCount: 3, problemCount: 4 }));
 
-    expect(html).toContain('role="progressbar"');
-    expect(html).toContain('aria-valuenow="75"');
-    expect(html).toContain('aria-valuetext="3 of 4 problems solved"');
-    expect(html).toContain("width:75%");
+    expect(html).toContain('role="img"');
+    expect(html).toContain('aria-label="Arrays: 3 of 4 problems solved"');
+    expect(html).toContain("stroke-dasharray");
+    expect(html).not.toContain('role="progressbar"');
+    expect(html).not.toContain("aria-valuenow");
   });
 
   it("renders the empty-section message instead of a list", () => {
@@ -144,7 +168,7 @@ describe("PlanSectionCard", () => {
 
     expect(text(html)).toContain("No problems in this section yet.");
     expect(html).not.toContain("<ul");
-    expect(text(html)).toContain("0/0 solved");
+    expect(text(html)).toContain("0 of 0 solved");
   });
 });
 
@@ -164,82 +188,111 @@ describe("PlanSectionCard note visibility", () => {
     expect(html).not.toContain("secret");
   });
 
-  it("shows an add-note control for each problem when signed in", () => {
-    const html = renderToStaticMarkup(
-      createElement(
-        ToastProvider,
-        null,
-        createElement(PlanSectionCard, {
-          section: section({
-            problems: [
-              problem({ slug: "two-sum", title: "Two Sum" }),
-              problem({ slug: "three-sum", title: "Three Sum", position: 2 }),
-            ],
-          }),
-          index: 0,
-          signedIn: true,
-          planSlug: "arrays-plan",
-        }),
-      ),
+  it("shows an add-note trigger for each problem when signed in", () => {
+    const html = renderSignedIn(
+      section({
+        problems: [
+          problem({ slug: "two-sum", title: "Two Sum" }),
+          problem({ slug: "three-sum", title: "Three Sum", position: 2 }),
+        ],
+      }),
     );
 
     expect(html).toContain("Add a private note for Two Sum");
     expect(html).toContain("Add a private note for Three Sum");
     expect(html).not.toContain("Your note");
+    expect(html).not.toContain("<textarea");
+  });
+
+  it("keeps the note trigger outside the problem link", () => {
+    const html = renderSignedIn(
+      section({
+        problems: [problem({ slug: "two-sum", title: "Two Sum" })],
+      }),
+    );
+    const linkStart = html.search(/<a [^>]*href="\/problems\/two-sum"/);
+    const linkEnd = html.indexOf("</a>", linkStart);
+    const noteTrigger = html.indexOf(
+      'aria-label="Add a private note for Two Sum"',
+    );
+
+    expect(linkStart).toBeGreaterThan(-1);
+    expect(linkEnd).toBeGreaterThan(linkStart);
+    expect(noteTrigger).toBeGreaterThan(linkEnd);
   });
 
   it("previews only the viewer's saved note when signed in", () => {
-    const html = renderToStaticMarkup(
-      createElement(
-        ToastProvider,
-        null,
-        createElement(PlanSectionCard, {
-          section: section({
-            problems: [
-              problem({
-                slug: "two-sum",
-                title: "Two Sum",
-                note: "Hash map complement.",
-              }),
-              problem({ slug: "three-sum", title: "Three Sum", position: 2 }),
-            ],
+    const html = renderSignedIn(
+      section({
+        problems: [
+          problem({
+            slug: "two-sum",
+            title: "Two Sum",
+            note: "Hash map complement.",
           }),
-          index: 0,
-          signedIn: true,
-          planSlug: "arrays-plan",
-        }),
-      ),
+          problem({ slug: "three-sum", title: "Three Sum", position: 2 }),
+        ],
+      }),
     );
     const plain = text(html);
 
     expect(plain).toContain("Your note");
     expect(plain).toContain("Hash map complement.");
+    expect(html).toContain('aria-label="Edit note for Two Sum"');
     expect(html).toContain('aria-label="Add a private note for Three Sum"');
     expect(html).not.toContain('aria-label="Add a private note for Two Sum"');
   });
 });
 
-describe("PlanSectionNav", () => {
-  it("renders jump links for two or more sections", () => {
+describe("PlanSectionChips", () => {
+  it("renders horizontally scrollable jump chips for small screens", () => {
     const html = renderToStaticMarkup(
-      createElement(PlanSectionNav, {
+      createElement(PlanSectionChips, {
         sections: [
           section({ id: "arrays", title: "Arrays" }),
           section({ id: null, title: "General", position: 2 }),
         ],
       }),
     );
-    const plain = text(html);
 
-    expect(plain).toContain("Jump to");
+    expect(html).toContain('aria-label="Sections"');
     expect(html).toContain('href="#section-arrays"');
     expect(html).toContain('href="#section-general"');
-    expect(html).toContain('aria-label="Jump to a section"');
+    expect(html).toContain("reference-nav-scroll");
+    expect(html).toContain("overflow-x-auto");
+    expect(text(html)).toContain("Arrays");
+    expect(text(html)).toContain("0/3");
   });
 
   it("renders nothing for a single section", () => {
     const html = renderToStaticMarkup(
-      createElement(PlanSectionNav, { sections: [section()] }),
+      createElement(PlanSectionChips, { sections: [section()] }),
+    );
+    expect(html).toBe("");
+  });
+});
+
+describe("PlanSectionRail", () => {
+  it("renders a sticky desktop rail with progress per section", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlanSectionRail, {
+        sections: [
+          section({ id: "arrays", title: "Arrays", solvedCount: 2 }),
+          section({ id: null, title: "General", position: 2 }),
+        ],
+      }),
+    );
+
+    expect(html).toContain('aria-label="Sections"');
+    expect(html).toContain("lg:sticky");
+    expect(html).toContain('href="#section-arrays"');
+    expect(html).toContain('href="#section-general"');
+    expect(text(html)).toContain("2 of 3 solved");
+  });
+
+  it("renders nothing for a single section", () => {
+    const html = renderToStaticMarkup(
+      createElement(PlanSectionRail, { sections: [section()] }),
     );
     expect(html).toBe("");
   });

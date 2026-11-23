@@ -12,8 +12,8 @@ import {
   Sparkles,
   UserRoundCheck,
 } from "lucide-react";
-import { DifficultySplit } from "@/components/study-plans/difficulty-split";
-import { StudyProgress } from "@/components/study-plans/study-progress";
+import { DifficultyMix } from "@/components/study-plans/difficulty-mix";
+import { PlanProgressRing } from "@/components/study-plans/plan-progress-ring";
 import { TopicChips } from "@/components/study-plans/topic-chips";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -74,13 +74,24 @@ export function StudyPlanCard({
   const CtaIcon = cta.icon;
 
   const progress = (
-    <StudyProgress
-      solved={plan.solvedCount}
-      total={plan.problemCount}
-      percent={percent}
-      muted={!signedIn}
-      label={`${plan.title}: ${plan.solvedCount} of ${plan.problemCount} problems solved`}
-    />
+    <div className="flex items-center gap-3">
+      <PlanProgressRing
+        size="md"
+        percent={signedIn ? percent : 0}
+        solved={signedIn ? plan.solvedCount : 0}
+        total={plan.problemCount}
+        label={
+          signedIn
+            ? `${plan.title}: ${plan.solvedCount} of ${plan.problemCount} problems solved`
+            : "Sign in to track progress"
+        }
+      />
+      <p className="min-w-0 text-xs font-medium text-foreground/80">
+        {signedIn
+          ? `${plan.solvedCount} of ${plan.problemCount} solved`
+          : "Sign in to track progress"}
+      </p>
+    </div>
   );
 
   const ctaLink = (
@@ -188,7 +199,7 @@ export function StudyPlanCard({
           <>
             <TopicChips topics={plan.topics} className="mt-3" />
             <div className="mt-auto space-y-3 pt-4">
-              <DifficultySplit counts={plan.difficultyCounts} />
+              <DifficultyMix counts={plan.difficultyCounts} />
               {progress}
               {ctaLink}
             </div>

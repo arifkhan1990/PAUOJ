@@ -28,7 +28,7 @@ function text(html: string): string {
 }
 
 describe("ProblemNote", () => {
-  it("offers an Add note button when the problem has no note", () => {
+  it("offers an Add note trigger when the problem has no note", () => {
     const html = render(null);
     const plain = text(html);
 
@@ -36,6 +36,7 @@ describe("ProblemNote", () => {
     expect(plain).not.toContain("Your note");
     expect(html).not.toContain("<textarea");
     expect(html).toContain("Add a private note for Two Sum");
+    expect(html).toContain('aria-expanded="false"');
   });
 
   it("previews an existing note with an edit action", () => {
@@ -47,5 +48,16 @@ describe("ProblemNote", () => {
     expect(plain).toContain("Edit note");
     expect(plain).not.toContain("Add note");
     expect(html).not.toContain("<textarea");
+    expect(html).toContain('aria-label="Edit note for Two Sum"');
+    expect(html).toContain("line-clamp-2");
+  });
+
+  it("keeps the trigger usable outside a problem link", () => {
+    const html = render(null);
+
+    expect(html).toContain("<button");
+    expect(html).toContain("min-h-11");
+    expect(html).toContain("min-w-11");
+    expect(html).not.toContain("<a ");
   });
 });

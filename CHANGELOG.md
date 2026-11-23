@@ -28,6 +28,10 @@ All notable changes to PAU OJ are documented here. The format follows
   upgrading legacy flat plans once.
 - Signed-in learners can create, edit and delete their own private sectioned plans and see
   them in "My plans"; private plans are owner-only and capped at 10.
+- The study-plan detail page now uses circular progress rings, a sticky section rail,
+  compact per-problem note actions and a single completion state instead of linear
+  progress bars and repeated "Add note" rows. Mobile header/footer controls meet the
+  44px touch-target rule.
 
 ### Fixed
 - Study plans accept only published public problems; draft/private problems are rejected by

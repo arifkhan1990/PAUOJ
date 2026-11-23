@@ -4,14 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  CheckCircle2,
+  ListChecks,
   Loader2,
   LogIn,
   Plus,
   X,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ApiClientError, apiDelete, apiPost } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -88,13 +87,37 @@ export function PlanActions({
   return (
     <div className="mt-4 space-y-2.5">
       {completed ? (
-        <Badge variant="success" className="w-full justify-center py-1">
-          <CheckCircle2 aria-hidden="true" />
-          Plan completed
-        </Badge>
-      ) : null}
-
-      {isEnrolled ? (
+        <>
+          <a
+            href="#plan-sections"
+            className={cn(
+              buttonVariants({ variant: "outline", size: "lg" }),
+              "w-full",
+            )}
+          >
+            <ListChecks aria-hidden="true" />
+            Review sections
+          </a>
+          {isEnrolled ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              className="w-full"
+              onClick={() => void updateEnrollment("leave")}
+              disabled={pending !== null}
+              aria-busy={pending === "leave"}
+            >
+              {pending === "leave" ? (
+                <Loader2 className="animate-spin" aria-hidden="true" />
+              ) : (
+                <X aria-hidden="true" />
+              )}
+              {pending === "leave" ? "Leaving…" : "Leave plan"}
+            </Button>
+          ) : null}
+        </>
+      ) : isEnrolled ? (
         <Button
           type="button"
           variant="ghost"

@@ -344,6 +344,7 @@ export function UserStudyListForm({
         <div className="flex gap-2">
           <Link
             href={initial ? `/lists/${initial.slug}` : "/lists"}
+            prefetch={false}
             className={buttonVariants({ variant: "ghost" })}
           >
             Cancel

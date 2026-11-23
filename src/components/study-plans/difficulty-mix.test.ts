@@ -2,10 +2,10 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { StudyDifficultyCounts } from "@/lib/study-list-types";
-import { DifficultySplit } from "./difficulty-split";
+import { DifficultyMix } from "./difficulty-mix";
 
 function render(counts: StudyDifficultyCounts) {
-  return renderToStaticMarkup(createElement(DifficultySplit, { counts }));
+  return renderToStaticMarkup(createElement(DifficultyMix, { counts }));
 }
 
 function text(html: string): string {
@@ -22,8 +22,8 @@ const counts = (
   ...overrides,
 });
 
-describe("DifficultySplit", () => {
-  it("renders every legend count when all tiers are populated", () => {
+describe("DifficultyMix", () => {
+  it("renders every count when all tiers are populated", () => {
     const html = render(counts({ EASY: 6, MEDIUM: 4, HARD: 2, EXPERT: 1 }));
     const plain = text(html);
 
@@ -47,8 +47,7 @@ describe("DifficultySplit", () => {
   });
 
   it("still renders Easy, Medium and Hard at zero counts", () => {
-    const html = render(counts());
-    const plain = text(html);
+    const plain = text(render(counts()));
 
     expect(plain).toContain("Easy 0");
     expect(plain).toContain("Medium 0");
@@ -56,29 +55,15 @@ describe("DifficultySplit", () => {
     expect(plain).not.toContain("Expert");
   });
 
-  it("renders no bar segments when the plan has no problems", () => {
-    const html = render(counts());
+  it("keeps the difficulty colours as dots on compact pills", () => {
+    const html = render(counts({ EASY: 2, MEDIUM: 1, HARD: 1 }));
 
-    expect(html).toContain('aria-hidden="true"');
-    expect(html).not.toContain("flex-grow");
-  });
-
-  it("renders one bar segment per non-zero tier", () => {
-    const html = render(counts({ EASY: 2, MEDIUM: 1, HARD: 0, EXPERT: 0 }));
-    const bar = html.slice(0, html.indexOf("<ul"));
-
-    expect((bar.match(/flex-grow/g) ?? []).length).toBe(2);
-    expect(bar).toContain("bg-emerald-500");
-    expect(bar).toContain("bg-amber-500");
-    expect(bar).not.toContain("bg-rose-500");
-  });
-
-  it("keeps the legend readable without colour", () => {
-    const html = render(counts({ EASY: 1 }));
-
+    expect(html).toContain("bg-emerald-500");
+    expect(html).toContain("bg-amber-500");
+    expect(html).toContain("bg-rose-500");
     expect(html).toContain("<ul");
-    expect(html).toContain("Easy");
-    // Bar is decorative only; the legend carries the data.
-    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain("<li");
+    expect(html).not.toContain("flex-grow");
+    expect(html).not.toContain("h-1.5");
   });
 });

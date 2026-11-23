@@ -18,7 +18,7 @@ export function ThemeToggle({ className }: { className?: string }) {
       variant="ghost"
       size="icon"
       aria-label="Toggle theme"
-      className={cn(className)}
+      className={cn("min-h-11 min-w-11 md:min-h-9 md:min-w-9", className)}
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
     >
       {mounted && resolvedTheme === "dark" ? (

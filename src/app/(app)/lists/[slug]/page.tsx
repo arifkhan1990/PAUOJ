@@ -6,12 +6,14 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { NextProblemStrip } from "@/components/study-plans/next-problem-strip";
 import {
   PlanSectionCard,
-  PlanSectionNav,
+  PlanSectionChips,
+  PlanSectionRail,
 } from "@/components/study-plans/plan-sections";
 import { StudyPlanHeader } from "@/components/study-plans/study-plan-header";
 import { buttonVariants } from "@/components/ui/button";
 import { getCurrentUser } from "@/server/auth/session";
 import { getStudyList } from "@/server/services/study-lists";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +48,7 @@ export default async function StudyListPage({
   if (!plan) notFound();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
       <nav aria-label="Breadcrumb">
         <ol className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
           <li className="shrink-0">
@@ -68,18 +70,7 @@ export default async function StudyListPage({
         </ol>
       </nav>
 
-      <StudyPlanHeader
-        plan={plan}
-        signedIn={Boolean(user)}
-        className="mt-4"
-      />
-
-      <NextProblemStrip
-        className="mt-4"
-        nextProblem={plan.nextProblem}
-        completed={plan.completed}
-        problemCount={plan.problemCount}
-      />
+      <StudyPlanHeader plan={plan} signedIn={Boolean(user)} className="mt-4" />
 
       {plan.sections.length === 0 ? (
         <EmptyState
@@ -94,20 +85,37 @@ export default async function StudyListPage({
           }
         />
       ) : (
-        <>
-          <PlanSectionNav sections={plan.sections} className="mt-8" />
-          <div className="mt-4 space-y-4">
-            {plan.sections.map((section, index) => (
-              <PlanSectionCard
-                key={section.id ?? "general"}
-                section={section}
-                index={index}
-                signedIn={Boolean(user)}
-                planSlug={plan.slug}
-              />
-            ))}
+        <div
+          className={cn(
+            "mt-6",
+            plan.sections.length >= 2 &&
+              "lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start lg:gap-6",
+          )}
+        >
+          <div id="plan-sections" className="min-w-0 scroll-mt-24">
+            {plan.completed ? null : (
+              <NextProblemStrip nextProblem={plan.nextProblem} />
+            )}
+
+            <PlanSectionChips sections={plan.sections} className="mt-4" />
+
+            <div className="mt-4 space-y-4">
+              {plan.sections.map((section, index) => (
+                <PlanSectionCard
+                  key={section.id ?? "general"}
+                  section={section}
+                  index={index}
+                  signedIn={Boolean(user)}
+                  planSlug={plan.slug}
+                />
+              ))}
+            </div>
           </div>
-        </>
+
+          {plan.sections.length >= 2 ? (
+            <PlanSectionRail sections={plan.sections} />
+          ) : null}
+        </div>
       )}
     </div>
   );

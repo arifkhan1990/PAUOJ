@@ -1,5 +1,7 @@
 import Link from "next/link";
 import {
+  ArrowRight,
+  CheckCircle2,
   Clock3,
   FileCode2,
   Layers3,
@@ -7,9 +9,9 @@ import {
   Pencil,
   Sparkles,
 } from "lucide-react";
-import { DifficultySplit } from "@/components/study-plans/difficulty-split";
+import { DifficultyMix } from "@/components/study-plans/difficulty-mix";
 import { PlanActions } from "@/components/study-plans/plan-actions";
-import { StudyProgress } from "@/components/study-plans/study-progress";
+import { PlanProgressRing } from "@/components/study-plans/plan-progress-ring";
 import { TopicChips } from "@/components/study-plans/topic-chips";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -36,7 +38,7 @@ export function StudyPlanHeader({
 
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_19rem]">
+      <div className="grid gap-6 p-5 sm:p-6 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-8">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-1.5">
             <Badge
@@ -57,7 +59,12 @@ export function StudyPlanHeader({
                 Private
               </Badge>
             )}
-            {plan.enrolled ? (
+            {plan.completed ? (
+              <Badge variant="success">
+                <CheckCircle2 className="size-3" aria-hidden="true" />
+                Completed
+              </Badge>
+            ) : plan.enrolled ? (
               <Badge variant="muted">
                 <span
                   className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-300"
@@ -92,44 +99,72 @@ export function StudyPlanHeader({
 
           <TopicChips topics={plan.topics} className="mt-4" />
 
-          <div className="mt-5 max-w-md border-t border-border pt-4">
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="mt-5 max-w-sm">
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
               Difficulty mix
             </p>
-            <DifficultySplit counts={plan.difficultyCounts} className="mt-2" />
+            <DifficultyMix counts={plan.difficultyCounts} className="mt-2" />
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-muted/30 p-4">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            Your progress
-          </p>
-          <p className="mt-2 font-mono text-3xl font-semibold tabular-nums">
-            {percent}
-            <span className="text-lg font-normal text-muted-foreground">%</span>
-          </p>
-          <StudyProgress
-            className="mt-2"
-            solved={plan.solvedCount}
-            total={plan.problemCount}
-            percent={percent}
-            muted={!signedIn}
-            label={`${plan.title}: ${plan.solvedCount} of ${plan.problemCount} problems solved`}
-          />
-          <dl className="mt-3 grid grid-cols-2 gap-2 border-t border-border pt-3 text-xs">
-            <div>
-              <dt className="text-muted-foreground">Solved</dt>
-              <dd className="mt-0.5 font-medium tabular-nums">
-                {plan.solvedCount} of {plan.problemCount}
-              </dd>
+        <div className="rounded-xl border border-border bg-muted/20 p-4 sm:p-5">
+          <div className="flex items-center gap-4">
+            <PlanProgressRing
+              size="lg"
+              percent={percent}
+              solved={plan.solvedCount}
+              total={plan.problemCount}
+              label={`${plan.title}: ${plan.solvedCount} of ${plan.problemCount} problems solved`}
+            />
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Your progress
+              </p>
+              <p className="mt-2 text-sm font-medium tabular-nums">
+                {plan.solvedCount} of {plan.problemCount} solved
+              </p>
+              {plan.completed ? null : (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {plan.solvedCount > 0 || plan.attemptedCount > 0
+                    ? "Keep going"
+                    : "Not started"}
+                </p>
+              )}
             </div>
+          </div>
+
+          <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 text-xs">
             <div>
               <dt className="text-muted-foreground">Attempted</dt>
               <dd className="mt-0.5 font-medium tabular-nums">
                 {plan.attemptedCount}
               </dd>
             </div>
+            <div>
+              <dt className="text-muted-foreground">Remaining</dt>
+              <dd className="mt-0.5 font-medium tabular-nums">
+                {Math.max(plan.problemCount - plan.solvedCount, 0)}
+              </dd>
+            </div>
           </dl>
+
+          {signedIn &&
+          plan.enrolled &&
+          !plan.completed &&
+          plan.nextProblem ? (
+            <Link
+              href={`/problems/${plan.nextProblem.slug}`}
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "mt-4 w-full",
+              )}
+            >
+              Continue
+              <ArrowRight aria-hidden="true" />
+              <span className="sr-only"> — {plan.nextProblem.title}</span>
+            </Link>
+          ) : null}
+
           {plan.isPublic ? (
             <PlanActions
               slug={plan.slug}
