@@ -3,7 +3,7 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
-## [Unreleased]
+## [0.8.1] - 2026-11-23
 
 ### Added
 - Study plans now support ordered sections, beginner/intermediate/advanced levels, an optional

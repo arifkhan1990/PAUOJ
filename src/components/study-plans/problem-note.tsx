@@ -155,7 +155,7 @@ export function ProblemNote({
         aria-expanded={editing}
         aria-controls={editing ? panelId : undefined}
         title={savedNote ? "Edit note" : "Add note"}
-        className="col-start-2 row-start-1 my-1 mr-1.5 min-h-11 min-w-11 gap-1.5 self-center px-2.5 text-muted-foreground sm:min-h-9 sm:min-w-9"
+        className="col-start-2 row-start-1 my-1 mr-1.5 min-h-11 min-w-11 gap-1.5 self-center px-2.5 text-muted-foreground lg:min-h-9 lg:min-w-9"
       >
         <TriggerIcon aria-hidden="true" />
         <span className="hidden sm:inline">
@@ -196,7 +196,7 @@ export function ProblemNote({
                 <Button
                   type="button"
                   size="sm"
-                  className="min-h-11 sm:min-h-8"
+                  className="min-h-11 lg:min-h-8"
                   onClick={() => void save()}
                   disabled={pending !== null}
                   aria-busy={pending === "save"}
@@ -212,7 +212,7 @@ export function ProblemNote({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="min-h-11 sm:min-h-8"
+                  className="min-h-11 lg:min-h-8"
                   onClick={cancelEditor}
                   disabled={pending !== null}
                 >
@@ -224,7 +224,7 @@ export function ProblemNote({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    className="min-h-11 min-w-11 text-destructive hover:text-destructive sm:min-h-8"
+                    className="min-h-11 min-w-11 text-destructive hover:text-destructive lg:min-h-8"
                     onClick={() => setConfirmOpen(true)}
                     disabled={pending !== null}
                     aria-busy={pending === "delete"}
@@ -266,9 +266,9 @@ export function ProblemNote({
               type="button"
               size="sm"
               variant="ghost"
-              className="min-h-11 min-w-11 shrink-0 sm:min-h-8"
+              className="min-h-11 min-w-11 shrink-0 lg:min-h-8"
               onClick={(event) => openEditor(event.currentTarget)}
-              aria-label={`Edit note for ${problemTitle}`}
+              aria-label={`Edit saved note for ${problemTitle}`}
             >
               <Pencil aria-hidden="true" />
               <span className="hidden sm:inline">Edit note</span>

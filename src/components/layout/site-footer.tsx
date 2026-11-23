@@ -4,7 +4,7 @@ import { APP_NAME, APP_VERSION } from "@/lib/constants";
 
 /** Tappable row on phones, compact inline link from md up. */
 const footerLink =
-  "inline-flex min-h-11 items-center hover:text-primary md:min-h-0";
+  "inline-flex min-h-11 items-center hover:text-primary lg:min-h-0";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();

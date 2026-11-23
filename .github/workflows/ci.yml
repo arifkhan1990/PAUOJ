@@ -52,3 +52,105 @@ jobs:
         run: |
           docker run --rm pauoj/judge:ci sh -c \
             'g++ --version | head -n 1 && python3 --version && javac -version && node --version && test -s /harness.py'
+
+  study-plans-e2e:
+    name: Study plan E2E
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: pauoj
+          POSTGRES_PASSWORD: pauoj
+          POSTGRES_DB: pauoj
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pauoj -d pauoj"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Kept non-production so `pnpm install` always links devDependencies
+      # (next, typescript, tsx). Only `build` and `start` switch to production,
+      # because `next start` serves a production build.
+      NODE_ENV: test
+      DATABASE_URL: postgres://pauoj:pauoj@localhost:5432/pauoj
+      REDIS_URL: redis://localhost:6379
+      APP_URL: http://localhost:3000
+      BASE_URL: http://localhost:3000
+      SEED_DEMO_DATA: "true"
+      SEED_ADMIN_USERNAME: admin
+      SEED_ADMIN_EMAIL: admin@pauoj.local
+      SEED_ADMIN_PASSWORD: CiOnlyAdminPass123!
+      DEMO_PASSWORD: Demo@12345
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check Google Chrome
+        run: |
+          if ! command -v google-chrome >/dev/null 2>&1; then
+            echo "::error::google-chrome is not on PATH. The study-plan E2E script drives Chrome over CDP."
+            exit 1
+          fi
+          google-chrome --version
+      - name: Migrate database
+        run: pnpm db:migrate
+      - name: Seed database
+        run: pnpm db:seed
+        timeout-minutes: 10
+      - name: Build app
+        env:
+          NODE_ENV: production
+        run: pnpm build
+      - name: Start app
+        run: |
+          NODE_ENV=production nohup pnpm start > /tmp/app.log 2>&1 &
+          echo $! > /tmp/app.pid
+      - name: Wait for /health
+        run: |
+          for attempt in $(seq 1 60); do
+            if curl -fsS --connect-timeout 2 --max-time 5 \
+              http://localhost:3000/health > /tmp/health.json; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::app did not become healthy within 120s"
+          tail -n 200 /tmp/app.log || true
+          exit 1
+      - name: Run study plan E2E
+        run: |
+          if [ ! -f scripts/study-plans-e2e.mjs ]; then
+            echo "::error::scripts/study-plans-e2e.mjs is missing"
+            exit 1
+          fi
+          node scripts/study-plans-e2e.mjs
+      - name: Upload app log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: study-plans-e2e-app-log
+          path: /tmp/app.log
+          if-no-files-found: ignore
+          retention-days: 7

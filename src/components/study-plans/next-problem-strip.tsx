@@ -28,7 +28,7 @@ export function NextProblemStrip({
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <Link
             href={`/problems/${nextProblem.slug}`}
-            className="break-words text-sm font-semibold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-11 items-center break-words rounded-sm text-sm font-semibold transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:min-h-0"
           >
             {nextProblem.title}
           </Link>
@@ -42,7 +42,7 @@ export function NextProblemStrip({
       <Link
         href={`/problems/${nextProblem.slug}`}
         className={cn(
-          buttonVariants({ size: "default" }),
+          buttonVariants({ size: "lg" }),
           "w-full shrink-0 sm:w-auto",
         )}
       >

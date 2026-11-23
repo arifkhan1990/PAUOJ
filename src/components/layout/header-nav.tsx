@@ -31,8 +31,12 @@ const navItems = [
   { href: "/rank", label: "Rank" },
 ];
 
-/** 44px touch target on phones, current icon density from md up. */
-const iconTouchTarget = "min-h-11 min-w-11 md:min-h-9 md:min-w-9";
+/** 44px touch target through tablets, compact desktop density from lg up. */
+const iconTouchTarget = "min-h-11 min-w-11 lg:min-h-9 lg:min-w-9";
+
+/** Menu rows are 44px tall: the account menu is also used on phones. */
+const menuRowClass =
+  "flex min-h-11 items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted";
 
 function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
@@ -123,41 +127,29 @@ export function UserMenu({
             </p>
           </div>
           <div className="py-1">
-            <Link
-              href="/dashboard"
-              role="menuitem"
-              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-            >
+            <Link href="/dashboard" role="menuitem" className={menuRowClass}>
               <LayoutDashboard className="size-4" /> Coder dashboard
             </Link>
             {user.role === "TEACHER" || user.role === "ADMIN" ? (
-              <Link
-                href="/teacher"
-                role="menuitem"
-                className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-              >
+              <Link href="/teacher" role="menuitem" className={menuRowClass}>
                 <LayoutDashboard className="size-4" /> Teacher panel
               </Link>
             ) : null}
             <Link
               href={`/users/${user.username}`}
               role="menuitem"
-              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
+              className={menuRowClass}
             >
               <UserIcon className="size-4" /> Profile
             </Link>
             <Link
               href="/submissions?mine=true"
               role="menuitem"
-              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
+              className={menuRowClass}
             >
               <LayoutDashboard className="size-4" /> My submissions
             </Link>
-            <Link
-              href="/notifications"
-              role="menuitem"
-              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-            >
+            <Link href="/notifications" role="menuitem" className={menuRowClass}>
               <Bell className="size-4" /> Notifications
               {unreadNotifications > 0 ? (
                 <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
@@ -165,19 +157,11 @@ export function UserMenu({
                 </span>
               ) : null}
             </Link>
-            <Link
-              href="/settings"
-              role="menuitem"
-              className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-            >
+            <Link href="/settings" role="menuitem" className={menuRowClass}>
               <Settings className="size-4" /> Settings
             </Link>
             {user.role === "ADMIN" ? (
-              <Link
-                href="/admin"
-                role="menuitem"
-                className="flex items-center gap-2 rounded-md px-2.5 py-2 text-sm hover:bg-muted"
-              >
+              <Link href="/admin" role="menuitem" className={menuRowClass}>
                 <LayoutDashboard className="size-4" /> Admin dashboard
               </Link>
             ) : null}
@@ -188,7 +172,10 @@ export function UserMenu({
               role="menuitem"
               onClick={() => void logout()}
               disabled={loggingOut}
-              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm text-destructive hover:bg-destructive/10 disabled:opacity-60"
+              className={cn(
+                menuRowClass,
+                "w-full text-left text-destructive hover:bg-destructive/10 disabled:opacity-60",
+              )}
             >
               <LogOut className="size-4" />
               {loggingOut ? "Signing out…" : "Sign out"}
@@ -247,7 +234,7 @@ export function HeaderNav({
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive(pathname, item.href)
                   ? "bg-muted text-foreground"
                   : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
@@ -325,7 +312,7 @@ export function HeaderNav({
             </span>
             <Link
               href="/settings#email"
-              className="font-semibold underline underline-offset-2"
+              className="inline-flex min-h-11 items-center font-semibold underline underline-offset-2 lg:min-h-0"
             >
               Verify now
             </Link>

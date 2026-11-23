@@ -283,12 +283,16 @@ the plan instead of leaking it.
 Signed-in learners can create up to ten private plans (`created_by`); the proxy verifies the
 session hash and allows only the owner to open a private `/lists/:slug`, while everyone else
 gets a real 404. `study_list_item_notes` stores one private note per `(user, plan, problem)`
-and is never exposed to another viewer. The catalog and detail use a fixed set of aggregate
-queries (no N+1); cache the public plan structure or paginate when the number of public plans
-grows beyond roughly 50. The daily challenge is deterministic per UTC date (an MD5 ordering
-over eligible public problems), and the streak reuses the accepted-submission activity
-heatmap. Category, subcategory and company tags live on `problems`; companies use a GIN
-index.
+and is never exposed to another viewer. A note for a problem removed from a
+plan is not rendered, but is preserved so it reappears if the problem is
+re-added. The catalog and detail use a fixed set of aggregate queries (no N+1);
+cache the public plan structure or paginate when the number of public plans
+grows beyond roughly 50. Do not cache the item list without also invalidating on
+problem publication changes: the public loader must keep hiding withdrawn
+problems. The daily challenge is deterministic per UTC date (an MD5 ordering
+over eligible public problems), and the streak reuses the accepted-submission
+activity heatmap. Category, subcategory and company tags live on `problems`;
+companies use a GIN index.
 
 ## Learning tracks
 

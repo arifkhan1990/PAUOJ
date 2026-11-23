@@ -143,7 +143,7 @@ export function StudyPlanCard({
             href={`/lists/${plan.slug}/edit`}
             className={cn(
               buttonVariants({ variant: "ghost", size: "sm" }),
-              "ml-auto min-h-11 sm:min-h-8",
+              "ml-auto min-h-11 lg:min-h-8",
             )}
           >
             <Pencil aria-hidden="true" />
@@ -157,7 +157,7 @@ export function StudyPlanCard({
         <h3 className="break-words text-base font-semibold leading-snug">
           <Link
             href={`/lists/${plan.slug}`}
-            className="rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="flex min-h-11 items-center rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:min-h-0"
           >
             {plan.title}
           </Link>

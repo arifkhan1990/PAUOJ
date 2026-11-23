@@ -48,7 +48,7 @@ describe("ProblemNote", () => {
     expect(plain).toContain("Edit note");
     expect(plain).not.toContain("Add note");
     expect(html).not.toContain("<textarea");
-    expect(html).toContain('aria-label="Edit note for Two Sum"');
+    expect(html).toContain('aria-label="Edit saved note for Two Sum"');
     expect(html).toContain("line-clamp-2");
   });
 
