@@ -87,7 +87,7 @@ export function StudyPlanCardProgress({
                 ? completed
                   ? "bg-success"
                   : "bg-primary"
-                : "bg-muted-foreground/70",
+                : "bg-muted-foreground/75",
             )}
           />
         ))}
