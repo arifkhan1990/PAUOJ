@@ -59,11 +59,11 @@ export function StudyPlanCardProgress({
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       <div className="flex items-baseline justify-between gap-3">
-        <p className="min-w-0 truncate text-[11px] font-medium text-muted-foreground">
+        <p aria-hidden="true" className="min-w-0 truncate text-[11px] font-medium text-muted-foreground">
           {label}
         </p>
         {showPercent ? (
-          <span className="shrink-0 font-mono text-[11px] font-medium tabular-nums text-foreground/80">
+          <span aria-hidden="true" className="shrink-0 font-mono text-[11px] font-medium tabular-nums text-foreground/80">
             {percent}%
           </span>
         ) : null}
@@ -87,7 +87,7 @@ export function StudyPlanCardProgress({
                 ? completed
                   ? "bg-success"
                   : "bg-primary"
-                : "bg-border",
+                : "bg-muted-foreground/70",
             )}
           />
         ))}

@@ -157,7 +157,7 @@ export function StudyPlanCard({
         <h3 className="break-words text-base font-semibold leading-snug tracking-tight">
           <Link
             href={`/lists/${plan.slug}`}
-            className="flex min-h-11 items-center rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:min-h-0"
+            className="flex min-h-11 items-center rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:min-h-6"
           >
             {plan.title}
           </Link>
