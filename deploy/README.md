@@ -146,6 +146,25 @@ docker exec -i srv-pauoj-db pg_restore --list \
 chmod 600 /home/naba/server/projects/pauoj/backups/*.dump
 ```
 
+Automated operations on the same host:
+
+- `deploy/backup-srv.sh` writes a verified dump; the `naba` crontab runs it
+  daily at 03:30 with `PREFIX=daily` and a 14-day retention.
+- `deploy/healthcheck.sh` runs every 5 minutes against the public `/health`
+  and appends failures to `/home/naba/server/logs/pauoj-health.log`. Export
+  `ALERT_WEBHOOK` in the cron line to POST failures to a chat webhook.
+- After every deploy run `bash scripts/prod-smoke.sh` (health/version/
+  migrations/worker, key pages, markers and the admin gate).
+- Rehearse a restore by loading the newest dump into a scratch database:
+
+```bash
+DUMP=$(ls -t /home/naba/server/projects/pauoj/backups/*.dump | head -1)
+docker exec srv-pauoj-db sh -c 'createdb -U "$POSTGRES_USER" pauoj_restore_check'
+docker exec -i srv-pauoj-db sh -c \
+  'pg_restore -U "$POSTGRES_USER" -d pauoj_restore_check --no-owner --no-acl' < "$DUMP"
+docker exec srv-pauoj-db sh -c 'dropdb -U "$POSTGRES_USER" pauoj_restore_check'
+```
+
 Migrations are **forward-only**. The previous image runs against the newer
 schema (extra tables are ignored), so an image-only rollback is safe; restoring
 the database needs the pre-release dump. New public rows (for example learning
