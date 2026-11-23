@@ -40,7 +40,7 @@ export function PremiumPaywall({
             <p className="mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground">
               Modules 1–2 stay free. Unlock this module for ৳
               {MODULE_PRICE_BDT}, or take all five premium modules for ৳
-              {BUNDLE_PRICE_BDT}. Pay by bKash/Nagad, submit the TrxID and an
+              {BUNDLE_PRICE_BDT}. Pay by bKash or City Bank, submit the TrxID and an
               admin approves it — no card needed.
             </p>
           </div>
