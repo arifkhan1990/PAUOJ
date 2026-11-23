@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -9,19 +10,17 @@ import {
   Pencil,
   Play,
   RotateCcw,
-  Sparkles,
+  Star,
   UserRoundCheck,
 } from "lucide-react";
 import { DifficultyMix } from "@/components/study-plans/difficulty-mix";
-import { PlanProgressRing } from "@/components/study-plans/plan-progress-ring";
+import { StudyPlanCardProgress } from "@/components/study-plans/study-plan-card-progress";
 import { TopicChips } from "@/components/study-plans/topic-chips";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   formatStudyDuration,
   studyListLevelMeta,
-  studyProgressPercent,
 } from "@/lib/study-list";
 import type { StudyListSummary } from "@/lib/study-list-types";
 import { cn } from "@/lib/utils";
@@ -58,6 +57,23 @@ function planCta(plan: StudyListSummary): PlanCta {
   };
 }
 
+function StatusLabel({
+  icon: Icon,
+  iconClassName,
+  children,
+}: {
+  icon: typeof Lock;
+  iconClassName?: string;
+  children: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+      <Icon className={cn("size-3.5", iconClassName)} aria-hidden="true" />
+      {children}
+    </span>
+  );
+}
+
 export function StudyPlanCard({
   plan,
   signedIn,
@@ -69,30 +85,8 @@ export function StudyPlanCard({
   compact?: boolean;
 }) {
   const level = studyListLevelMeta(plan.level);
-  const percent = studyProgressPercent(plan.solvedCount, plan.problemCount);
   const cta = planCta(plan);
   const CtaIcon = cta.icon;
-
-  const progress = (
-    <div className="flex items-center gap-3">
-      <PlanProgressRing
-        size="md"
-        percent={signedIn ? percent : 0}
-        solved={signedIn ? plan.solvedCount : 0}
-        total={plan.problemCount}
-        label={
-          signedIn
-            ? `${plan.title}: ${plan.solvedCount} of ${plan.problemCount} problems solved`
-            : "Sign in to track progress"
-        }
-      />
-      <p className="min-w-0 text-xs font-medium text-foreground/80">
-        {signedIn
-          ? `${plan.solvedCount} of ${plan.problemCount} solved`
-          : "Sign in to track progress"}
-      </p>
-    </div>
-  );
 
   const ctaLink = (
     <Link
@@ -106,44 +100,50 @@ export function StudyPlanCard({
   );
 
   return (
-    <Card className="flex h-full flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-muted/20 px-4 py-2.5">
-        <Badge
-          variant="outline"
-          className="font-mono text-[10.5px] uppercase tracking-wide"
-        >
-          {level.label}
-        </Badge>
-        {plan.isFeatured ? (
-          <Badge variant="warning">
-            <Sparkles className="size-3" aria-hidden="true" />
-            Featured
-          </Badge>
-        ) : null}
-        {plan.isPublic ? null : (
-          <Badge variant="outline">
-            <Lock className="size-3" aria-hidden="true" />
-            Private
-          </Badge>
-        )}
-        {plan.isOwned ? (
-          <Badge variant="accent">
-            <UserRoundCheck className="size-3" aria-hidden="true" />
-            Your plan
-          </Badge>
-        ) : null}
-        {plan.enrolled ? (
-          <Badge variant="success">
-            <CheckCircle2 className="size-3" aria-hidden="true" />
-            Enrolled
-          </Badge>
-        ) : null}
+    <Card
+      className={cn(
+        "group relative flex h-full flex-col overflow-hidden rounded-xl transition-[translate,border-color,box-shadow] duration-200 ease-out",
+        "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md",
+        "focus-within:-translate-y-0.5 focus-within:border-primary/30 focus-within:shadow-md",
+        "motion-reduce:translate-none motion-reduce:transition-none",
+      )}
+    >
+      {plan.isFeatured ? (
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-primary/0 via-primary/70 to-primary/0"
+        />
+      ) : null}
+
+      <div className="flex items-start justify-between gap-3 px-5 pt-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <span className="inline-flex items-center rounded-md border border-border/80 bg-background/40 px-1.5 py-0.5 font-mono text-[10.5px] font-medium uppercase tracking-wide text-muted-foreground">
+            {level.label}
+          </span>
+          {plan.isFeatured ? (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-accent">
+              <Star className="size-3 fill-current" aria-hidden="true" />
+              Featured
+            </span>
+          ) : null}
+          {plan.isPublic ? null : (
+            <StatusLabel icon={Lock}>Private</StatusLabel>
+          )}
+          {plan.isOwned ? (
+            <StatusLabel icon={UserRoundCheck}>Your plan</StatusLabel>
+          ) : null}
+          {plan.enrolled ? (
+            <StatusLabel icon={CheckCircle2} iconClassName="text-success">
+              Enrolled
+            </StatusLabel>
+          ) : null}
+        </div>
         {plan.isOwned ? (
           <Link
             href={`/lists/${plan.slug}/edit`}
             className={cn(
               buttonVariants({ variant: "ghost", size: "sm" }),
-              "ml-auto min-h-11 lg:min-h-8",
+              "-my-1 shrink-0 min-h-11 lg:min-h-8",
             )}
           >
             <Pencil aria-hidden="true" />
@@ -153,8 +153,8 @@ export function StudyPlanCard({
         ) : null}
       </div>
 
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-        <h3 className="break-words text-base font-semibold leading-snug">
+      <div className="flex flex-1 flex-col px-5 pb-4 pt-3">
+        <h3 className="break-words text-base font-semibold leading-snug tracking-tight">
           <Link
             href={`/lists/${plan.slug}`}
             className="flex min-h-11 items-center rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background lg:min-h-0"
@@ -164,7 +164,7 @@ export function StudyPlanCard({
         </h3>
 
         {compact ? null : (
-          <p className="mt-1.5 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1 line-clamp-2 break-words text-sm leading-relaxed text-muted-foreground">
             {plan.description}
           </p>
         )}
@@ -185,26 +185,27 @@ export function StudyPlanCard({
         </div>
 
         {compact ? (
-          <>
-            <div className="mt-4">{progress}</div>
-            {plan.nextProblem && plan.enrolled ? (
-              <p className="mt-2 truncate text-[11px] text-muted-foreground">
-                <span className="font-medium text-foreground">Next:</span>{" "}
-                {plan.nextProblem.title}
-              </p>
-            ) : null}
-            <div className="mt-auto pt-4">{ctaLink}</div>
-          </>
+          plan.enrolled && plan.nextProblem ? (
+            <p className="mt-3 truncate text-[11px] text-muted-foreground">
+              <span className="font-medium text-foreground">Next:</span>{" "}
+              {plan.nextProblem.title}
+            </p>
+          ) : null
         ) : (
           <>
-            <TopicChips topics={plan.topics} className="mt-3" />
-            <div className="mt-auto space-y-3 pt-4">
-              <DifficultyMix counts={plan.difficultyCounts} />
-              {progress}
-              {ctaLink}
-            </div>
+            <TopicChips topics={plan.topics} limit={3} className="mt-3" />
+            <DifficultyMix counts={plan.difficultyCounts} className="mt-2.5" />
           </>
         )}
+      </div>
+
+      <div className="mt-auto border-t border-border bg-muted/20 px-5 py-4">
+        <StudyPlanCardProgress
+          solved={plan.solvedCount}
+          total={plan.problemCount}
+          signedIn={signedIn}
+        />
+        <div className="mt-3">{ctaLink}</div>
       </div>
     </Card>
   );

@@ -3,6 +3,14 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.8.2] - 2026-11-24
+
+### Changed
+- Study plan catalog cards are redesigned for readability: the progress donut is
+  removed, the footer uses a compact segmented progress meter with solved/total
+  text, status badges are quieter, and cards get a consistent footer, hover and
+  focus treatment.
+
 ## [0.8.1] - 2026-11-23
 
 ### Added

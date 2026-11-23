@@ -45,6 +45,11 @@ function text(html: string): string {
     .trim();
 }
 
+/** Number of rendered progress segments (each carries the meter height). */
+function segments(html: string): number {
+  return (html.match(/h-2/g) ?? []).length;
+}
+
 describe("StudyPlanCard", () => {
   it("shows a Start plan CTA when nothing is solved", () => {
     const html = render(
@@ -137,11 +142,26 @@ describe("StudyPlanCard", () => {
     expect(plain).toContain("17%");
   });
 
-  it("uses a progress ring instead of a thin bar", () => {
+  it("uses a segmented meter and no SVG ring on the card", () => {
     const html = render(plan({ solvedCount: 2 }));
 
-    expect(html).toContain('role="img"');
-    expect(html).not.toContain('role="progressbar"');
+    expect(html).toContain('role="progressbar"');
+    expect(segments(html)).toBe(10);
+    // A ring is an SVG arc; the card must not render one any more.
+    expect(html).not.toContain("stroke-dasharray");
+    expect(html).not.toContain('role="img"');
+  });
+
+  it("marks completed progress with the success meter and label", () => {
+    const html = render(
+      plan({ solvedCount: 10, completed: true, progressPercent: 100 }),
+    );
+    const plain = text(html);
+
+    expect(plain).toContain("Completed");
+    expect(plain).toContain("100%");
+    expect(html).toContain("bg-success");
+    expect(html).not.toContain('role="img"');
   });
 
   it("mutes progress and asks guests to sign in", () => {
@@ -151,9 +171,11 @@ describe("StudyPlanCard", () => {
     expect(plain).toContain("Sign in to track progress");
     expect(plain).not.toContain("4 of 10 solved");
     expect(plain).not.toContain("33%");
+    expect(plain).not.toContain("40%");
+    expect(signedOut).toContain('aria-valuenow="0"');
   });
 
-  it("hides the description in compact mode but keeps progress and CTA", () => {
+  it("hides the description in compact mode but keeps progress, next hint and CTA", () => {
     const html = renderToStaticMarkup(
       createElement(StudyPlanCard, {
         plan: plan({
@@ -177,6 +199,8 @@ describe("StudyPlanCard", () => {
     expect(plain).toContain("2 of 10 solved");
     expect(plain).toContain("Next: Two Sum");
     expect(plain).toContain("Continue");
+    expect(plain).not.toContain("Easy 4");
+    expect(plain).not.toContain("Topics");
   });
 
   it("omits the next-problem hint in compact mode when not enrolled", () => {

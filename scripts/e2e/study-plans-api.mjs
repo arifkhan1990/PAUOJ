@@ -16,6 +16,8 @@ export async function stepGuestCatalog() {
   for (const slug of SEEDED_PLANS) {
     assert(lists.text.includes(`href="/lists/${slug}"`), `guest /lists is missing ${slug}`);
   }
+  assert(lists.text.includes('role="progressbar"'), "catalog cards are missing segmented progress");
+  assert(!lists.text.includes("stroke-dasharray"), "catalog cards still render an SVG donut ring");
   pass("guest /lists is 200 and links the four seeded plans");
 
   const detail = await api("/lists/getting-started");
