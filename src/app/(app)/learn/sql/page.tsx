@@ -36,7 +36,7 @@ export const dynamic = "force-dynamic";
 const INTRO = {
   title: "ShopSphere: query the marketplace",
   summary:
-    "একটি মাল্টি-ভেন্ডর অনলাইন দোকান। ভেন্ডর, কাস্টমার, প্রোডাক্ট, অর্ডার, রিভিউ, ক্যাটাগরি আর রেফারেল — সব একই ডেটাবেসে। প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু হয়, তারপর সেই প্রশ্নের SQL সমাধান।",
+    "একটি মাল্টি-ভেন্ডর অনলাইন দোকান। ভেন্ডর, কাস্টমার, প্রোডাক্ট, অর্ডার, পেমেন্ট, শিপমেন্ট, রিটার্ন, কুপন, কার্ট, ইনভেন্টরি, রিভিউ আর ভেন্ডর পেআউট — সব একই ডেটাবেসে। প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু হয়, তারপর সেই প্রশ্নের SQL সমাধান।",
   tables: [
     ["vendors", "id, name, city, rating"],
     ["customers", "id, name, city, signup_date"],
@@ -46,6 +46,17 @@ const INTRO = {
     ["order_items", "id, order_id, product_id, quantity, unit_price_cents"],
     ["reviews", "id, product_id, customer_id, rating, created_at"],
     ["referrals", "customer_id, referred_by"],
+    ["product_attributes", "product_id, brand, color, warranty_months, attributes (JSON)"],
+    ["product_variants", "id, product_id, sku, size, color, price_cents, stock"],
+    ["payments", "id, order_id, method, amount_cents, status, paid_at"],
+    ["shipments", "id, order_id, carrier, tracking_no, status, shipped_at, delivered_at"],
+    ["returns", "id, order_item_id, quantity, reason, refund_cents, status, requested_at"],
+    ["coupons", "id, code, kind, value, min_order_cents, starts_at, ends_at"],
+    ["coupon_redemptions", "id, coupon_id, order_id, customer_id, discount_cents, redeemed_at"],
+    ["carts", "id, customer_id, status, created_at, updated_at"],
+    ["cart_items", "id, cart_id, product_id, quantity, unit_price_cents, added_at"],
+    ["inventory_movements", "id, product_id, kind, quantity, reference, created_at"],
+    ["vendor_payouts", "id, vendor_id, period_start, period_end, gross_cents, commission_cents, refund_cents, net_cents, status, paid_at"],
   ],
 } as const;
 

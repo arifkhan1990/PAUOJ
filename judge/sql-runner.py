@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """SQL test runner: loads the ShopSphere fixture, runs one SELECT and prints TSV."""
+import json
 import os
 import re
 import sqlite3
@@ -136,6 +137,40 @@ def now():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
+def json_text(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float)):
+        return str(value)
+    return json.dumps(value, separators=(",", ":"))
+
+
+def json_unquote(value):
+    if value is None:
+        return None
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return value
+    return json_text(parsed)
+
+
+def json_path_text(value, *keys):
+    if value is None:
+        return None
+    try:
+        parsed = json.loads(str(value))
+    except (TypeError, ValueError):
+        return None
+    for key in keys:
+        if not isinstance(parsed, dict):
+            return None
+        parsed = parsed.get(str(key))
+    return json_text(parsed)
+
+
 def substring(value, start, length=None):
     text = str(value)
     index = int(start) - 1
@@ -148,7 +183,7 @@ CAST_TYPES = re.compile(
     r"\s*((?:double\s+precision|character\s+varying|"
     r"timestamp\s+with\s+time\s+zone|timestamptz|timestamp|"
     r"smallint|bigint|integer|numeric|decimal|boolean|varchar|"
-    r"real|text|bool|date|time|int)"
+    r"real|text|bool|date|time|jsonb|json|int)"
     r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)"
     r"(?![A-Za-z0-9_])",
     re.IGNORECASE,
@@ -259,7 +294,12 @@ def normalize_casts_once(sql: str) -> str:
         if not expression:
             continue
         result.append(sql[cursor:start])
-        result.append(f"CAST({expression} AS {match.group(1)})")
+        target = match.group(1)
+        # SQLite's JSON operators work on the original text, not CAST(... AS json).
+        if target.lower() in ("json", "jsonb"):
+            result.append(expression)
+        else:
+            result.append(f"CAST({expression} AS {target})")
         cursor = match.end()
     result.append(sql[cursor:])
     return "".join(result)
@@ -292,6 +332,17 @@ def normalize_extract(sql: str) -> str:
     )
 
 
+def normalize_json_operators(sql: str) -> str:
+    pattern = re.compile(r"(\b\w+(?:\.\w+)*|\([^()]*\))\s*->>\s*'([^']+)'")
+
+    def replace(match: re.Match) -> str:
+        if not outside_quotes(sql, match.start()):
+            return match.group(0)
+        return f"jsonb_extract_path_text({match.group(1)}, '{match.group(2)}')"
+
+    return pattern.sub(replace, sql)
+
+
 def normalize(sql: str, dialect: str) -> str:
     text = strip_backticks(sql).strip().rstrip(";")
     text = re.sub(r"\bILIKE\b", "LIKE", text, flags=re.IGNORECASE)
@@ -303,6 +354,8 @@ def normalize(sql: str, dialect: str) -> str:
     )
     text = normalize_extract(text)
     text = normalize_casts(text)
+    if dialect in ("mysql", "postgresql"):
+        text = normalize_json_operators(text)
     if dialect == "mysql":
         match = re.search(r"\bLIMIT\s+(\d+)\s*,\s*(\d+)\s*$", text, re.IGNORECASE)
         if match:
@@ -330,6 +383,8 @@ def register_functions(connection: sqlite3.Connection) -> None:
     connection.create_function("to_char", 2, to_char)
     connection.create_function("date_trunc", 2, date_trunc)
     connection.create_function("now", 0, now)
+    connection.create_function("json_unquote", 1, json_unquote)
+    connection.create_function("jsonb_extract_path_text", -1, json_path_text)
     connection.create_function("char_length", 1, lambda value: len(str(value)))
     connection.create_function("substring", 2, substring)
     connection.create_function("substring", 3, substring)

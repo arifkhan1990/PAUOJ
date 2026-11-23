@@ -181,38 +181,48 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
 ## SQL Labs (ShopSphere project)
 
 `/learn/sql` is the ShopSphere hub; the actual curriculum lives in two formal
-learning modules (8 topics, 16 guided problems, 2 checkpoints, 22 judge
+learning modules (16 topics, 30 guided problems, 2 checkpoints, 36 judge
 problems total) so progress, checkpoints and badges behave like the other
 tracks. Every task is a **normal judge problem** with points, time and memory
 limits, visible in the problem list.
 
-- **Basic SQL** (`basic-sql`, track 08, free): vendor directory, low-stock
-  shelf, vendor revenue, order receipts, dead stock, stock buckets,
-  above-category-average prices and customers without orders
-  (`SELECT/WHERE/ORDER BY`, joins, aggregates, `HAVING`, `LEFT JOIN`/`NOT
-  EXISTS`, `CASE`, correlated subqueries), plus a 45-minute checkpoint and the
-  *ShopSphere Analyst* badge.
+- **Basic SQL** (`basic-sql`, track 08, free, 20h): vendor directory, low stock,
+  revenue/receipts, dead stock, stock buckets, above-category-average prices,
+  customers without orders, set operations/data quality, case-insensitive
+  search + date ranges, and the order lifecycle (payments, shipments, returns).
+  Covers `SELECT/WHERE/ORDER BY`, joins, aggregates, `HAVING`, `LEFT JOIN`/`NOT
+  EXISTS`, `CASE`, correlated subqueries, `UNION`/`EXCEPT`, text/date functions
+  and lifecycle reconciliation, plus the 45-minute *ShopSphere Analyst*
+  checkpoint.
 - **Advanced SQL** (`advanced-sql`, track 09, ৳500, separate from the ৳700 code
-  bundle): top product per category (`RANK`), running revenue (`SUM OVER`),
-  category trees and referral chains (recursive CTEs), category revenue share,
-  month-over-month growth (`LAG`), a vendor scorecard and signup-cohort
-  retention, plus a checkpoint and the *ShopSphere Architect* badge. Access uses the `advanced-sql` entitlement
-  and is enforced on the module and problem pages, the problem list and
-  submission creation.
-- Every SQL problem ships with five judge tests (two visible samples) so
-  checkpoints meet the normal learning standard. Tests are variant datasets
-  applied before the query; expected rows are generated from
-  `judge/shopsphere.sql`.
+  bundle, 26h): ranking, running totals and 7-row moving averages, recursive
+  category/referral trees, category share and month-over-month growth, cart
+  funnels, coupon attribution, JSON product attributes, inventory-ledger
+  reconciliation, vendor payout reconciliation, refund impact and a
+  vendor/cohort capstone. Covers `RANK`, `LAG`, window frames/partitions,
+  recursive CTEs, conditional aggregation, JSON1, multi-step CTEs and finance
+  reconciliation, plus the *ShopSphere Architect* checkpoint. Access uses the
+  `advanced-sql` entitlement and is enforced on the module and problem pages,
+  the problem list and submission creation.
+- The fixture is a 19-table marketplace: core commerce plus payments,
+  shipments, returns, coupons/redemptions, carts/items, product variants,
+  inventory movements, JSON attributes and vendor payouts. All expected rows
+  are generated from `judge/shopsphere.sql`.
+- Every SQL problem ships with five judge tests (two visible samples, at least
+  three distinct expected outputs) so checkpoints meet the normal learning
+  standard. Tests are variant datasets applied before the query.
 - The judge runs SQL in a read-only SQLite copy of the fixture. Test setup
   statements run before the read-only authorizer; they come from seeded hidden
   tests, while custom-run input can execute arbitrary SQL only inside the
-  disposable sandbox. The SQL, MySQL
-  and PostgreSQL options share that engine through a compatibility layer:
-  backticks, `ILIKE`, MySQL `LIMIT offset,count`, `FETCH FIRST`, PostgreSQL
-  `::` casts and `EXTRACT`, plus common `CONCAT`, `IF`, `DATE_FORMAT`,
-  `TO_CHAR`, `DATE_TRUNC`, `YEAR`/`MONTH`/`DAY` functions. Engine-specific
-  features outside this subset (for example `DISTINCT ON` or `STRING_AGG`
-  ordering) are not available; portable standard SQL is the safest choice.
+  disposable sandbox. The SQL, MySQL and PostgreSQL options share that engine
+  through a compatibility layer: backticks, `ILIKE`, MySQL `LIMIT
+  offset,count`, `FETCH FIRST`, PostgreSQL `::` casts and `EXTRACT`, plus
+  common `CONCAT`, `IF`, `DATE_FORMAT`, `TO_CHAR`, `DATE_TRUNC`,
+  `YEAR`/`MONTH`/`DAY` functions. JSON questions accept SQLite `json_extract`,
+  PostgreSQL `attributes::jsonb->>'key'` and MySQL
+  `JSON_UNQUOTE(JSON_EXTRACT(...))` through the same compatibility layer.
+  Engine-specific features outside this subset are not available; portable
+  standard SQL is the safest choice.
 - Problems are seeded with `judge_language = 'sql'` and an optional
   `premium_module_slug`; the submit panel only shows supported languages.
   `learning:check` / `learning:audit` skip SQL tracks because their reference

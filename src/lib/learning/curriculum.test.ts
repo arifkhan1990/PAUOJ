@@ -36,13 +36,13 @@ describe("learning curriculum shape", () => {
       "basic-sql",
       "advanced-sql",
     ]);
+    expect(SQL_MODULES.map((track) => track.topics.length)).toEqual([7, 8]);
     for (const track of SQL_MODULES) {
       expect(track.practiceTier).toBe("COMPACT");
-      expect(track.topics).toHaveLength(4);
       expect(track.checkpoint?.problemSlugs).toHaveLength(3);
       for (const topic of track.topics) {
         expect(topic.guidedProblemSlugs).toHaveLength(2);
-        expect(topic.concept.length).toBeGreaterThan(800);
+        expect(topic.concept.length).toBeGreaterThan(1_000);
       }
     }
   });

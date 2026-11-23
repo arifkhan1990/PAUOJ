@@ -43,6 +43,29 @@ describe("SQL judge runner", () => {
     expect(result.stdout).toBe("a`b\tTechNest");
   });
 
+  it("accepts MySQL and PostgreSQL JSON forms", () => {
+    const mysql = run(
+      "SELECT JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.brand')) AS brand FROM product_attributes WHERE product_id = 1;",
+      "mysql",
+    );
+    expect(mysql.status).toBe(0);
+    expect(mysql.stdout).toBe("Logitech");
+
+    const postgres = run(
+      "SELECT attributes::jsonb->>'brand' AS brand FROM product_attributes WHERE product_id = 1;",
+      "postgresql",
+    );
+    expect(postgres.status).toBe(0);
+    expect(postgres.stdout).toBe("Logitech");
+
+    const numeric = run(
+      "SELECT attributes::jsonb->>'warranty_months' = '24' AS pg, JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.warranty_months')) = '24' AS mysql FROM product_attributes WHERE product_id = 1;",
+      "postgresql",
+    );
+    expect(numeric.status).toBe(0);
+    expect(numeric.stdout).toBe("1\t1");
+  });
+
   it("rejects writes and multiple statements", () => {
     expect(run("DELETE FROM vendors;").status).not.toBe(0);
     expect(run("SELECT 1; DROP TABLE vendors;").status).not.toBe(0);

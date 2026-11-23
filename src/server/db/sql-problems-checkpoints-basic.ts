@@ -199,8 +199,10 @@ Leather Wallet	3.0`,
         isSample: true,
       },
       {
-        input: `delete from reviews;`,
-        expectedOutput: ``,
+        input: `delete from reviews where rating=5;`,
+        expectedOutput: `Clean Code	4.0
+Cotton Panjabi	4.0
+Leather Wallet	3.0`,
         isSample: true,
       },
       {

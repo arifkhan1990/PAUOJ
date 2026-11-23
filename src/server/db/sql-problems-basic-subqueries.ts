@@ -167,8 +167,8 @@ Tanvir	Dhaka`,
         isSample: false
       },
       {
-        input: `insert into orders (id,customer_id,ordered_at,status) values (11,4,'2026-11-05','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,8,1,85000);`,
-        expectedOutput: ``,
+        input: `update customers set city='Barishal' where id=4;`,
+        expectedOutput: `Sajid	Barishal`,
         isSample: false
       },
     ],
