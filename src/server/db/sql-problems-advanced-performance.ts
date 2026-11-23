@@ -173,7 +173,7 @@ ORDER BY o.ordered_at, o.id;
         isSample: false
       },
       {
-        input: `update orders set status='pending' where id=8; insert into orders (id,customer_id,ordered_at,status) values (11,4,'2026-10-18','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,5,1,95000); insert into orders (id,customer_id,ordered_at,status) values (12,5,'2026-11-15','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (17,12,5,1,95000);`,
+        input: `update orders set status='pending' where id=8; insert into orders (id,customer_id,ordered_at,status) values (11,4,'2026-10-18','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (16,11,5,1,95000); insert into orders (id,customer_id,ordered_at,status) values (12,5,'2026-11-01','paid'); insert into order_items (id,order_id,product_id,quantity,unit_price_cents) values (17,12,5,1,95000);`,
         expectedOutput: `1	Rahim	2026-10-01	890000
 3	Nusrat	2026-10-05	600000
 4	Rahim	2026-10-10	2000000

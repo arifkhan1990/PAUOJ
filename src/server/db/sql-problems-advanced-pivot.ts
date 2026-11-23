@@ -29,11 +29,12 @@ WITH vendor_sales AS (
   JOIN order_items oi ON oi.order_id = o.id
   JOIN products p ON p.id = oi.product_id
   WHERE o.status IN ('paid', 'shipped')
+    AND substr(o.ordered_at, 1, 7) IN ('2026-10', '2026-11')
 )
 SELECT v.name AS vendor,
        COALESCE(SUM(CASE WHEN vs.month = '2026-10' THEN vs.cents ELSE 0 END), 0) AS oct_cents,
        COALESCE(SUM(CASE WHEN vs.month = '2026-11' THEN vs.cents ELSE 0 END), 0) AS nov_cents,
-       COALESCE(SUM(vs.cents), 0) AS total_cents
+       COALESCE(SUM(CASE WHEN vs.month IN ('2026-10', '2026-11') THEN vs.cents ELSE 0 END), 0) AS total_cents
 FROM vendors v
 LEFT JOIN vendor_sales vs ON vs.vendor_id = v.id
 GROUP BY v.id
@@ -60,11 +61,12 @@ INNER JOIN করে বিক্রি-নেই ভেন্ডর হার�
   FROM orders o JOIN order_items oi ON oi.order_id=o.id
   JOIN products p ON p.id=oi.product_id
   WHERE o.status IN ('paid','shipped')
+    AND substr(o.ordered_at,1,7) IN ('2026-10','2026-11')
 )
 SELECT v.name AS vendor,
        COALESCE(SUM(CASE WHEN vs.month='2026-10' THEN vs.cents ELSE 0 END),0) AS oct_cents,
        COALESCE(SUM(CASE WHEN vs.month='2026-11' THEN vs.cents ELSE 0 END),0) AS nov_cents,
-       COALESCE(SUM(vs.cents),0) AS total_cents
+       COALESCE(SUM(CASE WHEN vs.month IN ('2026-10','2026-11') THEN vs.cents ELSE 0 END),0) AS total_cents
 FROM vendors v LEFT JOIN vendor_sales vs ON vs.vendor_id=v.id
 GROUP BY v.id ORDER BY total_cents DESC, vendor;`,
     tests: [

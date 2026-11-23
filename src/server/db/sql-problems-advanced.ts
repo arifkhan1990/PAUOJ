@@ -30,7 +30,7 @@ FROM (
   GROUP BY c.id, p.id
 ) ranked
 WHERE rn = 1
-ORDER BY category;
+ORDER BY category, product;
 \`\`\`
 
 ## কমপ্লেক্সিটি
@@ -47,7 +47,7 @@ PARTITION BY বাদ দেওয়া বা ROW_NUMBER/RANK গুলান
     category: "SQL Advanced",
     subcategory: "Window functions",
     referencePython: "",
-    referenceSql: `SELECT category, product, revenue_cents FROM (SELECT c.name AS category, p.name AS product, SUM(oi.quantity*oi.unit_price_cents) AS revenue_cents, RANK() OVER (PARTITION BY c.id ORDER BY SUM(oi.quantity*oi.unit_price_cents) DESC) AS rn FROM categories c JOIN products p ON p.category_id = c.id JOIN order_items oi ON oi.product_id = p.id JOIN orders o ON o.id = oi.order_id WHERE o.status IN ('paid','shipped') GROUP BY c.id, p.id) ranked WHERE rn = 1 ORDER BY category;`,
+    referenceSql: `SELECT category, product, revenue_cents FROM (SELECT c.name AS category, p.name AS product, SUM(oi.quantity*oi.unit_price_cents) AS revenue_cents, RANK() OVER (PARTITION BY c.id ORDER BY SUM(oi.quantity*oi.unit_price_cents) DESC) AS rn FROM categories c JOIN products p ON p.category_id = c.id JOIN order_items oi ON oi.product_id = p.id JOIN orders o ON o.id = oi.order_id WHERE o.status IN ('paid','shipped') GROUP BY c.id, p.id) ranked WHERE rn = 1 ORDER BY category, product;`,
     tests: [
       {
         input: ``,

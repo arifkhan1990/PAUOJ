@@ -7,7 +7,7 @@ export const SQL_PROBLEMS_ADVANCED_WINDOWS2: SeedProblem[] = [
     statement: `CRM টিম জানতে চায় কোন কাস্টমার কত নিয়মিত ফিরে আসছে। paid/shipped অর্ডারগুলো প্রতি কাস্টমারের ভেতরে তারিখ অনুযায়ী সাজিয়ে প্রতিটি অর্ডারের আগের (previous) অর্ডারের তারিখ বের করো, আর দুই অর্ডারের মাঝে কত দিন ফাঁক (gap) ছিল সেটাও। আউটপুটে দেখাও: কাস্টমারের নাম, order_id, অর্ডারের তারিখ, অর্ডারের মোট (সেন্টে), আগের অর্ডারের তারিখ (previous_ordered_at), আর দিনের ফাঁক (days_since_previous)। কাস্টমারের প্রথম অর্ডারের ক্ষেত্রে শেষ দুটো NULL হবে। একই তারিখে একাধিক অর্ডার থাকলে ছোট order_id আগে ধরা হবে। কাস্টমারের নাম, তারপর তারিখ, তারপর order_id অনুযায়ী সাজাও।`,
     inputFormat: "কোনো ইনপুট নেই — একটি SQL query লেখো।",
     outputFormat: `প্রতি লাইনে \`customer\`, \`order_id\`, \`ordered_at\` (YYYY-MM-DD), \`order_cents\`, \`previous_ordered_at\` (প্রথম অর্ডারে NULL), \`days_since_previous\` (প্রথম অর্ডারে NULL)।`,
-    constraints: "ShopSphere fixture. Standard SQL (SQLite-compatible engine).",
+    constraints: "ShopSphere fixture. SQLite-compatible SQL; date arithmetic uses julianday.",
     editorial: `## কেন দরকার
 কেনাকাটার অভ্যাস বোঝার সবচেয়ে জোরালো সংকেত হলো দুই অর্ডারের মাঝের সময়। যে কাস্টমার আগে প্রতি ৭ দিনে কিনত, এখন ৩০ দিনে কিনছে—তার আগ্রহ কমছে, আর ঠিক সময়ে একটা কুপন পাঠালে ফেরানো যায়। এই gap analysis-ই churn prediction আর re-engagement ক্যাম্পেইনের ভিত্তি। প্রতিটি অর্ডারের পাশে তার আগের অর্ডারের তারিখ বসানো—এই কাজটা self-join দিয়ে করা যায়, কিন্তু window function-এর \`LAG\` এক লাইনেই সেটা করে দেয়, তাও শুধু একবার সাজিয়ে।
 
@@ -15,7 +15,7 @@ export const SQL_PROBLEMS_ADVANCED_WINDOWS2: SeedProblem[] = [
 \`LAG(ordered_at) OVER (PARTITION BY customer ORDER BY ordered_at, order_id)\` বলে: প্রতিটি কাস্টমারের (partition) ভেতরে তারিখ-ক্রমে সাজিয়ে ঠিক এক ঘর আগের সারির ordered_at ধরে আনো। \`PARTITION BY\` না দিলে আগের সারিটা অন্য কাস্টমারের অর্ডার হয়ে যেত—gap তখন অর্থহীন। প্রথম অর্ডারের আগে কিছু নেই, তাই \`LAG\` NULL দেয়; সেটাই প্রত্যাশিত, COALESCE দিয়ে বানানোর দরকার নেই। দিনের পার্থক্যে \`julianday\` ব্যবহার করো: \`julianday(a) - julianday(b)\` দিনের দশমিক ব্যবধান দেয়, \`CAST(... AS INTEGER)\` পুরো দিনে নামায়। একই window একাধিক জায়গায় লাগলে \`WINDOW\` clause-এ নাম দিয়ে সংজ্ঞা একবার লেখো—এখানে lagged CTE-তে সেটাই হয়েছে: \`LAG(ordered_at) OVER w\`, আর নিচে \`WINDOW w AS (PARTITION BY customer ORDER BY ordered_at, order_id)\`।
 
 ## ধাপে ধাপে
-১. CTE order_totals: orders ⋈ customers ⋈ order_items, paid/shipped ফিল্টার, GROUP BY o.id দিয়ে প্রতি অর্ডারের মোট।
+১. CTE order_totals: orders ⋈ customers ⋈ order_items, paid/shipped ফিল্টার, GROUP BY o.id, cu.name দিয়ে প্রতি অর্ডারের মোট।
 ২. CTE lagged: \`LAG(ordered_at) OVER w\` দিয়ে আগের তারিখ আনো, window-টির নাম দাও।
 ৩. বাইরের SELECT-এ \`julianday\`-এর ব্যবধান \`CAST\` করে days_since_previous বানাও।
 ৪. \`ORDER BY customer, ordered_at, order_id\`—নির্দিষ্ট ক্রম।
@@ -29,7 +29,7 @@ WITH order_totals AS (
   JOIN customers cu ON cu.id = o.customer_id
   JOIN order_items oi ON oi.order_id = o.id
   WHERE o.status IN ('paid', 'shipped')
-  GROUP BY o.id
+  GROUP BY o.id, cu.name
 ),
 lagged AS (
   SELECT customer, order_id, ordered_at, order_cents,
@@ -62,7 +62,7 @@ JOIN ও GROUP BY-তে O(n); প্রতিটি partition সাজাত�
          SUM(oi.quantity*oi.unit_price_cents) AS order_cents
   FROM orders o JOIN customers cu ON cu.id=o.customer_id
   JOIN order_items oi ON oi.order_id=o.id
-  WHERE o.status IN ('paid','shipped') GROUP BY o.id
+  WHERE o.status IN ('paid','shipped') GROUP BY o.id, cu.name
 ),
 lagged AS (
   SELECT customer, order_id, ordered_at, order_cents,

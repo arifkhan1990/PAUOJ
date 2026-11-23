@@ -29,9 +29,9 @@ describe("ShopSphere SQL problems", () => {
       expect(expectedRows.size).toBeGreaterThanOrEqual(3);
       expect(problem.referenceSql?.length).toBeGreaterThan(0);
       expect(problem.referenceSql?.trim()).toMatch(/^(SELECT|WITH)\b/i);
+      expect(problem.referenceSql).toMatch(/\bORDER BY\b/i);
       for (const test of problem.tests) {
-        // A variant can legitimately produce no rows (for example, no reviews).
-        expect(typeof test.expectedOutput).toBe("string");
+        expect(test.expectedOutput.length).toBeGreaterThan(0);
       }
     }
   });
