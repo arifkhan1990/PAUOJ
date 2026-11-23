@@ -14,13 +14,14 @@ import {
 } from "@/lib/learning/payments";
 import { getCurrentUser } from "@/server/auth/session";
 import { getEntitledModuleSlugs, listOwnOrders } from "@/server/services/learning-payments";
-import { getPaymentConfig } from "@/server/services/payment-config";
+import { getPaymentMethods } from "@/server/services/payment-config";
 import { formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Premium learning access",
   description:
-    "Unlock learning modules 3–7 with bKash/Nagad and manual TrxID approval, or request free access.",
+    "Unlock learning modules 3–7 with bKash/City Bank and manual TrxID approval, or request free access.",
+  robots: { index: false, follow: false },
 };
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,7 @@ const STATUS_VARIANT = {
 
 export default async function LearningPricingPage() {
   const user = await getCurrentUser();
-  const config = getPaymentConfig();
+  const methods = user ? getPaymentMethods() : [];
   const [orders, entitled] = await Promise.all([
     user ? listOwnOrders(user.id) : Promise.resolve([]),
     getEntitledModuleSlugs(user?.id ?? null, user?.role),
@@ -96,8 +97,8 @@ export default async function LearningPricingPage() {
           <ol className="mt-3 space-y-2 text-sm leading-relaxed text-muted-foreground">
             <li>
               <span className="font-medium text-foreground">1.</span> Send ৳
-              {MODULE_PRICE_BDT} (or ৳{BUNDLE_PRICE_BDT}) with{" "}
-              {config.method} <span className="font-medium">Send Money</span>.
+              {MODULE_PRICE_BDT} (or ৳{BUNDLE_PRICE_BDT}) by bKash Send Money or
+              a City Bank transfer.
             </li>
             <li>
               <span className="font-medium text-foreground">2.</span> Submit the
@@ -110,44 +111,62 @@ export default async function LearningPricingPage() {
             </li>
           </ol>
 
-          <div className="mt-4 flex flex-col gap-4 rounded-lg border border-border bg-muted/20 p-4 sm:flex-row sm:items-center">
-            {config.qrImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- the QR can be a local upload or an arbitrary hosted image.
-              <img
-                src={config.qrImageUrl}
-                alt="Payment QR code"
-                width={128}
-                height={128}
-                className="size-32 shrink-0 rounded-md bg-white p-1"
-                loading="lazy"
-              />
-            ) : (
-              <div className="grid size-32 shrink-0 place-items-center rounded-md border border-dashed border-border text-center text-[11px] text-muted-foreground">
-                QR image coming soon
+          {user ? (
+            methods.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {methods.map((method) => (
+                  <div
+                    key={method.id}
+                    className="rounded-lg border border-border bg-muted/20 p-3"
+                  >
+                    <p className="text-xs font-semibold">{method.label}</p>
+                    {method.accountNumber ? (
+                      <p className="mt-1 font-mono text-sm font-semibold tracking-wide">
+                        {method.accountNumber}
+                      </p>
+                    ) : null}
+                    {method.accountName ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        {method.accountName}
+                      </p>
+                    ) : null}
+                    {method.qrUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- served from the authenticated private QR route.
+                      <img
+                        src={method.qrUrl}
+                        alt={`${method.label} QR code`}
+                        width={144}
+                        height={144}
+                        className="mt-2 size-36 rounded-md bg-white p-1"
+                        loading="lazy"
+                      />
+                    ) : null}
+                    <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                      {method.instructions}
+                    </p>
+                  </div>
+                ))}
               </div>
-            )}
-            <div className="min-w-0 text-sm">
-              <p className="font-medium">{config.method}</p>
-              {config.accountNumber ? (
-                <p className="mt-1 font-mono text-base font-semibold tracking-wide">
-                  {config.accountNumber}
-                </p>
-              ) : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Account number is being set up — use the free-access request
-                  in the meantime.
-                </p>
-              )}
-              {config.accountName ? (
-                <p className="text-xs text-muted-foreground">
-                  {config.accountName}
-                </p>
-              ) : null}
-              <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-                {config.instructions}
+            ) : (
+              <p className="mt-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+                Payment details are being set up. Use the free-access request in
+                the meantime — an admin will review it.
               </p>
+            )
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                Payment numbers and QR codes are shown to signed-in learners
+                only.
+              </p>
+              <Link
+                href="/login?next=/learn/pricing"
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Sign in to view
+              </Link>
             </div>
-          </div>
+          )}
         </Card>
 
         <div id="free-access">

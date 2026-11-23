@@ -90,3 +90,4 @@ test-results/
 !.vscode/settings.json
 .DS_Store
 Thumbs.db
+private/

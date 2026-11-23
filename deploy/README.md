@@ -132,6 +132,21 @@ Memory: the script defaults to `APP_MEM_LIMIT=768m`, `WORKER_MEM_LIMIT=768m`,
 `DB_MEM_LIMIT=384m`, `REDIS_MEM_LIMIT=192m` and `JUDGE_CONCURRENCY=1`, because a
 shared host may have little free RAM. Raise them only after checking `free -h`.
 
+### Premium learning payments (manual QR)
+
+- Store stripped QR images on the host, **not in the repo**:
+  `/home/naba/server/projects/pauoj/payment/bkash.png` and `citybank.png`
+  (re-encode once to remove metadata; the repository is public).
+- Mount that directory read-only into the web container at
+  `/app/private/payment` and set `PAYMENT_QR_DIR=/app/private/payment` plus the
+  `PAYMENT_BKASH_*` / `PAYMENT_CITYBANK_*` values in the project `.env`, then
+  recreate the web container.
+- QRs are served only to signed-in users by `/api/learning/payment-qr/<method>`
+  with `X-Robots-Tag: noindex`; `/learn/pricing` is `noindex` too. Verify
+  anonymous access returns `401` and the page hides the numbers.
+- Prefer a dedicated business/merchant account over a personal bKash or bank
+  account; personal accounts can be flagged for business collections.
+
 ### Backups on the `srv`-managed host
 
 The compose-based `deploy/backup.sh` targets `deploy/.env`, which the `srv`

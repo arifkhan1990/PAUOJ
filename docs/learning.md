@@ -147,9 +147,9 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
 
 - Pricing: ৳200 per module or ৳700 for all five (server-side amounts; the UI
   never sends a price).
-- Flow: the learner sends money with bKash/Nagad, submits the TrxID + sender
-  number at `/learn/pricing`, and an admin approves it from
-  `/admin/payments`. TrxIDs are normalized (upper case, no spaces) and unique
+- Flow: the learner sends money with bKash Send Money or a City Bank
+  transfer, submits the TrxID + sender number at `/learn/pricing`, and an
+  admin approves it from `/admin/payments`. TrxIDs are normalized (upper case, no spaces) and unique
   across the whole system; the same ID cannot be submitted twice.
 - Approval writes one `lesson_entitlements` row per module (a bundle writes
   all five). Entitled modules skip the sequential badge unlock so a purchase
@@ -159,10 +159,15 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
   also grant access manually by username from the queue page.
 - Paywalled module/topic pages never render the concept note or problem sets;
   the public problem archive is unchanged.
-- Manual payment details come from `PAYMENT_METHOD`, `PAYMENT_ACCOUNT_NAME`,
-  `PAYMENT_ACCOUNT_NUMBER`, `PAYMENT_QR_IMAGE_URL` and
-  `PAYMENT_INSTRUCTIONS`. When they are unset the page shows a clear
-  "coming soon" state and free-access requests still work.
+- Manual payment details come from `PAYMENT_BKASH_*`, `PAYMENT_CITYBANK_*`
+  and `PAYMENT_INSTRUCTIONS`. QR images live **outside the repository** in
+  `PAYMENT_QR_DIR` (`bkash.png`, `citybank.png`) and are served only to
+  signed-in users by `/api/learning/payment-qr/<method>` with
+  `X-Robots-Tag: noindex`; the pricing page is `noindex` as well. New QR files
+  are re-encoded (metadata stripped) before upload and never committed.
+- Admin verification: match the TrxID in the bKash/City Bank app, the amount,
+  the time and the sender number before approving. Reject with a note if
+  anything does not match; approvals and grants are audit-logged.
 
 ## Release checklist
 
