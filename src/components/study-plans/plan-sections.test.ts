@@ -1,11 +1,16 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { ToastProvider } from "@/components/providers/toast-provider";
 import type {
   StudyListProblem,
   StudyListSectionView,
 } from "@/lib/study-list-types";
 import { PlanSectionCard, PlanSectionNav, sectionAnchorId } from "./plan-sections";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 
 function problem(overrides: Partial<StudyListProblem> = {}): StudyListProblem {
   return {
@@ -18,6 +23,7 @@ function problem(overrides: Partial<StudyListProblem> = {}): StudyListProblem {
     sectionTitle: "Arrays",
     solved: false,
     attempted: false,
+    note: null,
     ...overrides,
   };
 }
@@ -39,7 +45,12 @@ function section(
 
 function render(sectionValue: StudyListSectionView, index = 0) {
   return renderToStaticMarkup(
-    createElement(PlanSectionCard, { section: sectionValue, index }),
+    createElement(PlanSectionCard, {
+      section: sectionValue,
+      index,
+      signedIn: false,
+      planSlug: "arrays-plan",
+    }),
   );
 }
 
@@ -134,6 +145,77 @@ describe("PlanSectionCard", () => {
     expect(text(html)).toContain("No problems in this section yet.");
     expect(html).not.toContain("<ul");
     expect(text(html)).toContain("0/0 solved");
+  });
+});
+
+describe("PlanSectionCard note visibility", () => {
+  it("hides every private-note control from guests", () => {
+    const html = render(
+      section({
+        problems: [
+          problem({ note: null }),
+          problem({ slug: "with-note", title: "With note", note: "secret" }),
+        ],
+      }),
+    );
+
+    expect(html).not.toContain("Add a private note");
+    expect(html).not.toContain("Your note");
+    expect(html).not.toContain("secret");
+  });
+
+  it("shows an add-note control for each problem when signed in", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        ToastProvider,
+        null,
+        createElement(PlanSectionCard, {
+          section: section({
+            problems: [
+              problem({ slug: "two-sum", title: "Two Sum" }),
+              problem({ slug: "three-sum", title: "Three Sum", position: 2 }),
+            ],
+          }),
+          index: 0,
+          signedIn: true,
+          planSlug: "arrays-plan",
+        }),
+      ),
+    );
+
+    expect(html).toContain("Add a private note for Two Sum");
+    expect(html).toContain("Add a private note for Three Sum");
+    expect(html).not.toContain("Your note");
+  });
+
+  it("previews only the viewer's saved note when signed in", () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        ToastProvider,
+        null,
+        createElement(PlanSectionCard, {
+          section: section({
+            problems: [
+              problem({
+                slug: "two-sum",
+                title: "Two Sum",
+                note: "Hash map complement.",
+              }),
+              problem({ slug: "three-sum", title: "Three Sum", position: 2 }),
+            ],
+          }),
+          index: 0,
+          signedIn: true,
+          planSlug: "arrays-plan",
+        }),
+      ),
+    );
+    const plain = text(html);
+
+    expect(plain).toContain("Your note");
+    expect(plain).toContain("Hash map complement.");
+    expect(html).toContain('aria-label="Add a private note for Three Sum"');
+    expect(html).not.toContain('aria-label="Add a private note for Two Sum"');
   });
 });
 

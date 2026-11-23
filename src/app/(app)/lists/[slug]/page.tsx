@@ -26,7 +26,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const plan = await getStudyList(slug, null);
+  const user = await getCurrentUser();
+  const plan = await getStudyList(slug, user);
   if (!plan) return { title: "Study plan" };
   return {
     title: `${plan.title} · Study plans`,
@@ -101,6 +102,8 @@ export default async function StudyListPage({
                 key={section.id ?? "general"}
                 section={section}
                 index={index}
+                signedIn={Boolean(user)}
+                planSlug={plan.slug}
               />
             ))}
           </div>

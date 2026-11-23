@@ -5,6 +5,7 @@ import {
   FileCode2,
   Layers3,
   ListChecks,
+  Plus,
   Sparkles,
   Tag,
 } from "lucide-react";
@@ -55,7 +56,13 @@ function catalogStats(plans: readonly StudyListSummary[]): CatalogStat[] {
   ];
 }
 
-export function CatalogHero({ showCatalogLink = true }: { showCatalogLink?: boolean }) {
+export function CatalogHero({
+  showCatalogLink = true,
+  signedIn = false,
+}: {
+  showCatalogLink?: boolean;
+  signedIn?: boolean;
+}) {
   return (
     <section
       aria-labelledby="study-plans-title"
@@ -85,9 +92,24 @@ export function CatalogHero({ showCatalogLink = true }: { showCatalogLink?: bool
           Follow one end to end, or jump to the section you need.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          {signedIn ? (
+            <Link
+              href="/lists/new"
+              className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Create plan
+            </Link>
+          ) : null}
           <Link
             href="/problems"
-            className={cn(buttonVariants({ size: "lg" }), "w-full sm:w-auto")}
+            className={cn(
+              buttonVariants({
+                size: "lg",
+                variant: signedIn ? "outline" : "default",
+              }),
+              "w-full sm:w-auto",
+            )}
           >
             <Sparkles className="size-4" aria-hidden="true" />
             Browse all problems

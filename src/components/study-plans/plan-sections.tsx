@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ProblemNote } from "@/components/study-plans/problem-note";
 import { DifficultyBadge } from "@/components/shared/difficulty-badge";
 import { SolveStatus } from "@/components/shared/solve-status";
 import { Card } from "@/components/ui/card";
@@ -62,7 +63,15 @@ export function PlanSectionNav({
   );
 }
 
-function ProblemRow({ problem }: { problem: StudyListProblem }) {
+function ProblemRow({
+  problem,
+  planSlug,
+  signedIn,
+}: {
+  problem: StudyListProblem;
+  planSlug: string;
+  signedIn: boolean;
+}) {
   const status = problemStatus(problem);
 
   return (
@@ -96,6 +105,14 @@ function ProblemRow({ problem }: { problem: StudyListProblem }) {
           </div>
         </div>
       </Link>
+      {signedIn ? (
+        <ProblemNote
+          planSlug={planSlug}
+          problemSlug={problem.slug}
+          problemTitle={problem.title}
+          note={problem.note}
+        />
+      ) : null}
     </li>
   );
 }
@@ -103,9 +120,14 @@ function ProblemRow({ problem }: { problem: StudyListProblem }) {
 export function PlanSectionCard({
   section,
   index,
+  signedIn,
+  planSlug,
 }: {
   section: StudyListSectionView;
   index: number;
+  /** Shows the private note control below every problem for signed-in users. */
+  signedIn: boolean;
+  planSlug: string;
 }) {
   const anchor = sectionAnchorId(section.id);
   const titleId = `${anchor}-title`;
@@ -172,7 +194,12 @@ export function PlanSectionCard({
         ) : (
           <ul className="divide-y divide-border">
             {section.problems.map((problem) => (
-              <ProblemRow key={problem.slug} problem={problem} />
+              <ProblemRow
+                key={problem.slug}
+                problem={problem}
+                planSlug={planSlug}
+                signedIn={signedIn}
+              />
             ))}
           </ul>
         )}

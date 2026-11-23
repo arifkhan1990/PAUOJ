@@ -28,6 +28,16 @@ export const STUDY_LIST_LEVELS: ReadonlyArray<{
   },
 ];
 
+/** Maximum number of private plans a single learner may own. */
+export const STUDY_PLAN_QUOTA = 10;
+
+/** Slugs that would collide with static `/lists` routes. */
+const RESERVED_STUDY_LIST_SLUGS = new Set(["new"]);
+
+export function isReservedStudyListSlug(slug: string): boolean {
+  return RESERVED_STUDY_LIST_SLUGS.has(slug);
+}
+
 export function studyListLevelMeta(level: string): {
   value: StudyListLevel;
   label: string;

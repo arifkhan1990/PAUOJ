@@ -15,6 +15,8 @@ export type StudyListProblem = {
   sectionTitle: string | null;
   solved: boolean;
   attempted: boolean;
+  /** The viewer's private note for this problem in this plan. */
+  note: string | null;
 };
 
 export type StudyListSectionView = {
@@ -58,6 +60,10 @@ export type StudyListSummary = {
   enrolled: boolean;
   completed: boolean;
   nextProblem: StudyListNextProblem | null;
+  /** False for owner-only plans created from `/lists/new`. */
+  isPublic: boolean;
+  /** True when the viewer created this plan. */
+  isOwned: boolean;
 };
 
 export type StudyListDetail = StudyListSummary & {

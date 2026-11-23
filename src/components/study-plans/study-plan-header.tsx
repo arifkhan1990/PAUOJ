@@ -1,9 +1,18 @@
-import { Clock3, FileCode2, Layers3, Sparkles } from "lucide-react";
+import Link from "next/link";
+import {
+  Clock3,
+  FileCode2,
+  Layers3,
+  Lock,
+  Pencil,
+  Sparkles,
+} from "lucide-react";
 import { DifficultySplit } from "@/components/study-plans/difficulty-split";
 import { PlanActions } from "@/components/study-plans/plan-actions";
 import { StudyProgress } from "@/components/study-plans/study-progress";
 import { TopicChips } from "@/components/study-plans/topic-chips";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   formatStudyDuration,
@@ -42,6 +51,12 @@ export function StudyPlanHeader({
                 Featured
               </Badge>
             ) : null}
+            {plan.isPublic ? null : (
+              <Badge variant="outline">
+                <Lock className="size-3" aria-hidden="true" />
+                Private
+              </Badge>
+            )}
             {plan.enrolled ? (
               <Badge variant="muted">
                 <span
@@ -115,12 +130,26 @@ export function StudyPlanHeader({
               </dd>
             </div>
           </dl>
-          <PlanActions
-            slug={plan.slug}
-            signedIn={signedIn}
-            enrolled={plan.enrolled}
-            completed={plan.completed}
-          />
+          {plan.isPublic ? (
+            <PlanActions
+              slug={plan.slug}
+              signedIn={signedIn}
+              enrolled={plan.enrolled}
+              completed={plan.completed}
+            />
+          ) : null}
+          {plan.isOwned ? (
+            <Link
+              href={`/lists/${plan.slug}/edit`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "lg" }),
+                "mt-4 w-full",
+              )}
+            >
+              <Pencil aria-hidden="true" />
+              Edit plan
+            </Link>
+          ) : null}
         </div>
       </div>
     </Card>

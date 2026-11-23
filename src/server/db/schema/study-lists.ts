@@ -119,7 +119,36 @@ export const studyListEnrollments = pgTable(
   ],
 );
 
+/** Private per-learner notes attached to one problem inside one plan. */
+export const studyListItemNotes = pgTable(
+  "study_list_item_notes",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => studyLists.id, { onDelete: "cascade" }),
+    problemId: uuid("problem_id")
+      .notNull()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.userId, table.listId, table.problemId] }),
+    index("study_list_item_notes_list_idx").on(table.listId),
+    index("study_list_item_notes_user_idx").on(table.userId),
+  ],
+);
+
 export type StudyList = typeof studyLists.$inferSelect;
 export type StudyListSection = typeof studyListSections.$inferSelect;
 export type StudyListItem = typeof studyListItems.$inferSelect;
 export type StudyListEnrollment = typeof studyListEnrollments.$inferSelect;
+export type StudyListItemNote = typeof studyListItemNotes.$inferSelect;

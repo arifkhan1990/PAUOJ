@@ -5,9 +5,12 @@ import {
   Clock3,
   FileCode2,
   Layers3,
+  Lock,
+  Pencil,
   Play,
   RotateCcw,
   Sparkles,
+  UserRoundCheck,
 } from "lucide-react";
 import { DifficultySplit } from "@/components/study-plans/difficulty-split";
 import { StudyProgress } from "@/components/study-plans/study-progress";
@@ -106,11 +109,36 @@ export function StudyPlanCard({
             Featured
           </Badge>
         ) : null}
+        {plan.isPublic ? null : (
+          <Badge variant="outline">
+            <Lock className="size-3" aria-hidden="true" />
+            Private
+          </Badge>
+        )}
+        {plan.isOwned ? (
+          <Badge variant="accent">
+            <UserRoundCheck className="size-3" aria-hidden="true" />
+            Your plan
+          </Badge>
+        ) : null}
         {plan.enrolled ? (
           <Badge variant="success">
             <CheckCircle2 className="size-3" aria-hidden="true" />
             Enrolled
           </Badge>
+        ) : null}
+        {plan.isOwned ? (
+          <Link
+            href={`/lists/${plan.slug}/edit`}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "ml-auto min-h-11 sm:min-h-8",
+            )}
+          >
+            <Pencil aria-hidden="true" />
+            Edit
+            <span className="sr-only"> — {plan.title}</span>
+          </Link>
         ) : null}
       </div>
 

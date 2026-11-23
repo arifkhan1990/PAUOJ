@@ -1,8 +1,5 @@
-import { and, asc, count, desc, eq, inArray, ne } from "drizzle-orm";
-import type {
-  StudyListInput,
-  StudyListSectionInput,
-} from "@/lib/schemas/study-list";
+import { asc, count, desc, eq } from "drizzle-orm";
+import type { StudyListInput } from "@/lib/schemas/study-list";
 import { estimateStudyMinutes } from "@/lib/study-list";
 import type {
   AdminStudyListDetail,
@@ -11,16 +8,19 @@ import type {
   StudyListLevel,
 } from "@/lib/study-list-types";
 import { errors } from "@/server/api/errors";
-import { getDb, type Database } from "@/server/db";
+import { getDb } from "@/server/db";
 import {
   problems,
   studyListItems,
   studyListSections,
   studyLists,
 } from "@/server/db/schema";
-import { slugify } from "@/lib/utils";
-
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+import {
+  assertPublishedProblems,
+  assertSlugAvailable,
+  insertSectionsAndItems,
+  resolveSlug,
+} from "./study-list-write";
 
 type AdminListRow = {
   id: string;
@@ -33,84 +33,6 @@ type AdminListRow = {
   isFeatured: boolean;
   updatedAt: Date;
 };
-
-async function insertSectionsAndItems(
-  tx: Transaction,
-  listId: string,
-  sections: readonly StudyListSectionInput[],
-): Promise<void> {
-  const sectionRows = await tx
-    .insert(studyListSections)
-    .values(
-      sections.map((section, index) => ({
-        listId,
-        title: section.title,
-        description: section.description,
-        position: index + 1,
-      })),
-    )
-    .returning({ id: studyListSections.id, position: studyListSections.position });
-  const idByPosition = new Map(
-    sectionRows.map((row) => [row.position, row.id]),
-  );
-
-  const items: Array<{
-    listId: string;
-    problemId: string;
-    sectionId: string;
-    position: number;
-  }> = [];
-  let position = 0;
-  sections.forEach((section, index) => {
-    const sectionId = idByPosition.get(index + 1);
-    if (!sectionId) return;
-    for (const problemId of section.problemIds) {
-      position += 1;
-      items.push({ listId, problemId, sectionId, position });
-    }
-  });
-  if (items.length > 0) {
-    await tx.insert(studyListItems).values(items);
-  }
-}
-
-function resolveSlug(input: StudyListInput): string {
-  const slug = input.slug || slugify(input.title);
-  if (!slug) throw errors.validation("Give the list a valid slug.");
-  return slug;
-}
-
-/**
- * Study plans are public content, so they may only reference problems that are
- * public and fully published. Runs inside the caller's transaction.
- */
-const PUBLISHED_ONLY_MESSAGE =
-  "Study plans can only include published public problems.";
-
-async function assertPublishedProblems(
-  tx: Transaction,
-  sections: readonly StudyListSectionInput[],
-): Promise<void> {
-  const problemIds = [
-    ...new Set(sections.flatMap((section) => section.problemIds)),
-  ];
-  if (problemIds.length === 0) {
-    throw errors.validation(PUBLISHED_ONLY_MESSAGE);
-  }
-  const rows = await tx
-    .select({ id: problems.id })
-    .from(problems)
-    .where(
-      and(
-        inArray(problems.id, problemIds),
-        eq(problems.isPublic, true),
-        eq(problems.publicationStatus, "PUBLISHED"),
-      ),
-    );
-  if (rows.length !== problemIds.length) {
-    throw errors.validation(PUBLISHED_ONLY_MESSAGE);
-  }
-}
 
 export async function listAdminStudyLists(): Promise<AdminStudyListSummary[]> {
   const db = getDb();
@@ -256,14 +178,7 @@ export async function createStudyList(
   const slug = resolveSlug(input);
   const db = getDb();
   const id = await db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select({ id: studyLists.id })
-      .from(studyLists)
-      .where(eq(studyLists.slug, slug))
-      .limit(1);
-    if (existing) {
-      throw errors.conflict("A study list with that slug already exists.");
-    }
+    await assertSlugAvailable(tx, slug);
     await assertPublishedProblems(tx, input.sections);
     const [created] = await tx
       .insert(studyLists)
@@ -299,15 +214,7 @@ export async function updateStudyList(
       .limit(1);
     if (!existing) throw errors.notFound("Study list not found.");
 
-    const [conflict] = await tx
-      .select({ id: studyLists.id })
-      .from(studyLists)
-      .where(and(eq(studyLists.slug, slug), ne(studyLists.id, id)))
-      .limit(1);
-    if (conflict) {
-      throw errors.conflict("A study list with that slug already exists.");
-    }
-
+    await assertSlugAvailable(tx, slug, id);
     await assertPublishedProblems(tx, input.sections);
 
     await tx

@@ -3,6 +3,7 @@ import {
   countStudyDifficulties,
   estimateStudyMinutes,
   formatStudyDuration,
+  isReservedStudyListSlug,
   pickNextStudyProblem,
   studyListLevelMeta,
   studyProgressPercent,
@@ -22,6 +23,7 @@ function problem(
     sectionTitle: "Warm-up",
     solved: false,
     attempted: false,
+    note: null,
     ...overrides,
   };
 }
@@ -74,5 +76,10 @@ describe("study list helpers", () => {
     expect(uniqueStudyTopics(["Arrays", "arrays", "DP", "Graphs"], 3)).toEqual(
       ["Arrays", "DP", "Graphs"],
     );
+  });
+
+  it("reserves static-route slugs", () => {
+    expect(isReservedStudyListSlug("new")).toBe(true);
+    expect(isReservedStudyListSlug("getting-started")).toBe(false);
   });
 });

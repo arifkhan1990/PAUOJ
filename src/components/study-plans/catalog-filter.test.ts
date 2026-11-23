@@ -28,6 +28,8 @@ function plan(overrides: Partial<StudyListSummary>): StudyListSummary {
     enrolled: false,
     completed: false,
     nextProblem: null,
+    isPublic: true,
+    isOwned: false,
     ...overrides,
   };
 }

@@ -111,7 +111,7 @@ export function StudyListSectionsEditor({
       ? `Auto estimate ${formatStudyDuration(autoMinutes)}${
           durationMinutes === autoMinutes
             ? " from the difficulty mix."
-            : " (overridden by the admin estimate)."
+            : " (overridden by the plan estimate)."
         }`
       : "Add problems to calculate a duration.";
 

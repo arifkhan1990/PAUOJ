@@ -301,6 +301,20 @@ a plan at most 300. `level` is `BEGINNER`, `INTERMEDIATE` or `ADVANCED`;
 draft, private or withdrawn problem returns `422`. Invalid payloads return `422`;
 a duplicate slug returns `409`.
 
+Signed-in learners can create their own private plans (maximum
+`STUDY_PLAN_QUOTA = 10`), with the same section payload. The server forces
+`isPublic: false` and `isFeatured: false`; the owner is `created_by`.
+
+- `POST /lists` creates a private plan (`201 { id, slug }`).
+- `PUT /lists/:slug` updates an owned plan; `DELETE /lists/:slug` deletes it and
+  cascades its sections, items, enrollments and notes.
+- `PUT /lists/:slug/notes/:problemSlug` with `{ "body": "..." }` upserts a
+  private note (1–2000 characters); `DELETE` removes it. Notes are visible only
+  to the viewer.
+- Owners can open their private plan at `/lists/:slug`; other users get `404`.
+  Admins manage admin-owned plans through `/admin/lists`. Notes are allowed on
+  public plans and owned private plans.
+
 ## Submissions
 
 ### POST `/submissions`

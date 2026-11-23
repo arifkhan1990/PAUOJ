@@ -18,6 +18,7 @@ import {
   problemTags,
   problems,
   studyListEnrollments,
+  studyListItemNotes,
   studyListItems,
   studyListSections,
   submissions,
@@ -33,6 +34,9 @@ export type StudyListRecord = {
   level: StudyListLevel;
   estimatedMinutes: number | null;
   isFeatured: boolean;
+  isPublic: boolean;
+  /** Owner of the plan; null for plans seeded without an author. */
+  createdBy: string | null;
 };
 
 export type StudyListItemRow = {
@@ -162,6 +166,31 @@ export async function loadProblemTopics(
   return topics;
 }
 
+/** The viewer's private notes for one plan, keyed by problem id. */
+export async function loadViewerNotes(
+  viewerId: string | null,
+  listId: string,
+): Promise<Map<string, string>> {
+  const notes = new Map<string, string>();
+  if (!viewerId) return notes;
+  const rows = await getDb()
+    .select({
+      problemId: studyListItemNotes.problemId,
+      body: studyListItemNotes.body,
+    })
+    .from(studyListItemNotes)
+    .where(
+      and(
+        eq(studyListItemNotes.userId, viewerId),
+        eq(studyListItemNotes.listId, listId),
+      ),
+    );
+  for (const row of rows) {
+    notes.set(row.problemId, row.body);
+  }
+  return notes;
+}
+
 export async function loadViewerEnrollments(
   viewerId: string | null,
   listIds: readonly string[],
@@ -202,6 +231,7 @@ export function groupListProblems(
   items: readonly StudyListItemRow[],
   sectionTitles: ReadonlyMap<string, string>,
   state: ReadonlyMap<string, ViewerProblemState>,
+  notes: ReadonlyMap<string, string> = new Map(),
 ): StudyListProblem[] {
   return items
     .map((item) => {
@@ -218,6 +248,7 @@ export function groupListProblems(
           : null,
         solved: viewerState?.solved ?? false,
         attempted: viewerState?.attempted ?? false,
+        note: notes.get(item.problemId) ?? null,
       };
     })
     .sort((left, right) => left.position - right.position);
@@ -268,6 +299,7 @@ export function buildStudyListSummary(input: {
   sectionCount: number;
   topics: string[];
   startedAt: string | null;
+  viewerId: string | null;
 }): StudyListSummary {
   const { list, problems: problemsList } = input;
   const problemCount = problemsList.length;
@@ -295,6 +327,8 @@ export function buildStudyListSummary(input: {
     enrolled: input.startedAt !== null,
     completed: problemCount > 0 && solvedCount === problemCount,
     nextProblem: pickNextStudyProblem(problemsList),
+    isPublic: list.isPublic,
+    isOwned: input.viewerId !== null && list.createdBy === input.viewerId,
   };
 }
 

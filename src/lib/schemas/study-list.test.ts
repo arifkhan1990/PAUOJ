@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { studyListInputSchema } from "./study-list";
+import {
+  parseStudyListSlug,
+  studyListInputSchema,
+  studyListNoteInputSchema,
+} from "./study-list";
 
 const base = {
   title: "Array foundations",
@@ -83,5 +87,30 @@ describe("studyListInputSchema", () => {
     expect(parsed.level).toBe("BEGINNER");
     expect(parsed.estimatedMinutes).toBeNull();
     expect(parsed.isFeatured).toBe(false);
+  });
+});
+
+describe("studyListNoteInputSchema", () => {
+  it("trims and accepts a normal note", () => {
+    const parsed = studyListNoteInputSchema.parse({ body: "  revisit DP  " });
+    expect(parsed.body).toBe("revisit DP");
+  });
+
+  it("rejects empty and oversized notes", () => {
+    expect(studyListNoteInputSchema.safeParse({ body: "   " }).success).toBe(
+      false,
+    );
+    expect(
+      studyListNoteInputSchema.safeParse({ body: "x".repeat(2_001) }).success,
+    ).toBe(false);
+  });
+});
+
+describe("parseStudyListSlug", () => {
+  it("accepts path slugs and rejects anything else", () => {
+    expect(parseStudyListSlug("my-plan-2")).toBe("my-plan-2");
+    expect(parseStudyListSlug(" my-plan ")).toBe("my-plan");
+    expect(parseStudyListSlug("Not Valid")).toBeNull();
+    expect(parseStudyListSlug("")).toBeNull();
   });
 });

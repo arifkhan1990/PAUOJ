@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, or } from "drizzle-orm";
 import type { UserRole } from "@/lib/types";
 import type { StudyListDetail, StudyListSummary } from "@/lib/study-list-types";
 import { errors } from "@/server/api/errors";
@@ -15,6 +15,7 @@ import {
   loadStudyListItems,
   loadStudyListSections,
   loadViewerEnrollments,
+  loadViewerNotes,
   loadViewerProblemState,
 } from "./study-list-data";
 
@@ -24,6 +25,12 @@ export {
   listAdminStudyLists,
   updateStudyList,
 } from "./study-list-admin";
+export {
+  createUserStudyList,
+  deleteUserStudyList,
+  getUserStudyListForEdit,
+  updateUserStudyList,
+} from "./study-list-user";
 
 export type StudyListViewer = { id: string; role: UserRole } | null;
 
@@ -36,6 +43,7 @@ type ListRow = {
   estimatedMinutes: number | null;
   isFeatured: boolean;
   isPublic: boolean;
+  createdBy: string | null;
   updatedAt: Date;
 };
 
@@ -49,6 +57,7 @@ function publicListColumns() {
     estimatedMinutes: studyLists.estimatedMinutes,
     isFeatured: studyLists.isFeatured,
     isPublic: studyLists.isPublic,
+    createdBy: studyLists.createdBy,
     updatedAt: studyLists.updatedAt,
   };
 }
@@ -63,10 +72,14 @@ export async function listStudyLists(
   viewer: StudyListViewer,
 ): Promise<StudyListSummary[]> {
   const viewerId = viewer?.id ?? null;
+  // Public catalog plus the viewer's own private plans (guests get public only).
+  const visibility = viewerId
+    ? or(eq(studyLists.isPublic, true), eq(studyLists.createdBy, viewerId))
+    : eq(studyLists.isPublic, true);
   const lists: ListRow[] = await getDb()
     .select(publicListColumns())
     .from(studyLists)
-    .where(eq(studyLists.isPublic, true))
+    .where(visibility)
     .orderBy(desc(studyLists.isFeatured), asc(studyLists.title));
   if (lists.length === 0) return [];
 
@@ -99,6 +112,7 @@ export async function listStudyLists(
       sectionCount: countListSections(sections, problems),
       topics: collectListTopics(problems, problemTopics),
       startedAt: enrollments.get(list.id) ?? null,
+      viewerId,
     });
   });
 }
@@ -113,19 +127,22 @@ export async function getStudyList(
     .where(eq(studyLists.slug, slug))
     .limit(1);
   if (!list) return null;
-  if (!list.isPublic && viewer?.role !== "ADMIN") return null;
+  const viewerId = viewer?.id ?? null;
+  const isOwner = viewerId !== null && list.createdBy === viewerId;
+  if (!list.isPublic && !isOwner && viewer?.role !== "ADMIN") return null;
 
   const [items, sectionsByList] = await Promise.all([
     loadStudyListItems([list.id]),
     loadStudyListSections([list.id]),
   ]);
-  const [problemState, problemTopics, enrollments] = await Promise.all([
+  const [problemState, problemTopics, enrollments, notes] = await Promise.all([
     loadViewerProblemState(
-      viewer?.id ?? null,
+      viewerId,
       items.map((item) => item.problemId),
     ),
     loadProblemTopics(items.map((item) => item.slug)),
-    loadViewerEnrollments(viewer?.id ?? null, [list.id]),
+    loadViewerEnrollments(viewerId, [list.id]),
+    loadViewerNotes(viewerId, list.id),
   ]);
 
   const sections = sectionsByList.get(list.id) ?? [];
@@ -133,6 +150,7 @@ export async function getStudyList(
     items,
     sectionTitlesOf(sections),
     problemState,
+    notes,
   );
   const startedAt = enrollments.get(list.id) ?? null;
   const summary = buildStudyListSummary({
@@ -141,6 +159,7 @@ export async function getStudyList(
     sectionCount: countListSections(sections, problems),
     topics: collectListTopics(problems, problemTopics),
     startedAt,
+    viewerId,
   });
 
   return {
@@ -151,11 +170,20 @@ export async function getStudyList(
   };
 }
 
-async function findEnrollableListId(slug: string): Promise<string> {
+/** Public plans plus the owner's private plan; another user's private plan stays hidden. */
+async function findEnrollableListId(
+  slug: string,
+  userId: string,
+): Promise<string> {
   const rows = await getDb()
     .select({ id: studyLists.id })
     .from(studyLists)
-    .where(and(eq(studyLists.slug, slug), eq(studyLists.isPublic, true)))
+    .where(
+      and(
+        eq(studyLists.slug, slug),
+        or(eq(studyLists.isPublic, true), eq(studyLists.createdBy, userId)),
+      ),
+    )
     .limit(1);
   const listId = rows[0]?.id;
   if (!listId) throw errors.notFound("Study list not found.");
@@ -166,7 +194,7 @@ export async function enrollStudyList(
   slug: string,
   userId: string,
 ): Promise<{ enrolled: boolean }> {
-  const listId = await findEnrollableListId(slug);
+  const listId = await findEnrollableListId(slug, userId);
   await getDb()
     .insert(studyListEnrollments)
     .values({ userId, listId })
@@ -178,7 +206,7 @@ export async function leaveStudyList(
   slug: string,
   userId: string,
 ): Promise<{ enrolled: boolean }> {
-  const listId = await findEnrollableListId(slug);
+  const listId = await findEnrollableListId(slug, userId);
   await getDb()
     .delete(studyListEnrollments)
     .where(

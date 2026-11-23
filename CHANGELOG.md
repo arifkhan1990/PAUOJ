@@ -14,6 +14,9 @@ All notable changes to PAU OJ are documented here. The format follows
   Existing flat plans keep working under a leading "General" section.
 - A "My plans" shelf, search/level/sort filters, a start/leave enrollment action and a
   continue-with-the-next-unsolved-problem CTA on `/lists` and `/lists/:slug`.
+- Private learner-created plans with a quota of 10, owner-only edit/delete, sections and
+  published public problems, plus private per-problem notes stored in
+  `study_list_item_notes`.
 - Four curated seed plans with sections: Getting started, Dynamic programming starter,
   Array foundations and Graph and DP sprint.
 
@@ -23,12 +26,15 @@ All notable changes to PAU OJ are documented here. The format follows
 - The admin study-list table shows level, sections, duration, featured state and visibility.
 - The curated seed now preserves admin edits to plans that already have sections, while
   upgrading legacy flat plans once.
+- Signed-in learners can create, edit and delete their own private sectioned plans and see
+  them in "My plans"; private plans are owner-only and capped at 10.
 
 ### Fixed
 - Study plans accept only published public problems; draft/private problems are rejected by
   the admin API and hidden from public plans if a problem is withdrawn later.
 - Unknown and private study-plan routes return a real `404` instead of a streamed not-found
-  page with a `200` status.
+  page with a `200` status. The `/lists/new` create page is reserved from the slug lookup.
+- Private notes are scoped to `(user, plan, problem)` and never leak to another viewer.
 
 ## [0.8.0] - 2026-11-22
 

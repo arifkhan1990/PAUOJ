@@ -24,6 +24,8 @@ function plan(overrides: Partial<StudyListSummary> = {}): StudyListSummary {
     enrolled: false,
     completed: false,
     nextProblem: null,
+    isPublic: true,
+    isOwned: false,
     ...overrides,
   };
 }
@@ -185,5 +187,14 @@ describe("StudyPlanCard", () => {
     );
 
     expect(text(html)).not.toContain("Next: Two Sum");
+  });
+
+  it("marks a private owned plan and links the owner to the edit page", () => {
+    const html = render(plan({ isPublic: false, isOwned: true }), true);
+    const plain = text(html);
+
+    expect(plain).toContain("Private");
+    expect(plain).toContain("Your plan");
+    expect(html).toContain('href="/lists/getting-started/edit"');
   });
 });

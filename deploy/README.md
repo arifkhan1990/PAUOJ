@@ -315,10 +315,11 @@ table and seeded problems harmless.
 
 ### Study plans release
 
-Migration `0032` adds sections, enrollment and plan metadata (`level`,
-`estimated_minutes`, `is_featured`) and is additive. The app container runs the
-migration before `server.js`, so a normal deploy applies it; seed once after the
-migration to create or upgrade the four curated plans:
+Migrations `0032` and `0033` add sections, enrollment, plan metadata (`level`,
+`estimated_minutes`, `is_featured`) and private per-problem notes. Both are
+additive. The app container runs the migrations before `server.js`, so a normal
+deploy applies them; seed once after the migrations to create or upgrade the
+four curated plans:
 
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
@@ -334,8 +335,13 @@ a problem if it is withdrawn later.
 Smoke-check `/lists`, one plan detail, the start/leave enrollment flow with a
 signed-in non-admin account, and an unknown plan slug returning `404`. In the
 admin queue, open `/admin/lists`, edit a plan's sections and confirm the public
-page reflects the change. Rollback to the previous app image keeps the new
-tables/columns and is harmless; no down migration is required.
+page reflects the change. Also create a private plan from `/lists/new` as a
+learner, add a per-problem note, reload and verify only that learner sees the
+note; another account must get `404` on the private URL. Delete the plan and
+confirm the note and enrollment rows are gone.
+
+Rollback to the previous app image keeps the new tables/columns and is harmless;
+no down migration is required.
 
 ## 7. CI/CD
 

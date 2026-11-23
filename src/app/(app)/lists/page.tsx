@@ -20,11 +20,17 @@ export const dynamic = "force-dynamic";
 export default async function StudyListsPage() {
   const user = await getCurrentUser();
   const plans = await listStudyLists(user);
-  const myPlans = user ? plans.filter((plan) => plan.enrolled) : [];
+  const publicPlans = plans.filter((plan) => plan.isPublic);
+  const myPlans = user
+    ? plans.filter((plan) => plan.enrolled || plan.isOwned)
+    : [];
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <CatalogHero showCatalogLink={plans.length > 0} />
+      <CatalogHero
+        showCatalogLink={publicPlans.length > 0}
+        signedIn={Boolean(user)}
+      />
 
       {plans.length === 0 ? (
         <EmptyState
@@ -40,7 +46,7 @@ export default async function StudyListsPage() {
         />
       ) : (
         <>
-          <CatalogStats plans={plans} />
+          <CatalogStats plans={publicPlans} />
 
           {myPlans.length > 0 ? (
             <section aria-labelledby="my-plans-title" className="mt-10">
@@ -55,7 +61,7 @@ export default async function StudyListsPage() {
                   My plans
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  Pick up where you left off.
+                  Plans you started or created. Pick up where you left off.
                 </p>
               </div>
               <ul
@@ -71,7 +77,7 @@ export default async function StudyListsPage() {
             </section>
           ) : null}
 
-          <CatalogBrowser plans={plans} signedIn={Boolean(user)} />
+          <CatalogBrowser plans={publicPlans} signedIn={Boolean(user)} />
         </>
       )}
     </div>

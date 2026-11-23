@@ -82,3 +82,26 @@ export const studyListInputSchema = z
 
 export type StudyListInput = z.infer<typeof studyListInputSchema>;
 export type StudyListSectionInput = z.infer<typeof studyListSectionInputSchema>;
+
+export const studyListNoteInputSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Write a note first.")
+    .max(2_000, "Notes can be up to 2000 characters."),
+});
+
+export type StudyListNoteInput = z.infer<typeof studyListNoteInputSchema>;
+
+export const studyListPathSlugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(80)
+  .regex(/^[a-z0-9-]+$/);
+
+/** Path slugs are client input: an invalid one is a 404, never a 422. */
+export function parseStudyListSlug(value: string): string | null {
+  const parsed = studyListPathSlugSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
