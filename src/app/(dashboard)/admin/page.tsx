@@ -8,6 +8,7 @@ import {
   Code2,
   Flag,
   ListChecks,
+  Wallet,
   Plus,
   Trophy,
   Users,
@@ -71,6 +72,12 @@ const quickActions = [
     label: "Review lesson reports",
     description: "Resolve reported comments in the learning tracks.",
     icon: Flag,
+  },
+  {
+    href: "/admin/payments",
+    label: "Payments & access",
+    description: "Approve TrxIDs or grant premium learning access.",
+    icon: Wallet,
   },
 ];
 

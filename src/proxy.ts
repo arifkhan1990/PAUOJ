@@ -16,6 +16,9 @@ import { isLearningRoute } from "@/lib/learning/route-slugs";
  * 404 before the page's streaming boundary, without importing the curriculum
  * content into the proxy.
  */
+/** Non-module pages below /learn that the static route index must allow. */
+const RESERVED_LEARNING_SEGMENTS = new Set(["pricing"]);
+
 export async function proxy(request: NextRequest) {
   const learningMatch = /^\/learn\/([^/]+)(?:\/([^/]+))?\/?$/.exec(
     request.nextUrl.pathname,
@@ -30,6 +33,12 @@ export async function proxy(request: NextRequest) {
         : undefined;
     } catch {
       return new NextResponse(null, { status: 404 });
+    }
+    if (
+      topicSlug === undefined &&
+      RESERVED_LEARNING_SEGMENTS.has(moduleSlug)
+    ) {
+      return NextResponse.next();
     }
     if (!isLearningRoute(moduleSlug, topicSlug)) {
       return NextResponse.rewrite(new URL("/_not-found", request.url), {

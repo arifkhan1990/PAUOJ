@@ -211,6 +211,13 @@
       "when": 1795384505019,
       "tag": "0029_third_nick_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1795399127514,
+      "tag": "0030_faithful_kree",
+      "breakpoints": true
     }
   ]
 }

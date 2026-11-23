@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     assertSameOrigin(request);
     const user = await requireApiUser();
     const input = await parseJson(request, learningCheckpointStartSchema);
-    const result = await startLearningCheckpoint(input.moduleSlug, user.id);
+    const result = await startLearningCheckpoint(input.moduleSlug, user);
     return apiOk(result);
   } catch (error) {
     return apiError(error);

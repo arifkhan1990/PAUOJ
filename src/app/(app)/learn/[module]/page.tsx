@@ -6,6 +6,7 @@ import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSteps } from "@/components/learning/learning-steps";
 import { ModuleHeader } from "@/components/learning/module-header";
 import { ModuleDiagram } from "@/components/learning/module-diagram";
+import { PremiumPaywall } from "@/components/learning/premium-paywall";
 import { TopicCard } from "@/components/learning/topic-card";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
@@ -41,6 +42,33 @@ export default async function LearningModulePage({
   if (!track) notFound();
 
   const isLive = track.status === "LIVE";
+
+  if (track.paywalled && isLive) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+        <ModuleHeader module={track} />
+        <PremiumPaywall moduleTitle={track.title} className="mt-6" />
+
+        <section className="mt-10">
+          <SectionHeading
+            title="What's inside"
+            description="The full curriculum is ready — purchase or request free access to open it."
+          />
+          <ul role="list" className="mt-4 grid gap-2.5">
+            {track.topics.map((topic, index) => (
+              <TopicCard
+                key={topic.slug}
+                topic={topic}
+                moduleSlug={track.slug}
+                position={index + 1}
+                locked
+              />
+            ))}
+          </ul>
+        </section>
+      </div>
+    );
+  }
 
   if (track.locked && isLive) {
     return (

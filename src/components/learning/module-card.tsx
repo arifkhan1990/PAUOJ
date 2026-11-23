@@ -13,10 +13,11 @@ import type { LearningModuleSummary } from "@/lib/learning/types";
 import { cn } from "@/lib/utils";
 import { LearningProgressBar } from "./learning-progress";
 
-type TrackState = "live" | "locked" | "planned";
+type TrackState = "live" | "locked" | "planned" | "premium";
 
 function trackState(module: LearningModuleSummary): TrackState {
   if (module.status === "PLANNED") return "planned";
+  if (module.paywalled) return "premium";
   return module.locked ? "locked" : "live";
 }
 
@@ -33,6 +34,14 @@ function StatusChip({ state }: { state: TrackState }) {
           aria-hidden="true"
         />
         Live
+      </Badge>
+    );
+  }
+  if (state === "premium") {
+    return (
+      <Badge variant="warning">
+        <LockKeyhole className="size-3" aria-hidden="true" />
+        Premium ৳200
       </Badge>
     );
   }
@@ -84,11 +93,13 @@ export function ModuleCard({
   const ctaLabel =
     state === "planned"
       ? "Preview"
-      : isComplete
-        ? "Review"
-        : module.progress.solved > 0
-          ? "Resume"
-          : "Open";
+      : state === "premium"
+        ? "Unlock ৳200"
+        : isComplete
+          ? "Review"
+          : module.progress.solved > 0
+            ? "Resume"
+            : "Open";
 
   return (
     <li className="group relative">
@@ -121,6 +132,8 @@ export function ModuleCard({
                   "border-border bg-muted text-muted-foreground",
                 state === "planned" &&
                   "border-dashed border-border bg-transparent text-muted-foreground",
+                state === "premium" &&
+                  "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
               )}
             >
               {trackNumber}
@@ -160,7 +173,12 @@ export function ModuleCard({
           </div>
 
           <div className="mt-auto pt-4">
-            {state === "planned" ? (
+            {state === "premium" ? (
+              <p className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2.5 py-2 text-[11px] text-amber-800 dark:text-amber-300">
+                <LockKeyhole className="size-3.5 shrink-0" aria-hidden="true" />
+                Premium module · ৳200 or ৳700 for all five
+              </p>
+            ) : state === "planned" ? (
               <p className="flex items-center gap-2 rounded-md border border-dashed border-border px-2.5 py-2 text-[11px] text-muted-foreground">
                 <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
                 Roadmap · content in production

@@ -141,9 +141,32 @@ Every live lesson has a like/dislike reaction and a content-based discussion:
   second indexed query.
 - The lesson header shows solved progress as a donut instead of a linear bar.
 
+## Premium modules and manual payments
+
+Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
+
+- Pricing: ৳200 per module or ৳700 for all five (server-side amounts; the UI
+  never sends a price).
+- Flow: the learner sends money with bKash/Nagad, submits the TrxID + sender
+  number at `/learn/pricing`, and an admin approves it from
+  `/admin/payments`. TrxIDs are normalized (upper case, no spaces) and unique
+  across the whole system; the same ID cannot be submitted twice.
+- Approval writes one `lesson_entitlements` row per module (a bundle writes
+  all five). Entitled modules skip the sequential badge unlock so a purchase
+  is usable immediately; checkpoint starts require the entitlement.
+- A learner without money can request free access with a reason. The same
+  admin queue approves it and grants a `SCHOLARSHIP` entitlement. Admins can
+  also grant access manually by username from the queue page.
+- Paywalled module/topic pages never render the concept note or problem sets;
+  the public problem archive is unchanged.
+- Manual payment details come from `PAYMENT_METHOD`, `PAYMENT_ACCOUNT_NAME`,
+  `PAYMENT_ACCOUNT_NUMBER`, `PAYMENT_QR_IMAGE_URL` and
+  `PAYMENT_INSTRUCTIONS`. When they are unset the page shows a clear
+  "coming soon" state and free-access requests still work.
+
 ## Release checklist
 
-1. `pnpm db:migrate && pnpm db:check` — applies every additive migration and
+1. `pnpm db:migrate && pnpm db:check` — applies every additive migration (0027–0030) and
    verifies the database matches the shipped drizzle journal.
 2. `pnpm learning:check && pnpm learning:audit` — validates every solution,
    editorial and difficulty label.

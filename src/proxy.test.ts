@@ -103,4 +103,15 @@ describe("learning route proxy", () => {
     expect(response.status).toBe(200);
     expect(sql).not.toHaveBeenCalled();
   });
+
+  it("allows the reserved learning pricing page", async () => {
+    const response = await proxy(request("/learn/pricing"));
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("still rejects an unknown slug that looks like a reserved page", async () => {
+    const response = await proxy(request("/learn/pricing/extra"));
+    expect(response.status).toBe(404);
+  });
 });

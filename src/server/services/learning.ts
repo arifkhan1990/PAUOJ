@@ -11,6 +11,9 @@ import {
   getLearningModule as findLearningModule,
   getLearningTopic as findLearningTopic,
 } from "@/lib/learning/modules";
+import { isPaidModule } from "@/lib/learning/payments";
+import type { SafeUser } from "@/server/auth/session";
+import { getEntitledModuleSlugs } from "@/server/services/learning-payments";
 import {
   buildLearningCheckpointView,
   buildLearningTopicView,
@@ -31,6 +34,7 @@ import type {
   LearningTopicDefinition,
   LearningTopicView,
 } from "@/lib/learning/types";
+import { loadProblems, loadSolvedFlags } from "./learning-data";
 import {
   loadEarnedBadges,
   moduleUnlock,
@@ -64,48 +68,6 @@ function moduleTopicProblemSlugs(definition: LearningModuleDefinition): string[]
 function unique(values: string[]): string[] {
   return [...new Set(values)];
 }
-
-async function loadProblems(
-  slugs: string[],
-): Promise<Map<string, LearningProblemRow>> {
-  if (slugs.length === 0) return new Map();
-  const rows = await getDb()
-    .select({
-      slug: problems.slug,
-      title: problems.title,
-      difficulty: problems.difficulty,
-      points: problems.points,
-    })
-    .from(problems)
-    .where(inArray(problems.slug, slugs));
-  return new Map(rows.map((row) => [row.slug, row]));
-}
-
-async function loadSolvedFlags(
-  userId: string | null,
-  slugs: string[],
-): Promise<LearningSolvedFlags> {
-  const flags: LearningSolvedFlags = { solved: new Set(), attempted: new Set() };
-  if (!userId || slugs.length === 0) return flags;
-  const rows = await getDb()
-    .select({ slug: problems.slug, status: submissions.status })
-    .from(submissions)
-    .innerJoin(problems, eq(problems.id, submissions.problemId))
-    .where(
-      and(
-        eq(submissions.userId, userId),
-        isNull(submissions.assessmentId),
-        inArray(problems.slug, slugs),
-      ),
-    )
-    .groupBy(problems.slug, submissions.status);
-  for (const row of rows) {
-    flags.attempted.add(row.slug);
-    if (row.status === "ACCEPTED") flags.solved.add(row.slug);
-  }
-  return flags;
-}
-
 function summarizeModule(
   definition: LearningModuleDefinition,
   rows: Map<string, LearningProblemRow>,
@@ -138,15 +100,23 @@ export async function getLearningOverview(
   const modules = [...LEARNING_MODULES].sort((a, b) => a.order - b.order);
   const allSlugs = unique(modules.flatMap(moduleTopicProblemSlugs));
   const moduleSlugs = modules.map((definition) => definition.slug);
-  const [rows, flags, badges] = await Promise.all([
+  const [rows, flags, badges, entitled] = await Promise.all([
     loadProblems(allSlugs),
     loadSolvedFlags(viewer?.id ?? null, allSlugs),
     loadEarnedBadges(viewer?.id ?? null, moduleSlugs),
+    getEntitledModuleSlugs(viewer?.id ?? null, viewer?.role),
   ]);
-  return modules.map((definition) => ({
-    ...summarizeModule(definition, rows, flags, badges),
-    ...moduleUnlock(definition, badges),
-  }));
+  return modules.map((definition) => {
+    const unlockedByPurchase = entitled.has(definition.slug);
+    const paywalled = isPaidModule(definition.slug) && !unlockedByPurchase;
+    return {
+      ...summarizeModule(definition, rows, flags, badges),
+      ...(paywalled || unlockedByPurchase
+        ? { locked: false, unlockHint: null }
+        : moduleUnlock(definition, badges)),
+      paywalled,
+    };
+  });
 }
 
 async function findAttempt(
@@ -253,12 +223,17 @@ export async function getLearningModule(
     ...moduleTopicProblemSlugs(definition),
     ...(checkpoint?.problemSlugs ?? []),
   ]);
-  const [rows, flags, resolved, unlock] = await Promise.all([
+  const [rows, flags, resolved, entitlements] = await Promise.all([
     loadProblems(allSlugs),
     loadSolvedFlags(viewer?.id ?? null, allSlugs),
     resolveCheckpointAttempt(viewer?.id ?? null, definition, now),
-    unlockFor(definition, viewer?.id ?? null),
+    getEntitledModuleSlugs(viewer?.id ?? null, viewer?.role),
   ]);
+  const unlockedByPurchase = entitlements.has(definition.slug);
+  const paywalled = isPaidModule(definition.slug) && !unlockedByPurchase;
+  const unlock = paywalled || unlockedByPurchase
+    ? { locked: false, unlockHint: null }
+    : await unlockFor(definition, viewer?.id ?? null);
   const attempt = resolved?.attempt ?? null;
   const topics = definition.topics.map((topic) => ({
     ...buildLearningTopicView(topic, rows, flags),
@@ -286,6 +261,7 @@ export async function getLearningModule(
     badgeEarned: attempt?.completedAt != null,
     locked: unlock.locked,
     unlockHint: unlock.unlockHint,
+    paywalled,
     topics,
     checkpoint: checkpoint
       ? buildLearningCheckpointView(
@@ -308,15 +284,29 @@ export async function getLearningTopic(
   const found = findLearningTopic(moduleSlug, topicSlug);
   if (!found) return null;
   const slugs = unique(topicProblemSlugs(found.topic));
-  const [rows, flags, unlock] = await Promise.all([
+  const [rows, flags, entitlements] = await Promise.all([
     loadProblems(slugs),
     loadSolvedFlags(viewer?.id ?? null, slugs),
-    unlockFor(found.module, viewer?.id ?? null),
+    getEntitledModuleSlugs(viewer?.id ?? null, viewer?.role),
   ]);
-  return {
-    ...buildLearningTopicView(found.topic, rows, flags),
-    ...unlock,
-  };
+  const unlockedByPurchase = entitlements.has(found.module.slug);
+  const paywalled = isPaidModule(found.module.slug) && !unlockedByPurchase;
+  const unlock = paywalled || unlockedByPurchase
+    ? { locked: false, unlockHint: null }
+    : await unlockFor(found.module, viewer?.id ?? null);
+  const base = buildLearningTopicView(found.topic, rows, flags);
+  if (paywalled) {
+    return {
+      ...base,
+      concept: "",
+      guided: [],
+      practice: { easy: [], medium: [], hard: [] },
+      extra: [],
+      ...unlock,
+      paywalled,
+    };
+  }
+  return { ...base, ...unlock, paywalled };
 }
 
 function toStartResult(
@@ -335,14 +325,27 @@ function toStartResult(
 
 export async function startLearningCheckpoint(
   moduleSlug: string,
-  userId: string,
+  user: Pick<SafeUser, "id" | "role">,
 ): Promise<LearningCheckpointStart> {
+  const userId = user.id;
   const definition = findLearningModule(moduleSlug);
   if (!definition) throw errors.notFound("Learning module not found.");
   if (definition.status !== "LIVE" || !definition.checkpoint) {
     throw errors.conflict("This module's checkpoint is not available yet.");
   }
-  const unlock = await unlockFor(definition, userId);
+  if (isPaidModule(definition.slug) && user.role !== "ADMIN") {
+    const entitled = await getEntitledModuleSlugs(user.id, user.role);
+    if (!entitled.has(definition.slug)) {
+      throw errors.forbidden(
+        "This module requires a purchase. Buy it from the learning pricing page.",
+      );
+    }
+  }
+  const entitled =
+    user.role === "ADMIN" ||
+    (isPaidModule(definition.slug) &&
+      (await getEntitledModuleSlugs(user.id, user.role)).has(definition.slug));
+  const unlock = entitled ? { locked: false, unlockHint: null } : await unlockFor(definition, userId);
   if (unlock.locked) {
     throw errors.conflict(
       unlock.unlockHint ?? "Complete the previous checkpoint first.",

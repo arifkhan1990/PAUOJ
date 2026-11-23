@@ -169,9 +169,93 @@ export const lessonCommentReports = pgTable(
   ],
 );
 
+export const paymentOrders = pgTable(
+  "payment_orders",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull().default("PURCHASE"),
+    product: text("product").notNull(),
+    moduleSlug: text("module_slug"),
+    amountBdt: integer("amount_bdt").notNull(),
+    trxId: text("trx_id"),
+    senderNumber: text("sender_number"),
+    userNote: text("user_note"),
+    status: text("status").notNull().default("PENDING"),
+    adminNote: text("admin_note"),
+    reviewedBy: uuid("reviewed_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("payment_orders_trx_id_unique").on(table.trxId),
+    index("payment_orders_status_created_idx").on(table.status, table.createdAt),
+    index("payment_orders_user_idx").on(table.userId, table.createdAt),
+    check(
+      "payment_orders_kind_check",
+      sql`${table.kind} in ('PURCHASE', 'FREE_REQUEST')`,
+    ),
+    check(
+      "payment_orders_product_check",
+      sql`${table.product} in ('MODULE', 'BUNDLE')`,
+    ),
+    check(
+      "payment_orders_status_check",
+      sql`${table.status} in ('PENDING', 'APPROVED', 'REJECTED')`,
+    ),
+    check(
+      "payment_orders_amount_check",
+      sql`${table.amountBdt} >= 0`,
+    ),
+  ],
+);
+
+export const lessonEntitlements = pgTable(
+  "lesson_entitlements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    moduleSlug: text("module_slug").notNull(),
+    source: text("source").notNull(),
+    orderId: uuid("order_id").references(() => paymentOrders.id, {
+      onDelete: "set null",
+    }),
+    grantedBy: uuid("granted_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("lesson_entitlements_user_module_unique").on(
+      table.userId,
+      table.moduleSlug,
+    ),
+    index("lesson_entitlements_user_idx").on(table.userId),
+    check(
+      "lesson_entitlements_source_check",
+      sql`${table.source} in ('PURCHASE', 'SCHOLARSHIP')`,
+    ),
+  ],
+);
+
 export type LearningCheckpointAttempt =
   typeof learningCheckpointAttempts.$inferSelect;
 export type LessonReaction = typeof lessonReactions.$inferSelect;
 export type LessonComment = typeof lessonComments.$inferSelect;
 export type LessonCommentVote = typeof lessonCommentVotes.$inferSelect;
 export type LessonCommentReport = typeof lessonCommentReports.$inferSelect;
+export type PaymentOrder = typeof paymentOrders.$inferSelect;
+export type LessonEntitlement = typeof lessonEntitlements.$inferSelect;

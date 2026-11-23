@@ -6,6 +6,7 @@ import { ContentInProduction } from "@/components/learning/content-in-production
 import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSection } from "@/components/learning/learning-section";
 import { ProblemGroup } from "@/components/learning/problem-group";
+import { PremiumPaywall } from "@/components/learning/premium-paywall";
 import {
   CheckpointCta,
   LessonHeader,
@@ -86,6 +87,26 @@ export default async function LearningTopicPage({
   const isPlanned = definition.status === "PLANNED";
   const topicPosition =
     definition.topics.findIndex((item) => item.slug === topicSlug) + 1;
+
+  if (topic.paywalled && definition.status === "LIVE") {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        <LessonHeader
+          topic={topic}
+          definition={definition}
+          topicPosition={topicPosition}
+          locked={false}
+        />
+        <PremiumPaywall moduleTitle={definition.title} className="mt-6" />
+        <Link
+          href={`/learn/${moduleSlug}`}
+          className="mt-4 inline-flex text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          Back to {definition.title}
+        </Link>
+      </div>
+    );
+  }
 
   if (topic.locked && definition.status === "LIVE") {
     return (

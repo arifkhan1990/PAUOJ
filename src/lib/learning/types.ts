@@ -87,6 +87,8 @@ export type LearningTopicView = {
   progress: LearningProgress;
   locked: boolean;
   unlockHint: string | null;
+  /** Premium module without an entitlement: render the paywall, not the lesson. */
+  paywalled?: boolean;
 };
 
 export type LearningCheckpointView = {
@@ -121,6 +123,7 @@ export type LearningModuleSummary = {
   badgeEarned: boolean;
   locked: boolean;
   unlockHint: string | null;
+  paywalled?: boolean;
 };
 
 export type LearningModuleView = Omit<LearningModuleSummary, "topicCount"> & {
