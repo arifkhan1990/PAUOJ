@@ -82,13 +82,26 @@ export default async function ContributePage({
     );
   } catch (error) {
     if (error instanceof ApiError) {
+      const premium = error.code === "PREMIUM_LOCKED";
       return (
         <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
           <EmptyState
             title="This problem is locked"
-            description="Problems inside a running contest or assessment accept proposals after it ends."
+            description={
+              premium
+                ? "This problem is part of a premium module. Unlock the module from the learning pricing page before proposing a change."
+                : "Problems inside a running contest or assessment accept proposals after it ends."
+            }
             icon={LockKeyhole}
-            action={backLink}
+            action={
+              premium ? (
+                <Link href="/learn/pricing" className={buttonVariants()}>
+                  Unlock from pricing
+                </Link>
+              ) : (
+                backLink
+              )
+            }
           />
         </div>
       );

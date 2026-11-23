@@ -203,7 +203,10 @@ limits, visible in the problem list.
   checkpoints meet the normal learning standard. Tests are variant datasets
   applied before the query; expected rows are generated from
   `judge/shopsphere.sql`.
-- The judge runs SQL in a read-only SQLite copy of the fixture. The SQL, MySQL
+- The judge runs SQL in a read-only SQLite copy of the fixture. Test setup
+  statements run before the read-only authorizer; they come from seeded hidden
+  tests, while custom-run input can execute arbitrary SQL only inside the
+  disposable sandbox. The SQL, MySQL
   and PostgreSQL options share that engine through a compatibility layer:
   backticks, `ILIKE`, MySQL `LIMIT offset,count`, `FETCH FIRST`, PostgreSQL
   `::` casts and `EXTRACT`, plus common `CONCAT`, `IF`, `DATE_FORMAT`,
@@ -224,7 +227,7 @@ limits, visible in the problem list.
    editorial and difficulty label.
 3. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
    seed is idempotent; run it twice on staging before a release.
-3. Rebuild the judge image after a harness change (`pnpm judge:build`), then
+3. Rebuild the judge image after a harness **or fixture** change (`pnpm judge:build`), then
    deploy the web and worker images.
 4. Smoke `/learn`, a live module, a live topic and a checkpoint start with a
    non-admin account. Confirm an unknown track returns a real `404`.

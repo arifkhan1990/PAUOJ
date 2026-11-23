@@ -71,6 +71,7 @@ export async function createSubmission(
       "This problem accepts SQL, MySQL or PostgreSQL solutions.",
     );
   }
+  // Defense in depth: getProblemForSubmission already throws PREMIUM_LOCKED.
   if (problem.premiumModuleSlug && !isAdmin) {
     const { hasModuleEntitlement } = await import(
       "@/server/services/learning-payments"

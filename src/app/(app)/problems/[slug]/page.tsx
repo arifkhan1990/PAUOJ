@@ -20,7 +20,12 @@ import { SectionHeading } from "@/components/shared/section-heading";
 import { buttonVariants } from "@/components/ui/button";
 import { SubmitPanel } from "@/features/submit/submit-panel";
 import { getCurrentUser } from "@/server/auth/session";
-import { ApiError } from "@/server/api/errors";
+import {
+  lockedProblemFrom,
+  type LockedProblem,
+} from "./locked-problem";
+import { getLearningModule } from "@/lib/learning/modules";
+import { modulePriceBdt } from "@/lib/learning/payments";
 import { getProblemBySlug } from "@/server/services/problems";
 import {
   getProblemRankboard,
@@ -50,51 +55,6 @@ import { cn } from "@/lib/utils";
 export const dynamic = "force-dynamic";
 
 const SUBMISSIONS_PAGE_SIZE = 10;
-
-type LockedProblem = {
-  kind: "contest" | "assessment" | "premium";
-  slug: string;
-  title: string;
-  moduleSlug?: string;
-};
-
-function lockedProblemFrom(error: unknown): LockedProblem | null {
-  if (
-    !(error instanceof ApiError) ||
-    (error.code !== "CONTEST_LOCKED" &&
-      error.code !== "ASSESSMENT_LOCKED" &&
-      error.code !== "PREMIUM_LOCKED")
-  ) {
-    return null;
-  }
-  const details = error.details;
-  if (
-    typeof details === "object" &&
-    details !== null &&
-    "slug" in details &&
-    "title" in details &&
-    typeof details.slug === "string" &&
-    typeof details.title === "string"
-  ) {
-    const kind =
-      error.code === "ASSESSMENT_LOCKED"
-        ? "assessment"
-        : error.code === "PREMIUM_LOCKED"
-          ? "premium"
-          : "contest";
-    const moduleSlug =
-      "moduleSlug" in details && typeof details.moduleSlug === "string"
-        ? details.moduleSlug
-        : undefined;
-    return {
-      kind,
-      slug: details.slug,
-      title: details.title,
-      moduleSlug,
-    };
-  }
-  return null;
-}
 
 export async function generateMetadata({
   params,
@@ -139,6 +99,16 @@ export default async function ProblemPage({
     if (!locked) throw error;
   }
 
+  const premiumModule =
+    locked?.kind === "premium" && locked.moduleSlug
+      ? getLearningModule(locked.moduleSlug)
+      : null;
+  const premiumTitle = premiumModule?.title ?? "premium module";
+  const premiumPrice =
+    locked?.kind === "premium" && locked.moduleSlug
+      ? (modulePriceBdt(locked.moduleSlug) ?? 500)
+      : 500;
+
   if (locked) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
@@ -148,7 +118,7 @@ export default async function ProblemPage({
             locked.kind === "assessment"
               ? `It is part of the running coding assessment "${locked.title}". Open the assessment and join with your access code.`
               : locked.kind === "premium"
-                ? `"${locked.title}" is part of the Advanced SQL track. Unlock it once for ৳500 to open the statement, editorial and submissions.`
+                ? `"${locked.title}" is part of the ${premiumTitle} track. Unlock it once for ৳${premiumPrice} to open the statement, editorial and submissions.`
                 : `It is part of the running contest "${locked.title}". Register for the contest to open the statement and submit.`
           }
           icon={LockKeyhole}
@@ -167,7 +137,7 @@ export default async function ProblemPage({
                 {locked.kind === "assessment"
                   ? "Open assessment"
                   : locked.kind === "premium"
-                    ? "Unlock Advanced SQL · ৳500"
+                    ? `Unlock ${premiumTitle} · ৳${premiumPrice}`
                     : "Open contest"}
               </Link>
               {locked.kind === "premium" ? (

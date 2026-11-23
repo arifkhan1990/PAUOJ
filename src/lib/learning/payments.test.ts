@@ -5,9 +5,12 @@ import {
   MODULE_PRICE_BDT,
   PAID_MODULES,
   isValidTrxId,
+  modulePriceBdt,
   modulesForProduct,
   normalizeTrxId,
   priceForProduct,
+  purchasePriceBdt,
+  requiresPurchase,
 } from "@/lib/learning/payments";
 
 describe("pricing", () => {
@@ -40,6 +43,16 @@ describe("pricing", () => {
       ADVANCED_SQL.slug,
     ]);
     expect(modulesForProduct("BUNDLE")).not.toContain(ADVANCED_SQL.slug);
+  });
+
+  it("requires a purchase for paid and SQL modules only", () => {
+    expect(requiresPurchase("basic-programming-math")).toBe(false);
+    expect(requiresPurchase("basic-data-structures")).toBe(false);
+    expect(requiresPurchase(ADVANCED_SQL.slug)).toBe(true);
+    expect(requiresPurchase(PAID_MODULES[0].slug)).toBe(true);
+    expect(purchasePriceBdt(ADVANCED_SQL.slug)).toBe(500);
+    expect(purchasePriceBdt(PAID_MODULES[0].slug)).toBe(MODULE_PRICE_BDT);
+    expect(modulePriceBdt("basic-programming-math")).toBeNull();
   });
 });
 

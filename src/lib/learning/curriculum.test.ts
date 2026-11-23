@@ -61,7 +61,7 @@ describe("learning curriculum shape", () => {
         expect(topic.practiceProblemSlugs.hard).toHaveLength(2);
         expect(topic.extraProblemSlugs.length).toBeGreaterThanOrEqual(2);
         expect(topic.extraProblemSlugs.length).toBeLessThanOrEqual(3);
-        expect(topic.concept.length).toBeGreaterThan(800);
+        expect(topic.concept.length).toBeGreaterThan(1_000);
       }
 
       const unique = new Set(refs(track));
