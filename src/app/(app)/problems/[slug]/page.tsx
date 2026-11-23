@@ -103,7 +103,8 @@ export default async function ProblemPage({
     locked?.kind === "premium" && locked.moduleSlug
       ? getLearningModule(locked.moduleSlug)
       : null;
-  const premiumTitle = premiumModule?.title ?? "premium module";
+  const premiumTitle =
+    premiumModule?.title.split(" · ")[0] ?? "premium module";
   const premiumPrice =
     locked?.kind === "premium" && locked.moduleSlug
       ? (modulePriceBdt(locked.moduleSlug) ?? 500)
