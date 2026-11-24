@@ -111,6 +111,12 @@ let input = String(data: FileHandle.standardInput.readDataToEndOfFile(), encodin
   postgresql: "-- Write a PostgreSQL-style query\nSELECT ...\n",
 };
 
+const SQL_SCRIPT_STARTER = `-- SQL script: multiple statements allowed...
+-- Use DDL/DML (CREATE INDEX, CREATE VIEW, INSERT, UPDATE, DELETE) or BEGIN/COMMIT.
+-- The judge compares the rows of the last SELECT/EXPLAIN statement.
+SELECT ...;
+`;
+
 function draftKey(problemId: string, language: string): string {
   return `pauoj:draft:${problemId}:${language}`;
 }
@@ -156,16 +162,19 @@ export function SubmitPanel({
   judgeLanguage?: string | null;
   defaultLanguage?: LanguageId;
 }) {
-  const languageOptions =
-    judgeLanguage === "sql"
-      ? LANGUAGES.filter((item) =>
-          ["sql", "mysql", "postgresql"].includes(item.id),
-        )
-      : LANGUAGES;
-  const initialLanguage: LanguageId =
-    judgeLanguage === "sql" ? "sql" : defaultLanguage;
+  const isSqlProblem =
+    judgeLanguage === "sql" || judgeLanguage === "sql-script";
+  const isSqlScript = judgeLanguage === "sql-script";
+  const starterFor = (id: LanguageId): string =>
+    isSqlScript && id === "sql" ? SQL_SCRIPT_STARTER : STARTERS[id];
+  const languageOptions = isSqlProblem
+    ? LANGUAGES.filter((item) =>
+        ["sql", "mysql", "postgresql"].includes(item.id),
+      )
+    : LANGUAGES;
+  const initialLanguage: LanguageId = isSqlProblem ? "sql" : defaultLanguage;
   const [language, setLanguage] = useState<LanguageId>(initialLanguage);
-  const [source, setSource] = useState(STARTERS[initialLanguage]);
+  const [source, setSource] = useState(starterFor(initialLanguage));
   const [hydrated, setHydrated] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submissionId, setSubmissionId] = useState<string | null>(null);
@@ -215,12 +224,12 @@ export function SubmitPanel({
     writeDraft(problemId, language, source);
     const saved = readDraft(problemId, next);
     setLanguage(next);
-    setSource(saved ?? STARTERS[next]);
+    setSource(saved ?? starterFor(next));
   };
 
   const resetCode = () => {
     if (!window.confirm("Clear your saved draft for this language?")) return;
-    setSource(STARTERS[language]);
+    setSource(starterFor(language));
     try {
       window.localStorage.removeItem(draftKey(problemId, language));
     } catch {

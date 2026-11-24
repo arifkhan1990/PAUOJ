@@ -36,7 +36,7 @@ describe("learning curriculum shape", () => {
       "basic-sql",
       "advanced-sql",
     ]);
-    expect(SQL_MODULES.map((track) => track.topics.length)).toEqual([10, 11]);
+    expect(SQL_MODULES.map((track) => track.topics.length)).toEqual([10, 13]);
     for (const track of SQL_MODULES) {
       expect(track.practiceTier).toBe("COMPACT");
       expect(track.checkpoint?.problemSlugs).toHaveLength(3);

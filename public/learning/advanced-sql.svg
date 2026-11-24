@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-labelledby="sqla-title sqla-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Noto Sans Bengali', sans-serif">
+  <title id="sqla-title">Advanced SQL: ShopSphere analytics concept map</title>
+  <desc id="sqla-desc">Six-step analytics path: window functions for rankings and rolling metrics, CTEs and recursion for trees and funnels, pivots and cohort metrics, JSON attributes with inventory reconciliation, execution plans with indexes and transactions, and finally the vendor scorecard and retention capstone.</desc>
+  <defs>
+    <pattern id="sqla-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#cbd5e1" opacity="0.45"/>
+    </pattern>
+    <marker id="sqla-arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" refX="10" refY="6" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="320" fill="#f8fafc"/>
+  <rect width="1200" height="320" fill="url(#sqla-dots)"/>
+  <rect x="48" y="36" width="174" height="36" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="135" y="60" text-anchor="middle" font-size="17" font-weight="700" fill="#b45309" letter-spacing="1.6">ADVANCED SQL</text>
+  <text x="244" y="60" font-size="25" font-weight="700" fill="#0f172a">ShopSphere: analytics to capstone</text>
+  <rect x="1022" y="40" width="130" height="28" rx="14" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1"/>
+  <text x="1087" y="59" text-anchor="middle" font-size="13" font-weight="700" fill="#047857" letter-spacing="1.4">TRACK 09</text>
+
+  <rect x="46" y="128" width="168" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="58" y="144" width="30" height="30" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="73" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309">01</text>
+  <text x="130" y="220" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Windows</text>
+  <text x="130" y="258" text-anchor="middle" font-size="15.5" font-weight="500" fill="#64748b">rank · rolling</text>
+  <line x1="217" y1="206" x2="230" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqla-arrow)"/>
+
+  <rect x="234" y="128" width="168" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="246" y="144" width="30" height="30" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="261" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309">02</text>
+  <text x="318" y="220" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">CTEs &amp; recursion</text>
+  <text x="318" y="258" text-anchor="middle" font-size="15.5" font-weight="500" fill="#64748b">trees · depth</text>
+  <line x1="405" y1="206" x2="418" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqla-arrow)"/>
+
+  <rect x="422" y="128" width="168" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="434" y="144" width="30" height="30" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="449" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309">03</text>
+  <text x="506" y="220" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Funnels &amp; pivots</text>
+  <text x="506" y="258" text-anchor="middle" font-size="15.5" font-weight="500" fill="#64748b">cohort · coupon</text>
+  <line x1="593" y1="206" x2="606" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqla-arrow)"/>
+
+  <rect x="610" y="128" width="168" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="622" y="144" width="30" height="30" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="637" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309">04</text>
+  <text x="694" y="220" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">JSON &amp; inventory</text>
+  <text x="694" y="258" text-anchor="middle" font-size="15.5" font-weight="500" fill="#64748b">attributes · stock</text>
+  <line x1="781" y1="206" x2="794" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqla-arrow)"/>
+
+  <rect x="798" y="128" width="168" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="810" y="144" width="30" height="30" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="825" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309">05</text>
+  <text x="882" y="220" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Performance</text>
+  <text x="882" y="258" text-anchor="middle" font-size="15.5" font-weight="500" fill="#64748b">plan · index · txn</text>
+  <line x1="969" y1="206" x2="982" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqla-arrow)"/>
+
+  <rect x="986" y="128" width="168" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="998" y="144" width="30" height="30" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="1013" y="165" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309">06</text>
+  <text x="1070" y="220" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">Capstone</text>
+  <text x="1070" y="258" text-anchor="middle" font-size="15.5" font-weight="500" fill="#64748b">vendor · retention</text>
+</svg>

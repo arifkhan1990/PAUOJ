@@ -17,6 +17,7 @@ export type CreateRunInput = {
   stdin: string;
   timeLimitMs: number;
   memoryLimitMb: number;
+  sqlScript?: boolean;
 };
 
 export async function createRun(input: CreateRunInput): Promise<string> {

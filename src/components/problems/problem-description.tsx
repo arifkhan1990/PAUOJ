@@ -12,7 +12,8 @@ import type { ProblemDetail } from "@/lib/types";
 
 export function ProblemDescription({ problem }: { problem: ProblemDetail }) {
   const hasIo = Boolean(problem.inputFormat || problem.outputFormat);
-  const isSql = problem.judgeLanguage === "sql";
+  const isSql =
+    problem.judgeLanguage === "sql" || problem.judgeLanguage === "sql-script";
 
   return (
     <div className="space-y-5">

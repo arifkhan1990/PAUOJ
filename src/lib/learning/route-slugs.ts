@@ -75,6 +75,8 @@ export const LEARNING_ROUTE_SLUGS: Record<string, string[]> = {
     "advanced-windows",
     "pivot-grouping",
     "query-performance",
+    "ddl-and-indexes",
+    "dml-and-transactions",
     "capstone",
   ],
 };

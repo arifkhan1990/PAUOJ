@@ -37,6 +37,8 @@ export type JudgeRequest = {
   tests: JudgeTest[];
   checker: JudgeChecker;
   mode: "submission" | "run";
+  /** Run the SQL submission as a multi-statement script (DDL/DML allowed). */
+  sqlScript?: boolean;
 };
 
 export type JudgeTestOutcome = {

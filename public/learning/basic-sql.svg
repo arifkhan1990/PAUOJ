@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-labelledby="sqlb-title sqlb-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Noto Sans Bengali', sans-serif">
+  <title id="sqlb-title">Basic SQL: ShopSphere marketplace concept map</title>
+  <desc id="sqlb-desc">Five-step flow of the basic ShopSphere track: the 19-table marketplace with SELECT and WHERE filters, then JOIN with GROUP BY aggregates, then LEFT JOIN, NULL handling and set operations, then text and date search, and finally payments, shipments, returns and the timed checkpoint.</desc>
+  <defs>
+    <pattern id="sqlb-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#cbd5e1" opacity="0.45"/>
+    </pattern>
+    <marker id="sqlb-arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" refX="10" refY="6" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="320" fill="#f8fafc"/>
+  <rect width="1200" height="320" fill="url(#sqlb-dots)"/>
+  <rect x="48" y="36" width="152" height="36" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="124" y="60" text-anchor="middle" font-size="17" font-weight="700" fill="#b45309" letter-spacing="1.6">BASIC SQL</text>
+  <text x="222" y="60" font-size="26" font-weight="700" fill="#0f172a">ShopSphere: lists to lifecycle</text>
+  <rect x="1022" y="40" width="130" height="28" rx="14" fill="#ecfdf5" stroke="#6ee7b7" stroke-width="1"/>
+  <text x="1087" y="59" text-anchor="middle" font-size="13" font-weight="700" fill="#047857" letter-spacing="1.4">TRACK 08</text>
+
+  <rect x="46" y="128" width="204" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="62" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="79" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">01</text>
+  <text x="148" y="222" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">Dataset &amp; SELECT</text>
+  <text x="148" y="260" text-anchor="middle" font-size="16.5" font-weight="500" fill="#64748b">19 tables · filters</text>
+  <line x1="253" y1="206" x2="268" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqlb-arrow)"/>
+
+  <rect x="272" y="128" width="204" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="288" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="305" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">02</text>
+  <text x="374" y="222" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">Joins &amp; aggregates</text>
+  <text x="374" y="260" text-anchor="middle" font-size="16.5" font-weight="500" fill="#64748b">JOIN · SUM · HAVING</text>
+  <line x1="479" y1="206" x2="494" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqlb-arrow)"/>
+
+  <rect x="498" y="128" width="204" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="514" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="531" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">03</text>
+  <text x="600" y="222" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">NULL &amp; sets</text>
+  <text x="600" y="260" text-anchor="middle" font-size="16.5" font-weight="500" fill="#64748b">LEFT JOIN · UNION</text>
+  <line x1="705" y1="206" x2="720" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqlb-arrow)"/>
+
+  <rect x="724" y="128" width="204" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="740" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="757" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">04</text>
+  <text x="826" y="222" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">Text &amp; dates</text>
+  <text x="826" y="260" text-anchor="middle" font-size="16.5" font-weight="500" fill="#64748b">LIKE · date_trunc</text>
+  <line x1="931" y1="206" x2="946" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#sqlb-arrow)"/>
+
+  <rect x="950" y="128" width="204" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="966" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="983" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">05</text>
+  <text x="1052" y="222" text-anchor="middle" font-size="20" font-weight="700" fill="#0f172a">Order lifecycle</text>
+  <text x="1052" y="260" text-anchor="middle" font-size="16.5" font-weight="500" fill="#64748b">returns → checkpoint</text>
+</svg>

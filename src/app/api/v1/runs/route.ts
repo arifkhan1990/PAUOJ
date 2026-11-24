@@ -16,6 +16,7 @@ export async function POST(request: NextRequest) {
 
     let timeLimitMs = 2000;
     let memoryLimitMb = 256;
+    let sqlScript = false;
     if (input.problemId) {
       const { problem } = await getProblemForSubmission(
         input.problemId,
@@ -24,6 +25,7 @@ export async function POST(request: NextRequest) {
       );
       timeLimitMs = Math.min(problem.timeLimitMs, 10_000);
       memoryLimitMb = Math.min(problem.memoryLimitMb, 1024);
+      sqlScript = problem.judgeLanguage === "sql-script";
     }
 
     const runId = await createRun({
@@ -33,6 +35,7 @@ export async function POST(request: NextRequest) {
       stdin: input.stdin,
       timeLimitMs,
       memoryLimitMb,
+      sqlScript,
     });
     return apiCreated({ runId });
   } catch (error) {

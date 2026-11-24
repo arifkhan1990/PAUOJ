@@ -64,7 +64,8 @@ export async function createSubmission(
     await getProblemForSubmission(input.problemId, user.id, isAdmin);
 
   if (
-    problem.judgeLanguage === "sql" &&
+    (problem.judgeLanguage === "sql" ||
+      problem.judgeLanguage === "sql-script") &&
     !["sql", "mysql", "postgresql"].includes(input.language)
   ) {
     throw errors.validation(

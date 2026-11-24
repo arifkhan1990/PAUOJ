@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { CheckpointCard } from "@/components/learning/checkpoint-card";
 import { ContentInProduction } from "@/components/learning/content-in-production";
+import { CourseOverview } from "@/components/learning/course-overview";
 import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSteps } from "@/components/learning/learning-steps";
 import { ModuleHeader } from "@/components/learning/module-header";
@@ -48,6 +49,11 @@ export default async function LearningModulePage({
     return (
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <ModuleHeader module={track} />
+        <CourseOverview
+          module={track}
+          isSql={definition.track === "sql"}
+          className="mt-8"
+        />
         <PremiumPaywall
           moduleTitle={track.title}
           priceBdt={purchasePriceBdt(track.slug)}
@@ -79,6 +85,11 @@ export default async function LearningModulePage({
     return (
       <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <ModuleHeader module={track} />
+        <CourseOverview
+          module={track}
+          isSql={definition.track === "sql"}
+          className="mt-8"
+        />
         <LearningLocked hint={track.unlockHint} className="mt-6" />
 
         <section className="mt-10">
@@ -105,6 +116,12 @@ export default async function LearningModulePage({
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
       <ModuleHeader module={track} />
+
+      <CourseOverview
+        module={track}
+        isSql={definition.track === "sql"}
+        className="mt-8"
+      />
 
       {isLive ? null : <ContentInProduction className="mt-6" />}
 

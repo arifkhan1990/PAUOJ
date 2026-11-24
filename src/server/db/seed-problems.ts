@@ -29,7 +29,7 @@ export type SeedProblem = {
   tests: SeedTest[];
   referencePython: string;
   referenceSql?: string;
-  judgeLanguage?: "sql";
+  judgeLanguage?: "sql" | "sql-script";
   premiumModuleSlug?: string;
   category?: string;
   subcategory?: string;

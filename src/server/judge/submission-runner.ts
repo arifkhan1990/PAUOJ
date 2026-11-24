@@ -26,6 +26,8 @@ export type JudgeSubmission = {
   timeLimitMs: number;
   memoryLimitMb: number;
   tests: JudgeTest[];
+  /** Problem allows a multi-statement SQL script (DDL/DML/transactions). */
+  sqlScript: boolean;
 };
 
 export async function claimSubmission(
@@ -55,6 +57,7 @@ export async function claimSubmission(
       sourceCode: submissions.sourceCode,
       timeLimitMs: problems.timeLimitMs,
       memoryLimitMb: problems.memoryLimitMb,
+      judgeLanguage: problems.judgeLanguage,
     })
     .from(submissions)
     .innerJoin(problems, eq(problems.id, submissions.problemId))
@@ -95,6 +98,7 @@ export async function claimSubmission(
       expectedOutput: test.expectedOutput,
       isSample: test.isSample,
     })),
+    sqlScript: row.judgeLanguage === "sql-script",
   };
 }
 

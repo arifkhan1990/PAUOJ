@@ -18,6 +18,7 @@ export type RunJob = {
   stdin: string;
   timeLimitMs: number;
   memoryLimitMb: number;
+  sqlScript?: boolean;
 };
 
 export type JudgeJobData = SubmissionJob | RunJob;

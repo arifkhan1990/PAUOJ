@@ -57,6 +57,7 @@ async function handleSubmission(job: SubmissionJob): Promise<void> {
         floatTolerance: submission.floatTolerance,
       },
       mode: "submission",
+      sqlScript: submission.sqlScript,
     });
   } catch (error) {
     const message =
@@ -97,6 +98,7 @@ async function handleRun(job: RunJob): Promise<void> {
       ],
       checker: { type: "EXACT", source: null, floatTolerance: 0.000001 },
       mode: "run",
+      sqlScript: job.sqlScript,
     });
     await updateRun(job.userId, job.runId, {
       status: outcome.status,

@@ -7,6 +7,7 @@ import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSection } from "@/components/learning/learning-section";
 import { ProblemGroup } from "@/components/learning/problem-group";
 import { PremiumPaywall } from "@/components/learning/premium-paywall";
+import { SqlTopicVisual } from "@/components/learning/sql-topic-visual";
 import {
   CheckpointCta,
   LessonHeader,
@@ -86,6 +87,7 @@ export default async function LearningTopicPage({
 
   const checkpoint = definition.checkpoint;
   const isPlanned = definition.status === "PLANNED";
+  const isSql = definition.track === "sql";
   const topicPosition =
     definition.topics.findIndex((item) => item.slug === topicSlug) + 1;
 
@@ -200,6 +202,9 @@ export default async function LearningTopicPage({
               title="Concept note"
               description="Read this first; it sets up the mental model for the problems."
             >
+              {isSql && !isPlanned ? (
+                <SqlTopicVisual topicSlug={topicSlug} className="mb-4" />
+              ) : null}
               <Card className="p-5 sm:p-6">
                 {topic.concept.trim() ? (
                   <Markdown lang="bn" headingIdPrefix="concept">

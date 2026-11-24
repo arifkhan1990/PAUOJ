@@ -2,25 +2,27 @@ import { describe, expect, it } from "vitest";
 import { SQL_PROBLEMS } from "./sql-problems";
 
 describe("ShopSphere SQL problems", () => {
-  it("ships twenty-three free and twenty-five advanced project problems", () => {
-    expect(SQL_PROBLEMS).toHaveLength(48);
-    expect(new Set(SQL_PROBLEMS.map((problem) => problem.slug)).size).toBe(48);
+  it("ships forty-three free and fifty-one advanced project problems", () => {
+    expect(SQL_PROBLEMS).toHaveLength(94);
+    expect(new Set(SQL_PROBLEMS.map((problem) => problem.slug)).size).toBe(94);
     const advanced = SQL_PROBLEMS.filter(
       (problem) => problem.premiumModuleSlug === "advanced-sql",
     );
-    expect(advanced).toHaveLength(25);
-    expect(SQL_PROBLEMS.length - advanced.length).toBe(23);
+    expect(advanced).toHaveLength(51);
+    expect(SQL_PROBLEMS.length - advanced.length).toBe(43);
     for (const problem of advanced) {
       expect(
         problem.slug.startsWith("sql-adv-") ||
-          problem.slug.startsWith("sql-check-adv-"),
+          problem.slug.startsWith("sql-check-adv-") ||
+          problem.slug.startsWith("sql-practice-") ||
+          problem.slug.startsWith("sql-lab-"),
       ).toBe(true);
     }
   });
 
   it("gives every problem five tests, two samples and a SQL reference", () => {
     for (const problem of SQL_PROBLEMS) {
-      expect(problem.judgeLanguage).toBe("sql");
+      expect(["sql", "sql-script"]).toContain(problem.judgeLanguage);
       expect(problem.tests).toHaveLength(5);
       expect(problem.tests.filter((test) => test.isSample)).toHaveLength(2);
       const expectedRows = new Set(
@@ -28,8 +30,12 @@ describe("ShopSphere SQL problems", () => {
       );
       expect(expectedRows.size).toBeGreaterThanOrEqual(3);
       expect(problem.referenceSql?.length).toBeGreaterThan(0);
-      expect(problem.referenceSql?.trim()).toMatch(/^(SELECT|WITH)\b/i);
-      expect(problem.referenceSql).toMatch(/\bORDER BY\b/i);
+      expect(problem.referenceSql?.trim()).toMatch(
+        /^(SELECT|WITH|CREATE|INSERT|BEGIN)\b/i,
+      );
+      if (problem.judgeLanguage === "sql") {
+        expect(problem.referenceSql).toMatch(/\bORDER BY\b/i);
+      }
       for (const test of problem.tests) {
         expect(test.expectedOutput.length).toBeGreaterThan(0);
       }

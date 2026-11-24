@@ -324,6 +324,7 @@ export async function runJudge(request: JudgeRequest): Promise<JudgeOutcome> {
       extraEnv: {
         PYTHONDONTWRITEBYTECODE: "1",
         PYTHONUNBUFFERED: "1",
+        ...(request.sqlScript ? { SQL_SCRIPT: "1" } : {}),
       },
     });
 
