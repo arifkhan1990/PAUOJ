@@ -21,22 +21,33 @@ import { ADVANCED_SQL_WINDOW_TOPICS } from "./sql-advanced-windows";
 import { ADVANCED_SQL_PERFORMANCE_TOPICS } from "./sql-advanced-performance";
 import { ADVANCED_SQL_LAB_TOPICS } from "./sql-advanced-labs";
 import { BASIC_SQL_PRACTICE } from "../sql-practice-basic";
+import { BASIC_SQL_PRACTICE_MORE } from "../sql-practice-basic-more";
 import { ADVANCED_SQL_PRACTICE_A } from "../sql-practice-advanced-a";
+import { ADVANCED_SQL_PRACTICE_MORE } from "../sql-practice-advanced-more";
 import { ADVANCED_SQL_PRACTICE_B } from "../sql-practice-advanced-b";
-
-
-const SQL_PRACTICE = {
-  ...BASIC_SQL_PRACTICE,
-  ...ADVANCED_SQL_PRACTICE_A,
-  ...ADVANCED_SQL_PRACTICE_B,
-};
+const PRACTICE_MAPS = [
+  BASIC_SQL_PRACTICE,
+  BASIC_SQL_PRACTICE_MORE,
+  ADVANCED_SQL_PRACTICE_A,
+  ADVANCED_SQL_PRACTICE_B,
+  ADVANCED_SQL_PRACTICE_MORE,
+];
 
 function withPractice(
   topics: LearningTopicDefinition[],
 ): LearningTopicDefinition[] {
   return topics.map((topic) => {
-    const practice = SQL_PRACTICE[topic.slug];
-    return practice ? { ...topic, practiceProblemSlugs: practice } : topic;
+    const practice = { easy: [] as string[], medium: [] as string[], hard: [] as string[] };
+    for (const map of PRACTICE_MAPS) {
+      const entry = map[topic.slug];
+      if (!entry) continue;
+      practice.easy.push(...entry.easy);
+      practice.medium.push(...entry.medium);
+      practice.hard.push(...entry.hard);
+    }
+    return practice.easy.length + practice.medium.length + practice.hard.length > 0
+      ? { ...topic, practiceProblemSlugs: practice }
+      : topic;
   });
 }
 
@@ -84,7 +95,7 @@ export const basicSqlModule: LearningModuleDefinition = {
   goal: "Go from filtered lists and joins to sets, text/date search, payments, shipments and returns — the queries a marketplace runs every day.",
   description:
     "ShopSphere মাল্টি-ভেন্ডর দোকানের ডেটা দিয়ে SQL শেখা শুরু। ভেন্ডর-প্রোডাক্ট খোঁজা, অর্ডার ও আইটেম জোড়া লাগিয়ে রেভিনিউ, dead stock, subquery, set operations, টেক্সট/তারিখ সার্চ, পেমেন্ট-শিপমেন্ট-রিটার্ন—প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু, তারপর সেই প্রশ্নের query।",
-  estimatedHours: 32,
+  estimatedHours: 40,
   diagram: {
     src: "/learning/basic-sql.svg",
     alt: "Basic SQL learning map: ShopSphere dataset, SELECT/WHERE, joins and aggregates, NULL and set operations, text/dates, order lifecycle, checkpoint",
@@ -154,7 +165,7 @@ export const advancedSqlModule: LearningModuleDefinition = {
   goal: "Turn marketplace data into analytics: rankings, moving windows, funnels, coupons, JSON inventory, payout reconciliation and retention.",
   description:
     "এবার ShopSphere-এর অ্যানালিটিক্স টিমে কাজ। Window function দিয়ে র্যাংকিং, চলমান রেভিনিউ ও moving average; recursive CTE দিয়ে ক্যাটাগরি ও রেফারেল; CTE দিয়ে ফানেল, কুপন attribution, JSON/ইনভেন্টরি reconciliation, ভেন্ডর payout ও retention—সব বাস্তব project প্রশ্ন ধরে ধরে।",
-  estimatedHours: 44,
+  estimatedHours: 56,
   diagram: {
     src: "/learning/advanced-sql.svg",
     alt: "Advanced SQL learning map: rankings and windows, CTEs and recursion, funnels and pivots, JSON and inventory, finance, performance, writable SQL labs, capstone",

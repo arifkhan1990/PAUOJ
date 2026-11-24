@@ -181,12 +181,12 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
 ## SQL Labs (ShopSphere project)
 
 `/learn/sql` is the ShopSphere hub; the actual curriculum lives in two formal
-learning modules (23 topics, 46 guided problems, 42 practice problems,
-2 checkpoints, 94 judge problems / 470 tests total) so progress, checkpoints and badges behave like the other
+learning modules (23 topics, 46 guided problems, 84 practice problems,
+2 checkpoints, 136 judge problems / 680 tests total) so progress, checkpoints and badges behave like the other
 tracks. Every task is a **normal judge problem** with points, time and memory
 limits, visible in the problem list.
 
-- **Basic SQL** (`basic-sql`, track 08, free, 32h): vendor directory, low stock,
+- **Basic SQL** (`basic-sql`, track 08, free, 40h): vendor directory, low stock,
   revenue/receipts, dead stock, stock buckets, above-category-average prices,
   customers without orders, set operations/data quality, case-insensitive
   search + date ranges, and the order lifecycle (payments, shipments, returns).
@@ -195,7 +195,7 @@ limits, visible in the problem list.
   and lifecycle reconciliation, plus the 45-minute *ShopSphere Analyst*
   checkpoint.
 - **Advanced SQL** (`advanced-sql`, track 09, ৳500, separate from the ৳700 code
-  bundle, 44h): ranking, running totals and 7-row moving averages, recursive
+  bundle, 56h): ranking, running totals and 7-row moving averages, recursive
   category/referral trees, category share and month-over-month growth, cart
   funnels, coupon attribution, JSON product attributes, inventory-ledger
   reconciliation, vendor payout reconciliation, refund impact and a
@@ -209,7 +209,7 @@ limits, visible in the problem list.
   shipments, returns, coupons/redemptions, carts/items, product variants,
   inventory movements, JSON attributes and vendor payouts. All expected rows
   are generated from `judge/shopsphere.sql`.
-- Every topic has 2 guided + 2 practice problems (one easy, one medium); four
+- Every topic has 2 guided + 4 practice problems (two easy/medium warm-ups and two hard/challenge sets); four
   advanced lab topics add writable DDL/DML/transaction practice. Every SQL
   problem ships with five judge tests (two visible samples, at least three
   distinct expected outputs); the lab track uses the `sql-script` runner,

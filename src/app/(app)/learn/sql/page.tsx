@@ -233,12 +233,21 @@ export default async function SqlLabPage() {
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {module.topics.map((topic) => {
                 const topicSlugs = topic.guidedProblemSlugs;
+                const practiceCount =
+                  topic.practiceProblemSlugs.easy.length +
+                  topic.practiceProblemSlugs.medium.length +
+                  topic.practiceProblemSlugs.hard.length;
                 return (
                   <Card key={topic.slug} className="flex flex-col p-5">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                       {topic.titleBn}
                     </p>
-                    <h3 className="mt-1 text-base font-semibold">{topic.title}</h3>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <h3 className="text-base font-semibold">{topic.title}</h3>
+                      <Badge variant="outline">
+                        {topicSlugs.length} guided · {practiceCount} practice
+                      </Badge>
+                    </div>
                     <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                       {topic.summary}
                     </p>

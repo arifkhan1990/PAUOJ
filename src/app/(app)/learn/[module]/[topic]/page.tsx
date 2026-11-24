@@ -7,7 +7,7 @@ import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSection } from "@/components/learning/learning-section";
 import { ProblemGroup } from "@/components/learning/problem-group";
 import { PremiumPaywall } from "@/components/learning/premium-paywall";
-import { SqlTopicVisual } from "@/components/learning/sql-topic-visual";
+import { SqlTopicStory } from "@/components/learning/sql-topic-story";
 import {
   CheckpointCta,
   LessonHeader,
@@ -203,7 +203,7 @@ export default async function LearningTopicPage({
               description="Read this first; it sets up the mental model for the problems."
             >
               {isSql && !isPlanned ? (
-                <SqlTopicVisual topicSlug={topicSlug} className="mb-4" />
+                <SqlTopicStory topicSlug={topicSlug} className="mb-4" />
               ) : null}
               <Card className="p-5 sm:p-6">
                 {topic.concept.trim() ? (

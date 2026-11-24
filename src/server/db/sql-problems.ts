@@ -44,6 +44,27 @@ import { SQL_PROBLEMS_PRACTICE_BASIC_SET_OPERATIONS } from "./sql-problems-pract
 import { SQL_PROBLEMS_PRACTICE_BASIC_SUBQUERIES } from "./sql-problems-practice-basic-subqueries";
 import { SQL_PROBLEMS_PRACTICE_BASIC_TEXT_AND_DATES } from "./sql-problems-practice-basic-text-and-dates";
 import { SQL_PROBLEMS_PRACTICE_BASIC_TEXT_DATES_TIME } from "./sql-problems-practice-basic-text-dates-time";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_WINDOW_THINKING } from "./sql-problems-practice-advanced-more-window-thinking";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_HIERARCHIES } from "./sql-problems-practice-advanced-more-hierarchies";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_BUSINESS_METRICS } from "./sql-problems-practice-advanced-more-business-metrics";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_TIMELINES } from "./sql-problems-practice-advanced-more-timelines";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_FUNNELS_COUPONS } from "./sql-problems-practice-advanced-more-funnels-coupons";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_JSON_INVENTORY } from "./sql-problems-practice-advanced-more-json-inventory";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_FINANCE_RECONCILIATION } from "./sql-problems-practice-advanced-more-finance-reconciliation";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_ADVANCED_WINDOWS } from "./sql-problems-practice-advanced-more-advanced-windows";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_PIVOT_GROUPING } from "./sql-problems-practice-advanced-more-pivot-grouping";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_QUERY_PERFORMANCE } from "./sql-problems-practice-advanced-more-query-performance";
+import { SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_CAPSTONE } from "./sql-problems-practice-advanced-more-capstone";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_ORIENTATION } from "./sql-problems-practice-basic-more-orientation";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_MONEY_AND_ORDERS } from "./sql-problems-practice-basic-more-money-and-orders";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_MISSING_ROWS } from "./sql-problems-practice-basic-more-missing-rows";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_SUBQUERIES } from "./sql-problems-practice-basic-more-subqueries";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_SET_OPERATIONS } from "./sql-problems-practice-basic-more-set-operations";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_TEXT_AND_DATES } from "./sql-problems-practice-basic-more-text-and-dates";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_ORDER_LIFECYCLE } from "./sql-problems-practice-basic-more-order-lifecycle";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_JOINS_IN_DEPTH } from "./sql-problems-practice-basic-more-joins-in-depth";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_PAGINATION } from "./sql-problems-practice-basic-more-pagination";
+import { SQL_PROBLEMS_PRACTICE_BASIC_MORE_TEXT_DATES_TIME } from "./sql-problems-practice-basic-more-text-dates-time";
 /** All ShopSphere SQL problems, grouped for maintainability. */
 export const SQL_PROBLEMS: SeedProblem[] = [
   ...SQL_PROBLEMS_BASIC,
@@ -65,6 +86,16 @@ export const SQL_PROBLEMS: SeedProblem[] = [
   ...SQL_PROBLEMS_PRACTICE_BASIC_SUBQUERIES,
   ...SQL_PROBLEMS_PRACTICE_BASIC_TEXT_AND_DATES,
   ...SQL_PROBLEMS_PRACTICE_BASIC_TEXT_DATES_TIME,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_ORIENTATION,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_MONEY_AND_ORDERS,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_MISSING_ROWS,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_SUBQUERIES,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_SET_OPERATIONS,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_TEXT_AND_DATES,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_ORDER_LIFECYCLE,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_JOINS_IN_DEPTH,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_PAGINATION,
+  ...SQL_PROBLEMS_PRACTICE_BASIC_MORE_TEXT_DATES_TIME,
   ...SQL_PROBLEMS_ADVANCED,
   ...SQL_PROBLEMS_ADVANCED_METRICS,
   ...SQL_PROBLEMS_ADVANCED_TIMELINES,
@@ -87,6 +118,17 @@ export const SQL_PROBLEMS: SeedProblem[] = [
   ...SQL_PROBLEMS_PRACTICE_ADVANCED_B_FINANCE_RECONCILIATION,
   ...SQL_PROBLEMS_PRACTICE_ADVANCED_B_PIVOT_GROUPING,
   ...SQL_PROBLEMS_PRACTICE_ADVANCED_B_QUERY_PERFORMANCE,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_WINDOW_THINKING,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_HIERARCHIES,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_BUSINESS_METRICS,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_TIMELINES,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_FUNNELS_COUPONS,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_JSON_INVENTORY,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_FINANCE_RECONCILIATION,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_ADVANCED_WINDOWS,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_PIVOT_GROUPING,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_QUERY_PERFORMANCE,
+  ...SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_CAPSTONE,
   ...SQL_PROBLEMS_CHECKPOINTS_BASIC,
   ...SQL_PROBLEMS_CHECKPOINTS_ADVANCED,
 ];
