@@ -29,6 +29,7 @@ RUN node --version \
 
 COPY harness.py /harness.py
 COPY sql-runner.py /sql-runner.py
+COPY sql_compat.py /sql_compat.py
 COPY shopsphere.sql /shopsphere.sql
 
 LABEL org.opencontainers.image.title="PAUOJ judge sandbox"
