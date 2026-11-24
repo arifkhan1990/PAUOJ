@@ -2,7 +2,7 @@
 
 ![PAU OJ — PrimeAsia University Online Judge](public/brand/pauoj-logo.png)
 
-**Version 0.8.2.** A full-stack online judge for PrimeAsia University: browse problems, write code in
+**Version 0.9.0.** A full-stack online judge for PrimeAsia University: browse problems, write code in
 the browser, get sandboxed verdicts, compete in ICPC-style contests, run timed assessments and track
 progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 
@@ -19,7 +19,7 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Real judging** — compile once, run each test in a locked-down Docker container with CPU, memory,
   process, file-size and wall-clock limits.
 - **Ten languages** — C17, C++20, Python 3.11, Java 17, JavaScript (Node 24), C# (Mono), Go, PHP,
-  Kotlin and Swift.
+  Kotlin and Swift, plus SQL on real SQLite, MariaDB/MySQL and PostgreSQL engines.
 - **Verdicts** — Accepted, Wrong Answer, Time Limit, Memory Limit, Runtime Error, Compilation Error,
   Output Limit and System Error, with per-test results.
 - **Output checkers** — `EXACT` (whitespace-normalized), `TOKEN`, `FLOAT` tolerance and `CUSTOM`
@@ -40,10 +40,15 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Reviewer leaderboard** — a public `/reviewers` board ranks reviewers by completed
   contribution decisions, with 7/30/all-time filters, approval rate, turnaround time, a top-3
   podium and a mobile-safe table.
-- **Learning tracks** — a seven-track curriculum at `/learn` with Bangla concept notes,
-  professional concept-map diagrams, guided problems, tiered practice, extra self-try problems
-  and timed checkpoint badges. Tracks unlock sequentially, and earned/locked badges appear on
-  the profile.
+- **Learning tracks** — a nine-track curriculum at `/learn` (seven algorithm tracks plus two
+  project-driven SQL labs) with Bangla concept notes, professional concept-map diagrams, guided
+  problems, tiered practice, extra self-try problems and timed checkpoint badges. Algorithm
+  tracks unlock sequentially, and earned/locked badges appear on the profile. Two **free career
+  toolkit** modules — Git & GitHub and Docker & CI/CD — teach the workflows a junior engineer uses
+  on day one with story-driven notes, hands-on terminal labs, guided/solo drills and a timed
+  checkpoint. They never require a purchase or a previous badge. Every topic also opens a
+  **visual explainer** — a small animated SVG/CSS diagram that shows the mental model before the
+  text, with a visible step list and a reduced-motion fallback.
 - **Study plans and daily practice** — sectioned, level-tagged plans with estimated duration,
   featured picks, enrollment, per-section progress, next-problem resume, private learner-created
   plans and per-problem notes; a deterministic daily challenge with a streak; and
@@ -52,16 +57,41 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   assessments.
 - **Editor** — self-hosted Monaco with language-aware drafts saved in the browser.
 - **Profiles** — points/rank/streak, rating graph, language/verdict analytics, solved lists,
-  institution/country, badges and editorial credits.
+  institution/country, badges and editorial credits, website/GitHub/LinkedIn links, current
+  status/company/job title/skills, a public followers/following graph with in-app follow
+  notices, and one-click profile sharing with canonical/Open Graph metadata. Phone, address
+  and T-shirt size stay private between the owner and admins.
 - **Insights** — a Recharts 14-day activity chart and a 365-day submission heatmap.
 
 ### Contests
-- **Contests** — registration, divisions, contest-only problems, ICPC scoreboard with penalties,
-  live standings, clarifications, ratings, virtual replays, a freeze window and an admin editor.
-- **Problem approvals** — another setter's problems need approval before publication; drafts stay
-  private, admin-created contests approve their problems automatically, and approval is individual or
-  bulk.
-- **Contest integrity** — admins review code-similarity signals before acting; advisory only.
+- **Contest hub** — a next-up spotlight, status/format/division filters and compact
+  contest rows with Dhaka-local start times, duration, entry counts and direct links.
+- **Modern contest page** — optional organiser banner with a branded fallback, a full
+  Markdown description, format/eligibility, organiser rules plus the standard platform
+  policy, prizes/recognition, a state-aware hero CTA, Dhaka-local times, share and
+  add-to-calendar (ICS) tools.
+- **Solo and team rounds** — individual or 2–6 coder teams with captain transfer, team
+  rosters and a team-aggregated ICPC scoreboard. Captains can invite coders by username
+  with accept/decline, pending-invite cancellation and a shareable fallback code.
+- **Monthly official series** — the worker creates the third-Sunday 10:00 Asia/Dhaka
+  90-minute round automatically; the problem set stays sealed until the start.
+- **Fresh problems only** — a new contest problem must never have appeared in another
+  contest and stays private until its debut; reuse and public problems are rejected.
+- **Crew protection** — directors, setters, editorial writers, testers and observers
+  (including a contest problem's author and editorial/test contributors) cannot
+  register, join a team or submit, and non-director crew cannot open running statements.
+- **Contest integrity** — editorials are sealed during the round, statements carry a
+  per-user watermark, copy/paste/print/context-menu/tab signals are logged, and admins
+  review fundamentals plus code-similarity signals.
+- **Sponsorships** — anyone can request a title/gold/silver/community sponsorship;
+  approved sponsors are highlighted on the contest page and list card.
+- **Community hosting** — any signed-in user can submit a full host request with a
+  banner, ৳3,000–৳5,000 fee and TrxID; an admin converts it into a private draft contest.
+- **Problem approvals** — another setter's problems need approval before publication;
+  drafts stay private, admin-created contests approve their problems automatically,
+  and approval is individual or bulk.
+- **Live features** — registration, divisions, clarifications, ratings, virtual
+  replays (solo), a freeze window and an admin editor.
 
 ### Assessments & roles
 - **Coding assessments** — private timed tests with per-candidate timers, early finish, private
@@ -219,6 +249,14 @@ See [docs/architecture.md](docs/architecture.md#judge-sandbox) for the full desi
 | PHP | PHP 8.2 | `php -l` then CLI |
 | Kotlin | Kotlin 1.3 on JDK 17 | compiled to a self-contained JAR |
 | Swift | Swift 5.10 | separate `pauoj/judge-swift` image |
+| SQL | SQLite 3 | portable SQL option; read-only ShopSphere fixture |
+| SQLite | SQLite 3 | native SQLite 3; script labs run here |
+| MySQL | MariaDB 10.11 | real server, SELECT-only role, one statement |
+| PostgreSQL | PostgreSQL 15 | real server, SELECT-only role, one statement |
+
+SQL problems offer four choices backed by three real engines. MySQL and
+PostgreSQL each boot a private server in the sandbox; script-mode labs (DDL/DML
+and transactions) are SQLite-only.
 
 ## Environment variables
 
@@ -258,6 +296,11 @@ All app routes are under `/api/v1`. Success: `{ "data": ..., "meta": { "page": 1
 | GET/POST | `/submissions`, `/submissions/:id`, `/submissions/:id/events` | optional/user | List, create, detail, SSE |
 | POST | `/runs`, GET `/runs/:id` | user | Custom run and poll |
 | GET/POST | `/contests`, `/contests/:slug/standings`, `/contests/:slug/register` | optional/user | Contest and scoreboard |
+| POST/DELETE | `/contests/:slug/teams`, `/contests/:slug/teams/join`, `/contests/:slug/teams/leave` | user | Team formation and registration |
+| POST/PATCH/DELETE | `/contests/:slug/teams/invites[/:id]` | user | Invite, accept/decline or cancel a teammate invitation |
+| POST | `/contests/:slug/sponsors`, `/contests/host-requests` | user | Sponsorship and community hosting |
+| POST | `/contests/:slug/integrity-events` | participant | Watermark/copy/tab integrity signal |
+| GET/PATCH | `/admin/host-requests`, `/admin/contests/:id/operations`, `/admin/contest-series` | admin/crew | Contest operations |
 | POST | `/assessments/:slug/join` (access code or invite token), `/assessments/:slug/finish` | user | Assessment session |
 | GET | `/assessments/:slug/invites/:token` | public | Read-only invite metadata |
 | GET/POST | `/admin/assessments/:id/invites` | admin/teacher | Roster list and CSV import |
@@ -323,9 +366,21 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
   no send-all, no scheduled retry or reminder — and needs SMTP with an authenticated sending
   domain (SPF/DKIM/DMARC) at deployment. Link-only invites work without SMTP.
 - No object storage for very large test files; tests live in PostgreSQL text columns.
-- No team contests.
-- All seven learning tracks ship. Every topic has the full 3-easy / 3-medium / 2-hard
-  practice tier plus two or three extra problems.
+- Team contests are unrated and virtual replay is solo-only. A monthly auto-created
+  contest starts with a sealed/empty problem set until staff attach fresh problems.
+- Team invitations are in-app notifications only; there is no invite email yet.
+- Contest banners are supplied as public https image URLs (or the branded default);
+  there is no direct image-upload pipeline yet.
+- Contest watermarks, copy guards and integrity events are deterrents and review
+  signals; they cannot prevent an OS or phone screenshot, and they never apply an
+  automatic penalty.
+- Fresh contest problems stay out of the practice list until the normal publication
+  review after the round; the public contest page still opens them after the end.
+- All seven core learning tracks and both SQL labs ship. Every core topic has the full
+  3-easy / 3-medium / 2-hard practice tier plus two or three extra problems. The two free
+  career-toolkit modules add three workshop topics each, with two guided and two solo drills per
+  topic and a three-problem checkpoint; their lessons are story-driven and their terminal labs
+  run on the learner's own machine, not inside the judge.
 - Problem publication review is staff-only: only teachers and administrators can approve, hold,
   resolve or reopen, and coders only see the status of problems they authored. The public problem
   list shows published problems only — contest-only problems and private drafts never appear there.

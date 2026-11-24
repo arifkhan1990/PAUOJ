@@ -3,6 +3,120 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [0.9.0] - 2026-11-24
+
+### Added
+- Solo and team contests: `SINGLE`/`GROUP` formats, 2–6 coder teams, invite codes,
+  captain transfer, team registration and a team-aggregated ICPC scoreboard.
+- A monthly official series created by the worker on the third Sunday at 10:00
+  Asia/Dhaka for 90 minutes, with a `(series, start)` idempotency index.
+- Contest crew roles (director, setter, editorial writer, tester, observer), an
+  internal crew notes thread and a problem candidate shortlist. Crew cannot
+  register, join a team or submit; non-director crew cannot open running statements.
+- Fresh-problem policy: never used in another contest, never debuted, and private
+  until the round; debut rows are reserved atomically and reused/public problems
+  return `422`.
+- Sponsorship requests with tiers and public highlighting, plus community host
+  requests with a ৳3,000–৳5,000 fee and payment TrxID review/conversion.
+- Contest integrity shield: per-view watermark, copy/paste/print/context-menu and
+  tab-fullscreen guards, integrity event storage and an admin operations summary.
+- Contest pages now have an editor-authored banner with a branded fallback, a
+  full About section, format/eligibility cards, organiser rules plus the standard
+  platform policy, and a dedicated prizes/recognition section.
+- Contest hub at `/contests` with a live/upcoming spotlight, status/format/division
+  filters and compact, scannable rows with Dhaka-local times and direct links.
+- Team invitations by username with in-app notifications, accept/decline,
+  pending-invite cancellation and a shareable invite-code fallback.
+- `contests.banner_url` and `contest_host_requests.banner_url`; admin/host banner
+  URL fields with live 16:5 previews, and banner media on contest cards and hero.
+- Standard contest policy/prize fallbacks plus richer seeded descriptions, rules,
+  eligibility and prize details for the demo rounds.
+- `contest_team_invites` with captain-only invitations and one pending request per
+  team/member.
+- Admin contest editor fields for format, team size, official rounds, fresh-policy,
+  fee, eligibility, rules and prizes; admin host-request queue and monthly-series panel.
+- Crew workspace at `/dashboard/contests/:id/operations`.
+- Profile social module: optional website, GitHub and LinkedIn links with
+  handle-or-URL normalization, a public follow/unfollow graph with follower and
+  following counts, follower/following lists, an in-app "New follower"
+  notification, profile sharing, and canonical/Open Graph profile metadata.
+- Two free career-toolkit learning tracks: **Git & GitHub** (snapshots, branches,
+  GitHub flow, release tags, safe recovery) and **Docker & CI/CD** (images,
+  Dockerfile layers, Compose, production images, pipelines, deploy gates and
+  rollback). Both use story-driven Bangla concept notes, hands-on terminal labs,
+  guided/solo judge drills, a timed checkpoint and a badge; they are always open
+  and never require a purchase or a previous track's badge.
+- **Visual explainers on every learning topic:** 16 data-driven animated
+  SVG/CSS primitives cover arrays, stacks, linked lists, hashing, sorting,
+  complexity, bits, trees, graphs, DP, strings, SQL, Git, Docker and CI/CD.
+  Every topic gets a Bangla mini-lesson before guided practice, with a compact
+  module-page preview, a visible step list and a reduced-motion fallback;
+  no new dependency and no client-side JavaScript.
+- Profile detail fields: current status, company and job title, up to 12 skills,
+  plus private phone, address and T-shirt size. Work and skills are public;
+  contact and swag details are visible only to the owner and admins. Admins get
+  a `/admin/users/:id` detail page with the private data and an explicit
+  privacy notice.
+- `pnpm sql:check` runs every SQL reference solution against the three real
+  judge engines (SQLite, MariaDB, PostgreSQL) and fails on any mismatch.
+
+### Changed
+- The `/contests` hub is rebuilt for scannability: a compact hero with live,
+  upcoming and past-round counts, a countdown-led next-up spotlight, segmented
+  status tabs with scoped counts, compact format/division segmented controls,
+  date-led rows grouped into Live now, Upcoming
+  and Past contests, per-row countdowns and lightweight text actions instead of
+  repeated buttons, and a fair-play band. Repeated banner thumbnails and the
+  duplicated action column are gone.
+- Group contest team formation now lives in the hero **Create or join a team**
+  button: it opens one accessible native-dialog modal with Create/Join tabs when
+  both are available, inline validation, a pending lock, Escape/backdrop close
+  and focus return to the trigger. The duplicate inline team forms and action
+  card are gone, so the page has a single team entry point.
+- Contest detail is split into **About** and **Problems** tabs: About (the
+  default landing tab) holds the description, format/eligibility, scoring,
+  rules and prizes; Problems holds the problem set at `?tab=problems`. The
+  desktop right sidebar is sticky below the tab bar and no longer scrolls away
+  with the About content; its scoring card moved into About so the sidebar fits
+  without an inner scrollbar.
+- Contest pages now lead with a real banner/hero, feature a full description,
+  format/eligibility, rules and prizes, and keep the team/invite flow near the
+  top of the page. Cards show banner media and preserve equal heights; standings
+  show team identity and rosters.
+- Contest detail now has a state-aware hero CTA (register / team / virtual replay /
+  standings), sticky section tabs, Dhaka-local times with UTC tooltips,
+  registration status/deadline, and a share + add-to-calendar toolkit with ICS
+  downloads.
+- Contest editorials are sealed for everyone while a round runs, including admins.
+- Group contests are unrated; virtual replay remains solo-only.
+- Contest-only problems remain reachable from an ended public contest page even when
+  they are still private in the practice list.
+- The SQL judge now uses real engines: SQLite 3 for `sql`/`sqlite`, a MariaDB
+  10.11 server for `mysql`, and a PostgreSQL 15 server for `postgresql`. The
+  MySQL/PostgreSQL options no longer run through the SQLite compatibility layer;
+  each boots its own read-only server in the sandbox. SQLite submissions are
+  stored as `sqlite` instead of being folded into `sql` (migration 0041).
+
+### Fixed
+- Public submission feeds (landing page, `/submissions`, profiles and the public
+  API) now show only published problems, skip assessments, and hide contest
+  submissions until a public contest has ended, so private rounds and draft
+  problems cannot leak titles or verdicts.
+- The landing verdict feed reads the worker heartbeat instead of always showing
+  a green "Judge active"; it now switches to "Judge offline" when no worker has
+  checked in.
+- The 14-day judge chart labels include the month (`23 Nov`) so a range that
+  crosses a month boundary is no longer ambiguous, and the feed copy now matches
+  the pass-count shown in the list.
+- The admin contest detail now round-trips `feeReference` so editing a hosted contest
+  does not clear its payment reference.
+- Hosting approval marks the arrangement fee paid and enables conversion in one step.
+- Malformed UUID path parameters return `404` instead of `500`.
+- Ended team contests stamp `rated_at` without applying individual Elo changes.
+- Host-form mobile controls and contest filter chips meet the 44px touch target.
+- The host form shows the configured bKash/City Bank accounts instead of a missing
+  "official number".
+
 ## [0.8.2] - 2026-11-24
 
 ### Changed

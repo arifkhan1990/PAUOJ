@@ -1,15 +1,19 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { errors } from "@/server/api/errors";
 import { getDb } from "@/server/db";
 import {
   contestProblems,
   contestRegistrations,
+  contestStaff,
+  contestTeamMembers,
+  contestTeams,
   contests,
   problems,
 } from "@/server/db/schema";
 import type { ContestProblemOption, ContestStatus } from "@/lib/types";
 import { contestStatus } from "@/lib/contests";
 import { finalizeContestRatings } from "./ratings";
+import { implicitContestCrewRole, isContestStaff } from "./contest-staff";
 
 export type ContestViewer = {
   id: string;
@@ -29,6 +33,8 @@ export type ContestAccess = {
   status: ContestStatus;
   registered: boolean;
   isAdmin: boolean;
+  isCrew: boolean;
+  team: { id: string; name: string } | null;
   canViewContent: boolean;
   canAsk: boolean;
   problems: ContestProblemOption[];
@@ -39,10 +45,12 @@ export function resolveContestContentAccess(input: {
   isPublic: boolean;
   registered: boolean;
   isAdmin: boolean;
+  isCrew?: boolean;
 }): boolean {
   return (
     input.isAdmin ||
     input.registered ||
+    Boolean(input.isCrew) ||
     (input.isPublic && input.status === "ENDED")
   );
 }
@@ -59,6 +67,90 @@ export function canAnswerClarification(input: {
     input.contestCreatedBy === input.viewerId ||
     input.problemAuthorId === input.viewerId
   );
+}
+
+async function loadViewerParticipation(contestId: string, viewer: ContestViewer) {
+  const db = getDb();
+  if (!viewer) {
+    return {
+      registered: false,
+      team: null as ContestAccess["team"],
+      isCrew: false,
+    };
+  }
+
+  const [registration] = await db
+    .select({ contestId: contestRegistrations.contestId })
+    .from(contestRegistrations)
+    .where(
+      and(
+        eq(contestRegistrations.contestId, contestId),
+        eq(contestRegistrations.userId, viewer.id),
+      ),
+    )
+    .limit(1);
+
+  const [team] = await db
+    .select({ id: contestTeams.id, name: contestTeams.name })
+    .from(contestTeamMembers)
+    .innerJoin(contestTeams, eq(contestTeams.id, contestTeamMembers.teamId))
+    .where(
+      and(
+        eq(contestTeams.contestId, contestId),
+        eq(contestTeamMembers.userId, viewer.id),
+      ),
+    )
+    .limit(1);
+
+  const [crew] = await db
+    .select({ id: contestStaff.id })
+    .from(contestStaff)
+    .where(
+      and(
+        eq(contestStaff.contestId, contestId),
+        eq(contestStaff.userId, viewer.id),
+        inArray(contestStaff.status, ["INVITED", "ACCEPTED"]),
+      ),
+    )
+    .limit(1);
+
+  return {
+    registered: Boolean(registration) || Boolean(team),
+    team: team ?? null,
+    isCrew: Boolean(crew),
+  };
+}
+
+export async function assertContestCrewAccess(
+  contestId: string,
+  viewer: { id: string; role: string },
+): Promise<void> {
+  if (viewer.role === "ADMIN") return;
+  const db = getDb();
+  const [contest] = await db
+    .select({ createdBy: contests.createdBy })
+    .from(contests)
+    .where(eq(contests.id, contestId))
+    .limit(1);
+  if (!contest) throw errors.notFound("Contest not found.");
+  if (contest.createdBy === viewer.id) return;
+  const [crew] = await db
+    .select({ id: contestStaff.id })
+    .from(contestStaff)
+    .where(
+      and(
+        eq(contestStaff.contestId, contestId),
+        eq(contestStaff.userId, viewer.id),
+        inArray(contestStaff.status, ["INVITED", "ACCEPTED"]),
+      ),
+    )
+    .limit(1);
+  if (!crew) {
+    if (await implicitContestCrewRole(contestId, viewer.id)) return;
+    throw errors.forbidden(
+      "Only contest crew can open the contest operations workspace.",
+    );
+  }
 }
 
 export async function getContestAccess(
@@ -81,26 +173,18 @@ export async function getContestAccess(
     .limit(1);
   const contest = rows[0];
   const isAdmin = viewer?.role === "ADMIN";
-  if (!contest || (!contest.isPublic && !isAdmin)) {
+  if (!contest) {
     throw errors.notFound("Contest not found.");
   }
+  if (!contest.isPublic && !isAdmin) {
+    const crew = viewer ? await isContestStaff(contest.id, viewer.id) : null;
+    if (!crew) throw errors.notFound("Contest not found.");
+  }
 
-  const registered = viewer
-    ? Boolean(
-        (
-          await db
-            .select({ contestId: contestRegistrations.contestId })
-            .from(contestRegistrations)
-            .where(
-              and(
-                eq(contestRegistrations.contestId, contest.id),
-                eq(contestRegistrations.userId, viewer.id),
-              ),
-            )
-            .limit(1)
-        )[0],
-      )
-    : false;
+  const { registered, team, isCrew } = await loadViewerParticipation(
+    contest.id,
+    viewer,
+  );
   const status = contestStatus(contest.startAt, contest.endAt);
   if (status === "ENDED") {
     try {
@@ -114,6 +198,7 @@ export async function getContestAccess(
     isPublic: contest.isPublic,
     registered,
     isAdmin,
+    isCrew,
   });
 
   const problemRows = canViewContent
@@ -134,6 +219,8 @@ export async function getContestAccess(
     status,
     registered,
     isAdmin,
+    isCrew,
+    team,
     canViewContent,
     canAsk: (registered || isAdmin) && status !== "ENDED",
     problems: problemRows,

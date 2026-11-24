@@ -171,7 +171,7 @@ Leather Wallet	0	0	0	0	0`,
 ১. buckets: substr(created_at,12,2) থেকে ঘণ্টা, CASE-এ তিন বালতি + status।
 ২. defs: 'morning'/'afternoon'/'evening' তিন সারি।
 ৩. defs LEFT JOIN buckets — COUNT(c.status) মোট, status ধরে CASE-count।
-৪. ROUND(100.0*converted/COUNT(c.status),1), ORDER BY bucket।
+৪. ROUND(100.0*converted/NULLIF(COUNT(c.status),0),1), ORDER BY bucket।
 
 ## কোডে দেখি
 \`\`\`sql
@@ -186,7 +186,7 @@ SELECT d.bucket, COUNT(c.status) AS carts,
        SUM(CASE WHEN c.status='converted' THEN 1 ELSE 0 END) AS converted,
        SUM(CASE WHEN c.status='abandoned' THEN 1 ELSE 0 END) AS abandoned,
        SUM(CASE WHEN c.status='active' THEN 1 ELSE 0 END) AS active,
-       ROUND(100.0*SUM(CASE WHEN c.status='converted' THEN 1 ELSE 0 END)/COUNT(c.status), 1) AS conversion_pct
+       ROUND(100.0*SUM(CASE WHEN c.status='converted' THEN 1 ELSE 0 END)/NULLIF(COUNT(c.status),0), 1) AS conversion_pct
 FROM defs d LEFT JOIN buckets c ON c.bucket = d.bucket
 GROUP BY d.bucket ORDER BY d.bucket;
 \`\`\`
@@ -213,7 +213,7 @@ SELECT d.bucket, COUNT(c.status) AS carts,
        SUM(CASE WHEN c.status='converted' THEN 1 ELSE 0 END) AS converted,
        SUM(CASE WHEN c.status='abandoned' THEN 1 ELSE 0 END) AS abandoned,
        SUM(CASE WHEN c.status='active' THEN 1 ELSE 0 END) AS active,
-       ROUND(100.0*SUM(CASE WHEN c.status='converted' THEN 1 ELSE 0 END)/COUNT(c.status), 1) AS conversion_pct
+       ROUND(100.0*SUM(CASE WHEN c.status='converted' THEN 1 ELSE 0 END)/NULLIF(COUNT(c.status),0), 1) AS conversion_pct
 FROM defs d LEFT JOIN buckets c ON c.bucket = d.bucket
 GROUP BY d.bucket ORDER BY d.bucket;`,
     tests: [

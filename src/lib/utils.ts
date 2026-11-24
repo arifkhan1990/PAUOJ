@@ -20,12 +20,44 @@ export function formatDateTime(value: Date | string): string {
   return `${dateFormatter.format(date)} UTC`;
 }
 
+const dhakaFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Asia/Dhaka",
+  hour12: false,
+});
+
+/** Contest-facing wall clock: "30 Nov 2026, 22:00 Asia/Dhaka". */
+export function formatDhakaDateTime(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return `${dhakaFormatter.format(date)} Asia/Dhaka`;
+}
+
+/** Compact contest wall clock for cards: "30 Nov 2026, 22:00". */
+export function formatDhakaDateTimeShort(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return dhakaFormatter.format(date);
+}
+
 export function formatDate(value: Date | string): string {
   const date = typeof value === "string" ? new Date(value) : value;
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
     year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+/** Compact UTC label: "23 Nov". Keeps the month so ranges that cross a month stay unambiguous. */
+export function formatShortDate(value: Date | string): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
     timeZone: "UTC",
   }).format(date);
 }
@@ -78,12 +110,12 @@ export function initials(name: string): string {
 }
 
 const avatarPalette = [
-  "bg-teal-600",
-  "bg-emerald-600",
-  "bg-amber-600",
+  "bg-teal-700",
+  "bg-emerald-700",
+  "bg-amber-700",
   "bg-rose-600",
   "bg-sky-700",
-  "bg-orange-600",
+  "bg-orange-700",
   "bg-lime-700",
   "bg-cyan-700",
 ];
@@ -111,4 +143,18 @@ export function slugify(value: string): string {
 
 export function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+/** Normalized absolute http(s) URL, or null for empty/relative/other schemes. */
+export function safeHttpUrl(value: string | null | undefined): string | null {
+  const raw = value?.trim();
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
 }

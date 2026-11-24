@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckpointCard } from "@/components/learning/checkpoint-card";
 import { ContentInProduction } from "@/components/learning/content-in-production";
@@ -9,9 +10,11 @@ import { ModuleHeader } from "@/components/learning/module-header";
 import { ModuleDiagram } from "@/components/learning/module-diagram";
 import { PremiumPaywall } from "@/components/learning/premium-paywall";
 import { TopicCard } from "@/components/learning/topic-card";
+import { LessonVisual } from "@/components/learning/visuals/lesson-visual";
 import { SectionHeading } from "@/components/shared/section-heading";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
 import { purchasePriceBdt } from "@/lib/learning/payments";
+import { getLessonVisual } from "@/lib/learning/visuals";
 import { getCurrentUser } from "@/server/auth/session";
 import { getLearningModule } from "@/server/services/learning";
 
@@ -44,6 +47,11 @@ export default async function LearningModulePage({
   if (!track) notFound();
 
   const isLive = track.status === "LIVE";
+  const isTools = track.track === "tools";
+  const firstTopic = definition.topics[0] ?? null;
+  const featuredVisual = firstTopic
+    ? getLessonVisual(moduleSlug, firstTopic.slug)
+    : null;
 
   if (track.paywalled && isLive) {
     return (
@@ -51,7 +59,7 @@ export default async function LearningModulePage({
         <ModuleHeader module={track} />
         <CourseOverview
           module={track}
-          isSql={definition.track === "sql"}
+          isSql={track.track === "sql"}
           className="mt-8"
         />
         <PremiumPaywall
@@ -59,6 +67,18 @@ export default async function LearningModulePage({
           priceBdt={purchasePriceBdt(track.slug)}
           className="mt-6"
         />
+
+        {firstTopic && featuredVisual ? (
+          <section className="mt-8">
+            <SectionHeading
+              title="Visual preview"
+              description="A small taste of the first lesson's visual explainer."
+            />
+            <div className="mt-4">
+              <LessonVisual config={featuredVisual} compact />
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-10">
           <SectionHeading
@@ -87,10 +107,22 @@ export default async function LearningModulePage({
         <ModuleHeader module={track} />
         <CourseOverview
           module={track}
-          isSql={definition.track === "sql"}
+          isSql={track.track === "sql"}
           className="mt-8"
         />
         <LearningLocked hint={track.unlockHint} className="mt-6" />
+
+        {firstTopic && featuredVisual ? (
+          <section className="mt-8">
+            <SectionHeading
+              title="Visual preview"
+              description="A small taste of the first lesson's visual explainer."
+            />
+            <div className="mt-4">
+              <LessonVisual config={featuredVisual} compact />
+            </div>
+          </section>
+        ) : null}
 
         <section className="mt-10">
           <SectionHeading
@@ -119,7 +151,7 @@ export default async function LearningModulePage({
 
       <CourseOverview
         module={track}
-        isSql={definition.track === "sql"}
+        isSql={track.track === "sql"}
         className="mt-8"
       />
 
@@ -128,9 +160,17 @@ export default async function LearningModulePage({
       <section className="mt-10">
         <SectionHeading
           title="How this track works"
-          description="Five steps from the first concept note to the timed checkpoint."
+          description={
+            isTools
+              ? "Five steps from the problem story to the timed checkpoint and discussion."
+              : "Five steps from the first concept note to the timed checkpoint."
+          }
         />
-        <LearningSteps muted={!isLive} className="mt-4" />
+        <LearningSteps
+          muted={!isLive}
+          variant={isTools ? "workshop" : "track"}
+          className="mt-4"
+        />
       </section>
 
       {isLive && definition.diagram ? (
@@ -147,13 +187,33 @@ export default async function LearningModulePage({
         </section>
       ) : null}
 
+      {isLive && firstTopic && featuredVisual ? (
+        <section className="mt-10">
+          <SectionHeading
+            title="Visual-first lessons"
+            description="Every topic opens with an animated visual explainer. Here is the first one — open the topic for the full story."
+          />
+          <div className="mt-4">
+            <LessonVisual config={featuredVisual} compact />
+          </div>
+          <Link
+            href={`/learn/${moduleSlug}/${firstTopic.slug}`}
+            className="mt-3 inline-flex min-h-11 items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Open topic 1: {firstTopic.title} →
+          </Link>
+        </section>
+      ) : null}
+
       <section className="mt-10">
         <SectionHeading
           title="Topics"
           description={
-            isLive
-              ? "Work through them in order — each topic has a concept note, guided problems and tiered practice."
-              : "The published outline — concept notes and problem sets are being authored."
+            !isLive
+              ? "The published outline — concept notes and problem sets are being authored."
+              : isTools
+                ? "Work through them in order — each topic starts with a story, then guided drills and solo drills."
+                : "Work through them in order — each topic has a concept note, guided problems and tiered practice."
           }
         />
         <ul role="list" className="mt-4 grid gap-2.5">

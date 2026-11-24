@@ -37,11 +37,13 @@ export function TopicBreadcrumb({
   moduleOrder,
   moduleTitle,
   topicTitle,
+  isToolkit = false,
 }: {
   moduleSlug: string;
   moduleOrder: number;
   moduleTitle: string;
   topicTitle: string;
+  isToolkit?: boolean;
 }) {
   const linkClass =
     "rounded-sm underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
@@ -63,7 +65,7 @@ export function TopicBreadcrumb({
             title={moduleTitle}
             className={linkClass}
           >
-            Track {pad(moduleOrder)}
+            {isToolkit ? "Career toolkit" : `Track ${pad(moduleOrder)}`}
           </Link>
         </li>
         <li aria-hidden="true">
@@ -107,6 +109,7 @@ export function LessonHeader({
         moduleOrder={definition.order}
         moduleTitle={definition.title}
         topicTitle={topic.title}
+        isToolkit={definition.track === "tools"}
       />
 
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -155,15 +158,20 @@ export function LessonHeader({
 export function LessonNav({
   showCheckpoint,
   showDiscussion = true,
+  items,
 }: {
   showCheckpoint: boolean;
   showDiscussion?: boolean;
+  /** Overrides the default track sections, e.g. workshop lessons without tiered sets. */
+  items?: { id: string; label: string }[];
 }) {
-  const items = [
-    ...LESSON_NAV_ITEMS,
-    ...(showCheckpoint ? [{ id: "checkpoint", label: "Checkpoint" }] : []),
-    ...(showDiscussion ? [{ id: "discussion", label: "Discussion" }] : []),
-  ];
+  const navItems =
+    items ??
+    [
+      ...LESSON_NAV_ITEMS,
+      ...(showCheckpoint ? [{ id: "checkpoint", label: "Checkpoint" }] : []),
+      ...(showDiscussion ? [{ id: "discussion", label: "Discussion" }] : []),
+    ];
 
   return (
     <nav aria-label="Lesson sections" className="border-b border-border py-4">
@@ -171,11 +179,11 @@ export function LessonNav({
         In this lesson
       </p>
       <ul className="mt-2 flex flex-wrap gap-1.5">
-        {items.map((item) => (
+        {navItems.map((item) => (
           <li key={item.id}>
             <a
               href={`#${item.id}`}
-              className="inline-flex min-h-8 items-center rounded-full border border-border bg-card px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex min-h-11 items-center rounded-full border border-border bg-card px-3 py-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               {item.label}
             </a>

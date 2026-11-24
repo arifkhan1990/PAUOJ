@@ -6,13 +6,16 @@ import { Loader2, Play } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { ApiClientError, apiPost } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 export function VirtualContestButton({
   slug,
   label = "Start virtual contest",
+  className,
 }: {
   slug: string;
   label?: string;
+  className?: string;
 }) {
   const router = useRouter();
   const { toast } = useToast();
@@ -39,7 +42,13 @@ export function VirtualContestButton({
   };
 
   return (
-    <Button type="button" variant="outline" onClick={() => void start()} disabled={loading}>
+    <Button
+      type="button"
+      variant="outline"
+      className={cn("h-11", className)}
+      onClick={() => void start()}
+      disabled={loading}
+    >
       {loading ? (
         <Loader2 className="size-4 animate-spin" />
       ) : (

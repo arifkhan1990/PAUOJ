@@ -17,6 +17,12 @@ export const contestInputSchema = z
       .trim()
       .min(10, "Description is too short.")
       .max(50_000),
+    bannerUrl: z
+      .url("Enter a valid banner URL.")
+      .max(500)
+      .refine((value) => /^https?:\/\//i.test(value), "Use an http(s) URL.")
+      .optional()
+      .or(z.literal("")),
     startAt: z.iso.datetime({
       offset: true,
       message: "Choose a valid start time.",
@@ -27,6 +33,15 @@ export const contestInputSchema = z
     }),
     isPublic: z.boolean().default(true),
     division: z.enum(["OPEN", "DIV1", "DIV2", "DIV3", "DIV4"]).default("OPEN"),
+    format: z.enum(["SINGLE", "GROUP"]).default("SINGLE"),
+    teamSize: z.coerce.number().int().min(2).max(6).default(3),
+    isOfficial: z.boolean().default(false),
+    requiresFreshProblems: z.boolean().default(true),
+    feeBdt: z.coerce.number().int().min(3000).max(5000).optional(),
+    feeReference: z.string().trim().max(120).optional().or(z.literal("")),
+    eligibility: z.string().trim().max(10_000).optional().or(z.literal("")),
+    rules: z.string().trim().max(20_000).optional().or(z.literal("")),
+    prizes: z.string().trim().max(10_000).optional().or(z.literal("")),
     freezeMinutes: z.coerce.number().int().min(0).max(720).default(0),
     problemIds: z
       .array(z.uuid())
@@ -46,6 +61,13 @@ export const contestInputSchema = z
         code: "custom",
         path: ["endAt"],
         message: "End time must be after the start time.",
+      });
+    }
+    if (value.format === "GROUP" && value.teamSize < 2) {
+      context.addIssue({
+        code: "custom",
+        path: ["teamSize"],
+        message: "A team contest needs at least two coders per team.",
       });
     }
   });

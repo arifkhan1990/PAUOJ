@@ -1,4 +1,88 @@
 import { z } from "zod";
+import {
+  MAX_PHONE_INPUT_LENGTH,
+  MAX_PROFILE_SKILL_LENGTH,
+  MAX_PROFILE_SKILLS,
+  normalizeSkills,
+  parsePhone,
+  TSHIRT_SIZE_VALUES,
+  USER_STATUS_VALUES,
+} from "@/lib/profile-fields";
+import {
+  parseGitHub,
+  parseLinkedIn,
+  parseWebsite,
+  type ProfileLinkParse,
+} from "@/lib/profile-links";
+
+function profileLinkField(parse: (raw: string) => ProfileLinkParse) {
+  return z
+    .string()
+    .trim()
+    .superRefine((raw, ctx) => {
+      const result = parse(raw);
+      if (!result.ok) ctx.addIssue({ code: "custom", message: result.message });
+    })
+    .transform((raw) => {
+      const result = parse(raw);
+      return result.ok ? result.value : null;
+    })
+    .optional();
+}
+
+function optionalText(max: number, label: string) {
+  return z
+    .string()
+    .trim()
+    .max(max, `${label} must be at most ${max} characters.`)
+    .transform((value) => (value === "" ? null : value))
+    .optional();
+}
+
+function optionalEnum<T extends readonly [string, ...string[]]>(values: T) {
+  return z
+    .enum(values)
+    .or(z.literal(""))
+    .optional()
+    .transform((value) =>
+      value === undefined ? undefined : value === "" ? null : value,
+    );
+}
+
+const phoneField = z
+  .string()
+  .trim()
+  .max(
+    MAX_PHONE_INPUT_LENGTH,
+    `Phone must be at most ${MAX_PHONE_INPUT_LENGTH} characters.`,
+  )
+  .superRefine((raw, ctx) => {
+    const result = parsePhone(raw);
+    if (!result.ok) ctx.addIssue({ code: "custom", message: result.message });
+  })
+  .transform((raw) => {
+    const result = parsePhone(raw);
+    return result.ok ? result.value : null;
+  })
+  .optional();
+
+const skillsField = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1, "Each skill needs at least 1 character.")
+      .max(
+        MAX_PROFILE_SKILL_LENGTH,
+        `Each skill must be at most ${MAX_PROFILE_SKILL_LENGTH} characters.`,
+      ),
+  )
+  .max(
+    MAX_PROFILE_SKILLS,
+    `Add at most ${MAX_PROFILE_SKILLS} skills.`,
+  )
+  .transform(normalizeSkills)
+  .optional();
 
 export const usernameSchema = z
   .string()
@@ -43,6 +127,16 @@ export const profileSchema = z.object({
   bio: z.string().trim().max(500).optional().or(z.literal("")),
   country: z.string().trim().max(64).optional().or(z.literal("")),
   institution: z.string().trim().max(120).optional().or(z.literal("")),
+  website: profileLinkField(parseWebsite),
+  github: profileLinkField(parseGitHub),
+  linkedin: profileLinkField(parseLinkedIn),
+  address: optionalText(200, "Address"),
+  phone: phoneField,
+  currentStatus: optionalEnum(USER_STATUS_VALUES),
+  companyName: optionalText(120, "Company name"),
+  jobTitle: optionalText(120, "Job title"),
+  skills: skillsField,
+  tshirtSize: optionalEnum(TSHIRT_SIZE_VALUES),
 });
 
 export const changePasswordSchema = z

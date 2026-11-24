@@ -45,6 +45,13 @@ function prerequisitesFor(module: LearningModuleView, sql: boolean): string[] {
       "প্রতিদিন ৩০–৪৫ মিনিট অনুশীলনের সময়",
     ];
   }
+  if (module.track === "tools") {
+    return [
+      "কম্পিউটার ও টার্মিনাল ব্যবহারের সাধারণ অভ্যাস",
+      "প্রতিদিন ৩০–৪৫ মিনিট অনুশীলনের সময়",
+      "আগের ট্র্যাক না থাকলেও চলবে",
+    ];
+  }
   return [
     module.order === 1
       ? "কোনো পূর্বশর্ত নেই—শূন্য থেকে শুরু"

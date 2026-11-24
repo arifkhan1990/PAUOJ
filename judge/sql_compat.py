@@ -333,7 +333,10 @@ def normalize_json_operators(sql: str) -> str:
 
 
 def normalize(sql: str, dialect: str) -> str:
-    text = strip_backticks(sql).strip().rstrip(";")
+    text = sql.strip().rstrip(";").rstrip()
+    if dialect == "sqlite":
+        return text
+    text = strip_backticks(text).strip().rstrip(";")
     text = re.sub(r"\bILIKE\b", "LIKE", text, flags=re.IGNORECASE)
     text = re.sub(
         r"\bFETCH\s+(?:FIRST|NEXT)\s+(\d+)\s+ROWS?\s+ONLY\b",
@@ -343,9 +346,9 @@ def normalize(sql: str, dialect: str) -> str:
     )
     text = normalize_extract(text)
     text = normalize_casts(text)
-    if dialect in ("mysql", "postgresql"):
+    if dialect in ("standard", "mysql", "postgresql"):
         text = normalize_json_operators(text)
-    if dialect == "mysql":
+    if dialect in ("standard", "mysql"):
         match = re.search(r"\bLIMIT\s+(\d+)\s*,\s*(\d+)\s*$", text, re.IGNORECASE)
         if match:
             offset, count = match.groups()

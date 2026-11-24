@@ -94,7 +94,7 @@ export const basicSqlModule: LearningModuleDefinition = {
   subtitle: "দোকানের ডেটা থেকে অর্ডার লাইফসাইকল",
   goal: "Go from filtered lists and joins to sets, text/date search, payments, shipments and returns — the queries a marketplace runs every day.",
   description:
-    "ShopSphere মাল্টি-ভেন্ডর দোকানের ডেটা দিয়ে SQL শেখা শুরু। ভেন্ডর-প্রোডাক্ট খোঁজা, অর্ডার ও আইটেম জোড়া লাগিয়ে রেভিনিউ, dead stock, subquery, set operations, টেক্সট/তারিখ সার্চ, পেমেন্ট-শিপমেন্ট-রিটার্ন—প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু, তারপর সেই প্রশ্নের query।",
+    "ShopSphere মাল্টি-ভেন্ডর দোকানের ডেটা দিয়ে SQL শেখা শুরু। ভেন্ডর-প্রোডাক্ট খোঁজা, অর্ডার ও আইটেম জোড়া লাগিয়ে রেভিনিউ, dead stock, subquery, self-join, set operations, টেক্সট/তারিখ সার্চ, পেমেন্ট-শিপমেন্ট-রিটার্ন আর pagination—প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু, তারপর সেই প্রশ্নের query।",
   estimatedHours: 40,
   diagram: {
     src: "/learning/basic-sql.svg",
@@ -164,7 +164,7 @@ export const advancedSqlModule: LearningModuleDefinition = {
   subtitle: "টাইমলাইন, ফানেল, JSON ও ফিন্যান্স",
   goal: "Turn marketplace data into analytics: rankings, moving windows, funnels, coupons, JSON inventory, payout reconciliation and retention.",
   description:
-    "এবার ShopSphere-এর অ্যানালিটিক্স টিমে কাজ। Window function দিয়ে র্যাংকিং, চলমান রেভিনিউ ও moving average; recursive CTE দিয়ে ক্যাটাগরি ও রেফারেল; CTE দিয়ে ফানেল, কুপন attribution, JSON/ইনভেন্টরি reconciliation, ভেন্ডর payout ও retention—সব বাস্তব project প্রশ্ন ধরে ধরে।",
+    "এবার ShopSphere-এর অ্যানালিটিক্স টিমে কাজ। Window function দিয়ে র‍্যাংকিং, চলমান রেভিনিউ ও moving average; recursive CTE দিয়ে ক্যাটাগরি ও রেফারেল; CTE দিয়ে ফানেল, কুপন attribution, JSON/ইনভেন্টরি reconciliation, ভেন্ডর payout ও retention; সাথে EXPLAIN-ভিত্তিক performance টিউনিং আর script-মোডের DDL/DML ল্যাব—সব বাস্তব project প্রশ্ন ধরে ধরে।",
   estimatedHours: 56,
   diagram: {
     src: "/learning/advanced-sql.svg",

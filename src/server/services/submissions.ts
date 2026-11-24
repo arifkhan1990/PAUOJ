@@ -37,7 +37,8 @@ import {
   getActiveContestForProblem,
   getContestForSubmission,
 } from "./contests";
-import { getProblemForSubmission } from "./problems";
+import { getProblemForSubmission } from "./problem-submission-context";
+import { languageFilterCondition, publicSubmissionCondition } from "./submission-filters";
 
 export type SubmissionListFilters = PaginationInput & {
   mine?: "true" | "false";
@@ -47,6 +48,8 @@ export type SubmissionListFilters = PaginationInput & {
   user?: string;
   contest?: string;
   assessment?: string;
+  /** Public landing feeds: only published problems in public, ended contests. */
+  publicOnly?: boolean;
 };
 
 export async function createSubmission(
@@ -63,15 +66,22 @@ export async function createSubmission(
   const { problem, contestContext, assessmentContext } =
     await getProblemForSubmission(input.problemId, user.id, isAdmin);
 
-  if (
-    (problem.judgeLanguage === "sql" ||
-      problem.judgeLanguage === "sql-script") &&
-    !["sql", "mysql", "postgresql"].includes(input.language)
-  ) {
-    throw errors.validation(
-      "This problem accepts SQL, MySQL or PostgreSQL solutions.",
-    );
+  const sqlProblem =
+    problem.judgeLanguage === "sql" || problem.judgeLanguage === "sql-script";
+  if (sqlProblem) {
+    const allowed =
+      problem.judgeLanguage === "sql-script"
+        ? ["sql", "sqlite"]
+        : ["sql", "sqlite", "mysql", "postgresql"];
+    if (!allowed.includes(input.language)) {
+      throw errors.validation(
+        problem.judgeLanguage === "sql-script"
+          ? "This SQL script lab runs on SQLite; choose SQL or SQLite 3."
+          : "This problem accepts SQL, SQLite, MySQL or PostgreSQL solutions.",
+      );
+    }
   }
+  // Real engines: SQLite for sql/sqlite, MariaDB for mysql, PostgreSQL for postgresql.
   // Defense in depth: getProblemForSubmission already throws PREMIUM_LOCKED.
   if (problem.premiumModuleSlug && !isAdmin) {
     const { hasModuleEntitlement } = await import(
@@ -182,12 +192,12 @@ export async function listSubmissions(
   if (viewer?.role !== "ADMIN") {
     conditions.push(
       viewer
-        ? or(
-            isNull(submissions.assessmentId),
-            eq(submissions.userId, viewer.id),
-          )!
+        ? or(isNull(submissions.assessmentId), eq(submissions.userId, viewer.id))!
         : isNull(submissions.assessmentId),
     );
+  }
+  if (filters.publicOnly) {
+    conditions.push(publicSubmissionCondition());
   }
   if (filters.status) {
     if (!(filters.status in VERDICT_META)) {
@@ -201,7 +211,7 @@ export async function listSubmissions(
     );
   }
   if (filters.language) {
-    conditions.push(eq(submissions.language, filters.language));
+    conditions.push(languageFilterCondition(filters.language));
   }
   if (filters.problem) {
     conditions.push(eq(problems.slug, filters.problem));
@@ -320,9 +330,7 @@ export async function getSubmissionById(
   const isAdmin = viewer?.role === "ADMIN";
   if (row.assessmentSlug && !isOwner && !isAdmin) return null;
   const now = Date.now();
-  const contestActive = row.contestEndAt
-    ? row.contestEndAt.getTime() > now
-    : false;
+  const contestActive = row.contestEndAt ? row.contestEndAt.getTime() > now : false;
   const assessmentActive = row.assessmentEndAt
     ? row.assessmentEndAt.getTime() > now
     : false;
@@ -398,11 +406,7 @@ export async function rejudgeSubmission(
     console.error("Could not enqueue rejudge", error);
     await db
       .update(submissions)
-      .set({
-        status: "SYSTEM_ERROR",
-        errorMessage: "The judge queue is unavailable.",
-        judgedAt: new Date(),
-      })
+      .set({ status: "SYSTEM_ERROR", errorMessage: "The judge queue is unavailable.", judgedAt: new Date() })
       .where(eq(submissions.id, id));
     throw errors.unavailable("The judge queue is unavailable.");
   }
@@ -417,8 +421,6 @@ export async function getPendingSubmissionIds(
     .from(submissions)
     .where(inArray(submissions.id, ids));
   return new Set(
-    rows
-      .filter((row) => isPendingVerdict(row.status))
-      .map((row) => row.id),
+    rows.filter((row) => isPendingVerdict(row.status)).map((row) => row.id),
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Ban, Loader2, ShieldCheck, UserCheck } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
@@ -90,7 +91,12 @@ export function UserAdminRow({
           <UserAvatar name={user.displayName} username={user.username} size="sm" />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">
-              {user.displayName}
+              <Link
+                href={`/admin/users/${user.id}`}
+                className="inline-flex min-h-11 items-center rounded-sm underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              >
+                {user.displayName}
+              </Link>
               {isSelf ? (
                 <span className="ml-1.5 text-[10px] text-muted-foreground">(you)</span>
               ) : null}

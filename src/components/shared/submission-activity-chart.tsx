@@ -15,7 +15,7 @@ import { BarChart3 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { HeatmapDay } from "@/lib/types";
 import { usePrefersReducedMotion } from "@/lib/use-prefers-reduced-motion";
-import { cn, formatPercent } from "@/lib/utils";
+import { cn, formatPercent, formatShortDate } from "@/lib/utils";
 
 type ActivityPoint = {
   date: string;
@@ -29,7 +29,7 @@ type ActivityPoint = {
 function buildSeries(days: HeatmapDay[]): ActivityPoint[] {
   return days.map((day) => ({
     date: day.date,
-    label: day.date.slice(8),
+    label: formatShortDate(day.date),
     total: day.total,
     accepted: day.accepted,
     other: Math.max(0, day.total - day.accepted),

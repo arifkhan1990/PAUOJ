@@ -6,6 +6,7 @@ import {
   FileCode2,
   Layers3,
   LockKeyhole,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -18,6 +19,8 @@ type TrackState = "live" | "locked" | "planned" | "premium";
 
 function trackState(module: LearningModuleSummary): TrackState {
   if (module.status === "PLANNED") return "planned";
+  // Toolkit modules are free by definition; never render lock or paywall UI.
+  if (module.track === "tools") return "live";
   if (module.paywalled) return "premium";
   return module.locked ? "locked" : "live";
 }
@@ -26,7 +29,15 @@ function plural(count: number, singular: string) {
   return `${count} ${singular}${count === 1 ? "" : "s"}`;
 }
 
-function StatusChip({ state }: { state: TrackState }) {
+function StatusChip({ state, free }: { state: TrackState; free: boolean }) {
+  if (free) {
+    return (
+      <Badge variant="success">
+        <Sparkles className="size-3" aria-hidden="true" />
+        Free
+      </Badge>
+    );
+  }
   if (state === "live") {
     return (
       <Badge variant="success">
@@ -74,7 +85,11 @@ function BadgeChip({ module }: { module: LearningModuleSummary }) {
   return (
     <Badge variant="outline" className="text-muted-foreground">
       <Award className="size-3 opacity-60" aria-hidden="true" />
-      {module.status === "PLANNED" ? "Badge at launch" : "Badge locked"}
+      {module.track === "tools"
+        ? "Badge at checkpoint"
+        : module.status === "PLANNED"
+          ? "Badge at launch"
+          : "Badge locked"}
     </Badge>
   );
 }
@@ -87,6 +102,7 @@ export function ModuleCard({
   signedIn: boolean;
 }) {
   const state = trackState(module);
+  const isTools = module.track === "tools";
   const trackNumber = String(module.order).padStart(2, "0");
   const isComplete =
     module.progress.total > 0 &&
@@ -101,6 +117,11 @@ export function ModuleCard({
           : module.progress.solved > 0
             ? "Resume"
             : "Open";
+  const openLabel = isTools
+    ? `Open career toolkit module: ${module.title}`
+    : `Open track ${module.order}: ${module.title}${
+        state === "locked" ? " (locked)" : ""
+      }`;
 
   return (
     <li className="group relative">
@@ -139,11 +160,23 @@ export function ModuleCard({
             >
               {trackNumber}
             </span>
-            <StatusChip state={state} />
+            <StatusChip state={state} free={isTools && state === "live"} />
           </div>
 
-          <h3 className="mt-4 break-words text-base font-semibold leading-snug">
-            <span className="sr-only">Track {module.order}: </span>
+          {isTools ? (
+            <p className="mt-4 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+              Career toolkit
+            </p>
+          ) : null}
+          <h3
+            className={cn(
+              "break-words text-base font-semibold leading-snug",
+              isTools ? "mt-1" : "mt-4",
+            )}
+          >
+            <span className="sr-only">
+              {isTools ? "Career toolkit module" : `Track ${module.order}`}:{" "}
+            </span>
             {module.title}
           </h3>
           <p
@@ -222,9 +255,7 @@ export function ModuleCard({
 
       <Link
         href={`/learn/${module.slug}`}
-        aria-label={`Open track ${module.order}: ${module.title}${
-          state === "locked" ? " (locked)" : ""
-        }`}
+        aria-label={openLabel}
         className="absolute inset-0 z-10 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       />
     </li>

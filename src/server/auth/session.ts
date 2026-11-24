@@ -19,6 +19,22 @@ export type SafeUser = {
   bio: string | null;
   country: string | null;
   institution: string | null;
+  website: string | null;
+  github: string | null;
+  linkedin: string | null;
+  address: string | null;
+  phone: string | null;
+  currentStatus:
+    | "STUDENT"
+    | "EMPLOYED"
+    | "FREELANCER"
+    | "JOB_SEEKER"
+    | "OTHER"
+    | null;
+  companyName: string | null;
+  jobTitle: string | null;
+  skills: string[];
+  tshirtSize: "XS" | "S" | "M" | "L" | "XL" | "XXL" | "XXXL" | null;
   emailVerdicts: boolean;
   emailContests: boolean;
   emailClarifications: boolean;
@@ -43,6 +59,22 @@ export function toSafeUser(user: {
   bio: string | null;
   country: string | null;
   institution: string | null;
+  website: string | null;
+  github: string | null;
+  linkedin: string | null;
+  address: string | null;
+  phone: string | null;
+  currentStatus:
+    | "STUDENT"
+    | "EMPLOYED"
+    | "FREELANCER"
+    | "JOB_SEEKER"
+    | "OTHER"
+    | null;
+  companyName: string | null;
+  jobTitle: string | null;
+  skills: string[] | null;
+  tshirtSize: "XS" | "S" | "M" | "L" | "XL" | "XXL" | "XXXL" | null;
   emailVerdicts: boolean;
   emailContests: boolean;
   emailClarifications: boolean;
@@ -62,6 +94,16 @@ export function toSafeUser(user: {
     bio: user.bio,
     country: user.country,
     institution: user.institution,
+    website: user.website,
+    github: user.github,
+    linkedin: user.linkedin,
+    address: user.address,
+    phone: user.phone,
+    currentStatus: user.currentStatus,
+    companyName: user.companyName,
+    jobTitle: user.jobTitle,
+    skills: user.skills ?? [],
+    tshirtSize: user.tshirtSize,
     emailVerdicts: user.emailVerdicts,
     emailContests: user.emailContests,
     emailClarifications: user.emailClarifications,
@@ -116,6 +158,16 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
       bio: users.bio,
       country: users.country,
       institution: users.institution,
+      website: users.website,
+      github: users.github,
+      linkedin: users.linkedin,
+      address: users.address,
+      phone: users.phone,
+      currentStatus: users.currentStatus,
+      companyName: users.companyName,
+      jobTitle: users.jobTitle,
+      skills: users.skills,
+      tshirtSize: users.tshirtSize,
       emailVerdicts: users.emailVerdicts,
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,

@@ -3,19 +3,18 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   Award,
-  Clock3,
   Database,
   Compass,
   FileCode2,
   Layers3,
-  LockKeyhole,
   LogIn,
   Play,
   Route,
 } from "lucide-react";
+import { CareerToolkitSection } from "@/components/learning/career-toolkit-section";
 import { ModuleCard } from "@/components/learning/module-card";
 import { LearningProgressBar } from "@/components/learning/learning-progress";
-import { Badge } from "@/components/ui/badge";
+import { TrackStatusLegend } from "@/components/learning/track-status-legend";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { LearningModuleSummary } from "@/lib/learning/types";
@@ -26,7 +25,7 @@ import { getLearningOverview } from "@/server/services/learning";
 export const metadata: Metadata = {
   title: "Learning tracks",
   description:
-    "Seven code tracks from basic programming to advanced algorithms, plus two project-driven SQL tracks with concept notes, guided practice and timed checkpoints.",
+    "Seven code tracks from basic programming to advanced algorithms, two project-driven SQL tracks, and two free career-toolkit modules for Git/GitHub and Docker/CI-CD — concept notes, guided practice and timed checkpoints.",
 };
 
 export const dynamic = "force-dynamic";
@@ -37,6 +36,13 @@ type NextUp = { module: LearningModuleSummary; action: string; meta: string };
 
 function trackNumber(order: number) {
   return String(order).padStart(2, "0");
+}
+
+/** Toolkit modules read better by name; numbered tracks keep "track 07". */
+function moduleAction(module: LearningModuleSummary, verb: string) {
+  return module.track === "tools"
+    ? `${verb} ${module.title}`
+    : `${verb} track ${trackNumber(module.order)}`;
 }
 
 /** Picks the most useful next stop from data the overview already returns. */
@@ -57,7 +63,7 @@ function pickNextUp(
   if (inProgress) {
     return {
       module: inProgress,
-      action: `Continue track ${trackNumber(inProgress.order)}`,
+      action: moduleAction(inProgress, "Continue"),
       meta: `${inProgress.progress.solved} of ${inProgress.progress.total} problems solved`,
     };
   }
@@ -66,7 +72,7 @@ function pickNextUp(
   if (fresh) {
     return {
       module: fresh,
-      action: `${signedIn ? "Start" : "Preview"} track ${trackNumber(fresh.order)}`,
+      action: moduleAction(fresh, signedIn ? "Start" : "Preview"),
       meta: `${fresh.topicCount} topics · about ${fresh.estimatedHours} h`,
     };
   }
@@ -79,7 +85,7 @@ function pickNextUp(
   if (review) {
     return {
       module: review,
-      action: `Review track ${trackNumber(review.order)}`,
+      action: moduleAction(review, "Review"),
       meta: review.badgeEarned
         ? "Badge earned — ready for a review"
         : "Every problem solved",
@@ -90,7 +96,7 @@ function pickNextUp(
   if (!fallback) return null;
   return {
     module: fallback,
-    action: `Start track ${trackNumber(fallback.order)}`,
+    action: moduleAction(fallback, "Start"),
     meta: `${fallback.topicCount} topics · about ${fallback.estimatedHours} h`,
   };
 }
@@ -213,36 +219,6 @@ function SignInNote() {
   );
 }
 
-function StatusLegend() {
-  return (
-    <div
-      role="group"
-      aria-label="Track status legend"
-      className="flex flex-wrap items-center gap-2"
-    >
-      <Badge variant="success">
-        <span
-          className="size-1.5 rounded-full bg-emerald-600 dark:bg-emerald-300"
-          aria-hidden="true"
-        />
-        Live
-      </Badge>
-      <Badge variant="muted">
-        <LockKeyhole className="size-3" aria-hidden="true" />
-        Locked
-      </Badge>
-      <Badge variant="secondary">
-        <Clock3 className="size-3" aria-hidden="true" />
-        Planned
-      </Badge>
-      <Badge variant="warning">
-        <Award className="size-3" aria-hidden="true" />
-        Badge earned
-      </Badge>
-    </div>
-  );
-}
-
 export default async function LearnPage() {
   const user = await getCurrentUser();
   const modules = (await getLearningOverview(user)).sort(
@@ -250,6 +226,8 @@ export default async function LearnPage() {
   );
 
   const liveTracks = modules.filter((module) => module.status === "LIVE");
+  const toolkitModules = modules.filter((module) => module.track === "tools");
+  const mainModules = modules.filter((module) => module.track !== "tools");
   const totalTopics = modules.reduce(
     (sum, module) => sum + module.topicCount,
     0,
@@ -327,16 +305,18 @@ export default async function LearnPage() {
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
             Seven code tracks take you from your first loop to advanced
-            algorithms. The two SQL tracks apply the same ideas to a real
-            marketplace database — concept notes, guided practice and a timed
-            checkpoint in each.
+            algorithms. Two SQL tracks apply the same ideas to a real marketplace
+            database, and two free career-toolkit modules cover the Git and Docker
+            workflows you will use on day one — concept notes, an animated visual
+            explainer, practice and a timed checkpoint in each.
           </p>
           <p
             lang="bn"
             className="mt-2 max-w-2xl text-sm leading-[1.9] text-muted-foreground"
           >
-            ধাপে ধাপে শিখুন — প্রতিটি টপিকে কনসেপ্ট নোট, গাইডেড সমস্যা আর
-            চেকপয়েন্ট।
+            ধাপে ধাপে শিখুন — প্রতিটি টপিকে কনসেপ্ট নোট, ভিজ্যুয়াল
+            এক্সপ্লেইনার, গাইডেড সমস্যা আর চেকপয়েন্ট। Git ও Docker মডিউল দুটি
+            সম্পূর্ণ ফ্রি।
           </p>
 
           <HeroActions nextUp={nextUp} signedIn={Boolean(user)} />
@@ -378,6 +358,11 @@ export default async function LearnPage() {
 
       {user ? null : <SignInNote />}
 
+      <CareerToolkitSection
+        modules={toolkitModules}
+        signedIn={Boolean(user)}
+      />
+
       <section aria-labelledby="learn-tracks-title" className="mt-12">
         <div className="flex flex-col gap-4 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
@@ -391,14 +376,14 @@ export default async function LearnPage() {
               All tracks
             </h2>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-              Every track is self-contained. Start at track 01 or jump straight
-              to what you need.
+              Seven code tracks and two SQL labs, each self-contained. Start at
+              track 01 or jump straight to what you need.
             </p>
           </div>
-          <StatusLegend />
+          <TrackStatusLegend />
         </div>
 
-        {modules.length === 0 ? (
+        {mainModules.length === 0 ? (
           <Card className="mt-6 border-dashed p-6 text-sm text-muted-foreground">
             The curriculum is being prepared. Please check back shortly.
           </Card>
@@ -407,7 +392,7 @@ export default async function LearnPage() {
             aria-label="Learning tracks"
             className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3"
           >
-            {modules.map((module) => (
+            {mainModules.map((module) => (
               <ModuleCard
                 key={module.slug}
                 module={module}

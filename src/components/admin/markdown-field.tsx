@@ -12,6 +12,7 @@ export function MarkdownField({
   placeholder,
   rows = 6,
   template,
+  hint,
   className,
 }: {
   id: string;
@@ -21,6 +22,7 @@ export function MarkdownField({
   placeholder?: string;
   rows?: number;
   template?: string;
+  hint?: string;
   className?: string;
 }) {
   return (
@@ -34,6 +36,11 @@ export function MarkdownField({
         rows={rows}
         template={template}
       />
+      {hint ? (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

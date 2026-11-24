@@ -60,11 +60,14 @@ function TabLink({
 export function ProblemHeader({
   problem,
   showInsights,
+  showEditorial = true,
   activeTab,
   action,
 }: {
   problem: ProblemDetail;
   showInsights: boolean;
+  /** Hide the editorial tab while its contest round is running. */
+  showEditorial?: boolean;
   activeTab: ProblemTab;
   action?: { href: string; label: string } | null;
 }) {
@@ -166,13 +169,15 @@ export function ProblemHeader({
             Forum
           </TabLink>
         ) : null}
-        <TabLink
-          href={tab("editorial")}
-          active={activeTab === "editorial"}
-          icon={BookMarked}
-        >
-          Editorial
-        </TabLink>
+        {showEditorial ? (
+          <TabLink
+            href={tab("editorial")}
+            active={activeTab === "editorial"}
+            icon={BookMarked}
+          >
+            Editorial
+          </TabLink>
+        ) : null}
         {showInsights ? (
           <TabLink
             href={tab("resources")}

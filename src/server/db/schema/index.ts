@@ -5,6 +5,7 @@ export * from "./problem-contributions";
 export * from "./problem-reviews";
 export * from "./study-lists";
 export * from "./contests";
+export * from "./contest-operations";
 export * from "./contest-problem-approvals";
 export * from "./assessments";
 export * from "./submissions";

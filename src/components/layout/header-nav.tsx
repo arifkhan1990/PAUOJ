@@ -206,7 +206,7 @@ export function HeaderNav({
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
-          aria-label="PAU OJ home"
+          aria-label="PAU OJ Online Judge home"
           className={cn(
             "mr-2 flex shrink-0 items-center gap-2.5",
             iconTouchTarget,
@@ -221,7 +221,7 @@ export function HeaderNav({
             className="h-9 w-auto"
           />
           <span className="hidden flex-col leading-none sm:flex">
-            <span className="text-[15px] font-semibold">PAU OJ</span>
+            <span className="text-[15px] font-semibold">PAU OJ</span>{" "}
             <span className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               Online Judge
             </span>

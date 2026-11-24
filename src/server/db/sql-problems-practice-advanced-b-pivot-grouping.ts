@@ -135,7 +135,7 @@ WITH sales AS (
   FROM sales
 )
 SELECT category, revenue_cents, order_count, customer_count
-FROM (SELECT * FROM per_category UNION ALL SELECT * FROM grand)
+FROM (SELECT * FROM per_category UNION ALL SELECT * FROM grand) AS totals
 ORDER BY is_total, revenue_cents DESC, category;
 \`\`\`
 
@@ -174,7 +174,7 @@ ORDER BY is_total, revenue_cents DESC, category;
   FROM sales
 )
 SELECT category, revenue_cents, order_count, customer_count
-FROM (SELECT * FROM per_category UNION ALL SELECT * FROM grand)
+FROM (SELECT * FROM per_category UNION ALL SELECT * FROM grand) AS totals
 ORDER BY is_total, revenue_cents DESC, category;`,
     tests: [
       {

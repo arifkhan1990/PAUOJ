@@ -21,9 +21,9 @@ export const SQL_PROBLEMS_PRACTICE_ADVANCED_MORE_JSON_INVENTORY: SeedProblem[] =
 \`\`\`sql
 WITH tiers AS (
   SELECT pa.product_id,
-         CASE WHEN json_extract(pa.attributes,'$.warranty_months') = 0 THEN 'none'
-              WHEN json_extract(pa.attributes,'$.warranty_months') <= 12 THEN 'short'
-              WHEN json_extract(pa.attributes,'$.warranty_months') <= 24 THEN 'mid'
+         CASE WHEN CAST(json_extract(pa.attributes,'$.warranty_months') AS INTEGER) = 0 THEN 'none'
+              WHEN CAST(json_extract(pa.attributes,'$.warranty_months') AS INTEGER) <= 12 THEN 'short'
+              WHEN CAST(json_extract(pa.attributes,'$.warranty_months') AS INTEGER) <= 24 THEN 'mid'
               ELSE 'long' END AS tier
   FROM product_attributes pa)
 SELECT tier, COUNT(*) AS products, SUM(p.stock) AS stock_units,
@@ -45,9 +45,9 @@ warranty_months কলাম ব্যবহার করা কাজটা JSO
     referencePython: "",
     referenceSql: `WITH tiers AS (
   SELECT pa.product_id,
-         CASE WHEN json_extract(pa.attributes,'$.warranty_months') = 0 THEN 'none'
-              WHEN json_extract(pa.attributes,'$.warranty_months') <= 12 THEN 'short'
-              WHEN json_extract(pa.attributes,'$.warranty_months') <= 24 THEN 'mid'
+         CASE WHEN CAST(json_extract(pa.attributes,'$.warranty_months') AS INTEGER) = 0 THEN 'none'
+              WHEN CAST(json_extract(pa.attributes,'$.warranty_months') AS INTEGER) <= 12 THEN 'short'
+              WHEN CAST(json_extract(pa.attributes,'$.warranty_months') AS INTEGER) <= 24 THEN 'mid'
               ELSE 'long' END AS tier
   FROM product_attributes pa)
 SELECT tier, COUNT(*) AS products, SUM(p.stock) AS stock_units,

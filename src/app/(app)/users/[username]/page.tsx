@@ -17,6 +17,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { SubmissionTable } from "@/components/submissions/submission-table";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { APP_NAME } from "@/lib/constants";
 import { getCurrentUser } from "@/server/auth/session";
 import { getProfile } from "@/server/services/profile";
 
@@ -28,7 +29,35 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  return { title: `@${username}` };
+  const normalized = username.toLowerCase();
+  const canonical = `/users/${normalized}`;
+  const title = `@${normalized}`;
+  const description = `View @${normalized}'s rating, solved problems, contest history and achievements on PAU OJ.`;
+  const image = {
+    url: "/brand/og.png",
+    width: 1200,
+    height: 630,
+    alt: `${title} on PAU OJ`,
+  };
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "profile",
+      siteName: APP_NAME,
+      url: canonical,
+      title,
+      description,
+      images: [image],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [image.url],
+    },
+  };
 }
 
 export default async function ProfilePage({

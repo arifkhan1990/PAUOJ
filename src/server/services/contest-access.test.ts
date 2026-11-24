@@ -46,6 +46,17 @@ describe("resolveContestContentAccess", () => {
   it("always allows admins", () => {
     expect(resolveContestContentAccess({ ...base, isAdmin: true })).toBe(true);
   });
+
+  it("lets contest crew open content for operations", () => {
+    expect(resolveContestContentAccess({ ...base, isCrew: true })).toBe(true);
+    expect(
+      resolveContestContentAccess({ ...base, isCrew: true, status: "UPCOMING" }),
+    ).toBe(true);
+  });
+
+  it("keeps unregistered guests out of a running contest", () => {
+    expect(resolveContestContentAccess({ ...base, isCrew: false })).toBe(false);
+  });
 });
 
 describe("canAnswerClarification", () => {

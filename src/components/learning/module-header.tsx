@@ -8,13 +8,14 @@ import {
   Hammer,
   Layers3,
   LockKeyhole,
+  Sparkles,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { LearningModuleView } from "@/lib/learning/types";
 import { cn } from "@/lib/utils";
 import { LearningProgressBar } from "./learning-progress";
 
-function TrackBreadcrumb({ number }: { number: string }) {
+function TrackBreadcrumb({ label }: { label: string }) {
   return (
     <nav aria-label="Breadcrumb">
       <ol className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
@@ -31,7 +32,7 @@ function TrackBreadcrumb({ number }: { number: string }) {
           <ChevronRight className="size-3.5" />
         </li>
         <li aria-current="page" className="font-mono text-foreground">
-          Track {number}
+          {label}
         </li>
       </ol>
     </nav>
@@ -40,12 +41,18 @@ function TrackBreadcrumb({ number }: { number: string }) {
 
 function StatusChips({ module }: { module: LearningModuleView }) {
   const isLive = module.status === "LIVE";
-  const locked = isLive && module.locked;
+  const isTools = module.track === "tools";
+  const locked = isLive && module.locked && !isTools;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {isLive ? (
-        locked ? (
+        isTools ? (
+          <Badge variant="success">
+            <Sparkles className="size-3" aria-hidden="true" />
+            Free
+          </Badge>
+        ) : locked ? (
           <Badge variant="muted">
             <LockKeyhole className="size-3" aria-hidden="true" />
             Locked
@@ -131,7 +138,11 @@ function ProgressPanel({ module }: { module: LearningModuleView }) {
           </>
         ) : (
           <>
-            <LockKeyhole className="size-3.5" aria-hidden="true" />
+            {module.track === "tools" ? (
+              <Award className="size-3.5 opacity-60" aria-hidden="true" />
+            ) : (
+              <LockKeyhole className="size-3.5" aria-hidden="true" />
+            )}
             Badge unlocks at the checkpoint
           </>
         )}
@@ -200,7 +211,7 @@ function TrackIdentity({
             dormant ? "text-muted-foreground" : "text-primary",
           )}
         >
-          Learning track
+          {module.track === "tools" ? "Career toolkit" : "Learning track"}
         </p>
         <div className="mt-1.5">
           <StatusChips module={module} />
@@ -236,13 +247,16 @@ function TrackCopy({ module }: { module: LearningModuleView }) {
 
 export function ModuleHeader({ module }: { module: LearningModuleView }) {
   const isLive = module.status === "LIVE";
-  const locked = isLive && module.locked;
+  const isTools = module.track === "tools";
+  const locked = isLive && module.locked && !isTools;
   const dormant = !isLive || locked;
   const trackNumber = String(module.order).padStart(2, "0");
 
   return (
     <header>
-      <TrackBreadcrumb number={trackNumber} />
+      <TrackBreadcrumb
+        label={isTools ? "Career toolkit" : `Track ${trackNumber}`}
+      />
 
       <div className="relative mt-4 overflow-hidden rounded-2xl border border-border bg-card shadow-xs">
         <span

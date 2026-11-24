@@ -11,7 +11,6 @@ import {
 } from "@/server/db/schema";
 import type { Difficulty, ProfileStats } from "@/lib/types";
 import { buildAchievements } from "@/lib/achievements";
-import { buildRatingDistribution } from "@/lib/rating-distribution";
 import {
   buildHeatmap,
   computeActiveDays,
@@ -20,6 +19,9 @@ import {
 } from "./activity";
 import { getUserRank } from "./rank";
 import { getProfileEditorials } from "./profile-editorials";
+import { getProfileSocialSummary } from "./profile-follows";
+import { buildProblemProgress } from "./profile-progress";
+import { getRatingRankStats } from "./profile-rating";
 import { getLearningBadges } from "./learning-access";
 import { practiceSubmissionCondition } from "./submission-filters";
 import { listSubmissions } from "./submissions";
@@ -38,6 +40,13 @@ export async function getProfile(
       bio: users.bio,
       country: users.country,
       institution: users.institution,
+      website: users.website,
+      github: users.github,
+      linkedin: users.linkedin,
+      currentStatus: users.currentStatus,
+      companyName: users.companyName,
+      jobTitle: users.jobTitle,
+      skills: users.skills,
       rating: users.rating,
       createdAt: users.createdAt,
       isBanned: users.isBanned,
@@ -234,7 +243,12 @@ export async function getProfile(
   // Deliberately not practice-filtered: the recent list keeps the existing
   // source-visibility rules and may show assessment attempts (E6).
   const recent = await listSubmissions(
-    { page: 1, pageSize: 10, user: user.username },
+    {
+      page: 1,
+      pageSize: 10,
+      user: user.username,
+      publicOnly: viewer?.role !== "ADMIN" && viewer?.id !== user.id,
+    },
     viewer,
   );
   const ratingRows = await db
@@ -257,6 +271,7 @@ export async function getProfile(
     contestCreateRow,
     editorialStats,
     learningBadges,
+    socialSummary,
   ] = await Promise.all([
     db
       .select({ value: count() })
@@ -268,66 +283,21 @@ export async function getProfile(
       .where(eq(contests.createdBy, user.id)),
     getProfileEditorials(user.id),
     getLearningBadges(user.id),
+    getProfileSocialSummary(user.id, viewer?.id ?? null),
   ]);
 
   const currentStreak = computeCurrentStreak(heatmap);
   const longestStreak = computeLongestStreak(heatmap);
   const activeDays = computeActiveDays(heatmap);
-  const ratedRows =
-    ratingRows.length > 0
-      ? await db
-          .selectDistinct({ userId: users.id, rating: users.rating })
-          .from(users)
-          .innerJoin(
-            contestRatingChanges,
-            eq(users.id, contestRatingChanges.userId),
-          )
-          .where(eq(users.isBanned, false))
-      : [];
-  const ratedUserCount = ratedRows.length;
-  const ratingRank =
-    ratingRows.length > 0
-      ? ratedRows.filter((row) => row.rating > user.rating).length + 1
-      : null;
-  const ratingDistribution = buildRatingDistribution(
-    ratedRows.map((row) => row.rating),
-    user.rating,
-  );
-  const toProblemItem = (row: (typeof problemActivityRows)[number]) => ({
-    slug: row.slug,
-    title: row.title,
-    difficulty: row.difficulty,
-    points: row.points,
-    attempts: Number(row.attempts),
-    lastActivityAt: new Date(row.lastActivityAt).toISOString(),
-  });
-  const solvedProblems = problemActivityRows
-    .filter((row) => Boolean(row.accepted))
-    .slice(0, 6)
-    .map(toProblemItem);
-  const unsolvedProblems = problemActivityRows
-    .filter((row) => !row.accepted)
-    .slice(0, 6)
-    .map(toProblemItem);
-  const hardestTried = problemActivityRows.reduce<{
-    points: number;
-    difficulty: Difficulty;
-  } | null>(
-    (best, row) =>
-      !best || row.points > best.points
-        ? { points: row.points, difficulty: row.difficulty }
-        : best,
-    null,
-  );
-  const hardestSolved = problemActivityRows
-    .filter((row) => Boolean(row.accepted))
-    .reduce<{ points: number; difficulty: Difficulty } | null>(
-      (best, row) =>
-        !best || row.points > best.points
-          ? { points: row.points, difficulty: row.difficulty }
-          : best,
-      null,
-    );
+  const { ratedUserCount, ratingRank, ratingDistribution } =
+    await getRatingRankStats(user.rating, ratingRows.length > 0);
+  const {
+    solvedProblems,
+    unsolvedProblems,
+    attemptedCount,
+    hardestTried,
+    hardestSolved,
+  } = buildProblemProgress(problemActivityRows);
 
   return {
     user: {
@@ -337,9 +307,20 @@ export async function getProfile(
       bio: user.bio,
       country: user.country,
       institution: user.institution,
+      website: user.website,
+      github: user.github,
+      linkedin: user.linkedin,
+      currentStatus: user.currentStatus,
+      companyName: user.companyName,
+      jobTitle: user.jobTitle,
+      skills: user.skills ?? [],
       rating: user.rating,
       createdAt: user.createdAt.toISOString(),
       isSelf: viewer?.id === user.id,
+      followerCount: socialSummary.followerCount,
+      followingCount: socialSummary.followingCount,
+      isFollowing: socialSummary.isFollowing,
+      canFollow: socialSummary.canFollow,
     },
     solvedCount: solvedRows.length,
     submissionCount,
@@ -372,7 +353,7 @@ export async function getProfile(
     })),
     solvedProblems,
     unsolvedProblems,
-    attemptedCount: problemActivityRows.filter((row) => !row.accepted).length,
+    attemptedCount,
     hardestTried,
     hardestSolved,
     problemSettingCount: Number(problemSettingRow?.[0]?.value ?? 0),

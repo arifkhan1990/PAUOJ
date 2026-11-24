@@ -12,6 +12,7 @@ export type JudgeLanguage =
   | "kotlin"
   | "swift"
   | "sql"
+  | "sqlite"
   | "mysql"
   | "postgresql";
 

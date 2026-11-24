@@ -63,6 +63,7 @@ export default async function SubmissionsPage({
         language,
         problem,
         user: userFilter,
+        publicOnly: user?.role !== "ADMIN" && !mine,
       },
       user,
     ),

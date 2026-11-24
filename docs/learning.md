@@ -1,19 +1,23 @@
 # Learning tracks
 
-PAU OJ ships a curated seven-track curriculum that turns the judge into a study
-path, not only a problem archive. The tracks follow one sequence:
+PAU OJ ships a curated curriculum that turns the judge into a study
+path, not only a problem archive. It has three kinds of track:
 
-1. Basic Programming & Math
-2. Basic Data Structures
-3. Basic & Intermediate Algorithms
-4. Trees & Graphs
-5. Dynamic Programming
-6. Advanced Data Structures
-7. Advanced Algorithms
+1. Seven core algorithm tracks, in one sequence:
+   1. Basic Programming & Math
+   2. Basic Data Structures
+   3. Basic & Intermediate Algorithms
+   4. Trees & Graphs
+   5. Dynamic Programming
+   6. Advanced Data Structures
+   7. Advanced Algorithms
+2. Two project-driven SQL labs (Basic and Advanced SQL on ShopSphere).
+3. Two free career-toolkit tracks (Git & GitHub, Docker & CI/CD) that every
+   learner can open at any time.
 
 ## How a module works
 
-Every live module follows the same four-step loop:
+Core and SQL modules follow the same four-step loop:
 
 | Step | What the learner gets | Purpose |
 | --- | --- | --- |
@@ -26,12 +30,56 @@ Each topic also carries two or three extra "try it yourself" problems after the 
 set. Progress is derived from accepted, non-assessment submissions, so nothing
 extra is stored per learner.
 
+Free career-toolkit (`tools`) tracks use the workshop variant: the concept note is
+a longer story with a hands-on lab, and the topic has two guided drills plus two
+solo drills instead of a tiered easy/medium/hard set. The topic page hides empty
+tiered and extra groups rather than showing "in production" placeholders.
+
+## Visual explainers
+
+Every live topic opens with one **visual explainer** between the concept note and
+guided practice. The visual is a small animated SVG/CSS diagram that makes the
+mental model visible before the learner reads the full text. The module page also
+shows a compact preview of the first topic's visual.
+
+- **16 reusable primitives:** `flow`, `complexity`, `bits`, `array`, `stack`,
+  `linked`, `hash`, `sort`, `tree`, `graph`, `dp`, `string`, `sql`, `git`,
+  `docker` and `pipeline`.
+- **Data-driven:** each topic maps to a config with a Bangla title, caption,
+  three to five steps and small teaching data (array values, node edges, SQL
+  tables, commit lanes, pipeline jobs). There is no per-topic JSX.
+- **Accessible:** the animated stage is decorative, the same sequence is exposed
+  as a visible ordered step list, and `prefers-reduced-motion` freezes every
+  animation in a readable final state.
+- **Dependency-free:** SVG + CSS only; no chart or animation library and no
+  client-side JavaScript. Labels use a 10px floor, SVG nodes 12px, and the
+  Bengali fallback stack; essential text never animates opacity. Line-draw and
+  blink effects run once, then the diagram rests in its complete state.
+- **Guided reading:** the step rail is visible below the stage (three steps on
+  the compact module preview, all steps in the lesson), so sighted and
+  screen-reader learners get the same sequence.
+- **Theme-safe and responsive:** semantic tokens drive light/dark colours; the
+  stage fits 390/768/1440 without page overflow.
+
+| Layer | Path |
+| --- | --- |
+| Visual config types | `src/lib/learning/visual-types.ts` |
+| Per-topic configs | `src/lib/learning/visuals/` |
+| Accessible frame and primitives | `src/components/learning/visuals/` |
+| Motion utilities / reduced-motion guard | `src/app/globals.css` |
+
 ## Current release
 
-**All seven tracks ship in this release.** The curriculum contains 34 topics,
-**430 original problems** and **2,750 tests**. Every topic has the full practice
-tier: three easy, three medium and two hard problems, plus two or three extra
-problems. Every track ends with a mixed three-problem checkpoint and a module badge.
+**Seven core tracks ship, alongside two SQL labs and two free career-toolkit
+tracks.** The core curriculum contains 34 topics, **430 original problems** and
+**2,750 tests**. Every core topic has the full practice tier: three easy, three
+medium and two hard problems, plus two or three extra problems. Every core track
+ends with a mixed three-problem checkpoint and a module badge. The SQL labs add
+23 topics and 136 project problems, including the DDL/DML script labs. The two
+free toolkit tracks add six workshop
+topics and 30 judge-backed drills; each track ends with its own 45-minute
+checkpoint and badge. The toolkit labs are run on the learner's machine, not in
+the judge.
 
 Module 1 contains five topics:
 
@@ -64,9 +112,9 @@ Module 6 while remaining advanced material overall.
   restarted, and the badge stays earned.
 - Starting a checkpoint is authenticated and same-origin protected.
 - **Tracks unlock in order.** Track 1 is open. Track N unlocks only after the
-  previous track's checkpoint badge is earned. The API enforces the same rule,
-  not only the UI, and locked module/topic pages show the previous checkpoint
-  requirement.
+  previous track's checkpoint badge is earned. SQL labs and career-toolkit
+  tracks are exempt from this rule. The API enforces the same rule, not only the
+  UI, and locked module/topic pages show the previous checkpoint requirement.
 - Earned and locked learning badges are listed in the profile's learning badge
   cabinet and link back to the track.
 
@@ -74,8 +122,10 @@ Module 6 while remaining advanced material overall.
 
 | Layer | Path |
 | --- | --- |
-| Track/topic metadata and concept notes | `src/lib/learning/modules.ts`, `src/lib/learning/module-1/` |
-| Problem definitions | `src/server/db/learning/module-1/` |
+| Track/topic metadata and concept notes | `src/lib/learning/modules.ts`, `src/lib/learning/module-1/`, `src/lib/learning/tools/` |
+| Visual explainer configs | `src/lib/learning/visuals/` |
+| Visual primitives | `src/components/learning/visuals/` |
+| Problem definitions | `src/server/db/learning/module-1/`, `src/server/db/learning/tools/` |
 | Seed aggregation | `src/server/db/learning/index.ts` |
 | Progress and checkpoint service | `src/server/services/learning.ts` |
 | Checkpoint API | `src/app/api/v1/learning/checkpoints/route.ts` |
@@ -91,12 +141,13 @@ work with the existing filters, ratings, discussions and editorial tabs.
 
 1. Add the module and topic definitions in `src/lib/learning/`.
 2. Add one problem file per topic under `src/server/db/learning/module-N/`.
-3. Register the arrays in `src/server/db/learning/index.ts`.
-4. Write tests, a reference Python solution and an editorial for every problem.
-5. Run `pnpm learning:check --module=<module-slug>`.
-6. Run `pnpm db:seed` locally, open `/learn/<module-slug>` and walk the topic
+3. Add one visual config per topic in `src/lib/learning/visuals/`.
+4. Register the arrays in `src/server/db/learning/index.ts`.
+5. Write tests, a reference Python solution and an editorial for every problem.
+6. Run `pnpm learning:check --module=<module-slug>`.
+7. Run `pnpm db:seed` locally, open `/learn/<module-slug>` and walk the topic
    pages and the checkpoint once.
-7. Update this file, `README.md`, `docs/architecture.md`, `CHANGELOG.md` and the
+8. Update this file, `README.md`, `docs/architecture.md`, `CHANGELOG.md` and the
    task log.
 
 The validator executes every reference solution against every test, checks the
@@ -178,6 +229,44 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
   accepted practice submission or completed checkpoint in a premium module;
   add `--apply` to grant those modules as scholarships.
 
+## Career toolkit (free)
+
+Two free `tools` tracks turn the same learning shell into job-ready workflow
+training. They are always open: no purchase, no previous checkpoint and no
+sequential lock. Their topics use the `WORKSHOP` practice tier, so the lesson is
+the main event and the judge drills check understanding.
+
+- **Git & GitHub** (`git-github`, track 10, 10h): snapshots, staging and history;
+  branches, merges and conflicts; GitHub flow, pull-request gates, release tags
+  and safe recovery. The story follows নুসরাত from her first commit to her first
+  production hotfix.
+- **Docker & CI/CD** (`docker-cicd`, track 11, 12h): images, containers and
+  Dockerfile layers; Compose, healthchecks, secrets and multi-stage production
+  images; GitHub Actions pipelines, matrix/cache, deploy gates and rollback
+  drills. The story follows the same team from "works on my machine" to a
+  Friday release and its incident review.
+
+Each topic is a long-form Bangla story (roughly 6,000–8,000 characters) with
+the standard five sections (`কেন দরকার`, `মূল ধারণা`, `কোডে দেখি`, `ধাপে ধাপে`,
+`সাধারণ ভুল`), a hands-on terminal lab, a cheat sheet and a "professional habit"
+note. The
+labs run on the learner's own machine; they are not executed by the judge.
+Each topic has two guided drills and two solo drills, and the module ends with
+a normal 45-minute three-problem checkpoint and badge.
+
+Content paths:
+
+| Layer | Path |
+| --- | --- |
+| Track/topic metadata and concept notes | `src/lib/learning/tools/git/`, `src/lib/learning/tools/docker/` |
+| Problem definitions | `src/server/db/learning/tools/git/`, `src/server/db/learning/tools/docker/` |
+| Module map SVGs | `public/learning/git-github.svg`, `public/learning/docker-cicd.svg` |
+
+The `WORKSHOP` tier requires two guided and two solo problems per topic; the
+validator holds it to the same test, editorial and reference-solution rules as
+the other tracks. Because these tracks are free, `requiresPurchase` stays false
+and `moduleUnlock` bypasses the sequential badge gate for `track === "tools"`.
+
 ## SQL Labs (ShopSphere project)
 
 `/learn/sql` is the ShopSphere hub; the actual curriculum lives in two formal
@@ -215,20 +304,30 @@ limits, visible in the problem list.
   distinct expected outputs); the lab track uses the `sql-script` runner,
   which executes multiple statements in a disposable in-memory database and
   compares the final SELECT. ATTACH/DETACH/PRAGMA are denied.
-- The judge runs SQL in a read-only SQLite copy of the fixture for normal
-  problems; `sql-script` labs use the same fixture with an allowlisted writable
-  authorizer (ATTACH/PRAGMA/file access denied). Test setup
-  statements run before the read-only authorizer; they come from seeded hidden
-  tests, while custom-run input can execute arbitrary SQL only inside the
-  disposable sandbox. The SQL, MySQL and PostgreSQL options share that engine
-  through a compatibility layer: backticks, `ILIKE`, MySQL `LIMIT
-  offset,count`, `FETCH FIRST`, PostgreSQL `::` casts and `EXTRACT`, plus
-  common `CONCAT`, `IF`, `DATE_FORMAT`, `TO_CHAR`, `DATE_TRUNC`,
-  `YEAR`/`MONTH`/`DAY` functions. JSON questions accept SQLite `json_extract`,
-  PostgreSQL `attributes::jsonb->>'key'` and MySQL
-  `JSON_UNQUOTE(JSON_EXTRACT(...))` through the same compatibility layer.
-  Engine-specific features outside this subset are not available; portable
-  standard SQL is the safest choice.
+- The judge runs each SQL family on its own engine inside the sandbox:
+  `sql`/`sqlite` use SQLite 3, `mysql` boots a real MariaDB 10.11 server on a
+  private unix socket with no networking, and `postgresql` boots a real
+  PostgreSQL 15 server the same way. MySQL and PostgreSQL submissions run as a
+  SELECT-only role against a fresh fixture; SQLite submissions use the
+  read-only in-memory fixture. MySQL/PostgreSQL accept one read-only statement
+  per submission. `sql-script` labs stay SQLite-only: the allowlisted writable
+  authorizer executes DDL/DML/transactions in a disposable in-memory database
+  and compares the final SELECT. ATTACH/DETACH/PRAGMA are denied.
+- Engine compatibility is intentionally small and visible in the fixtures:
+  each fixture supplies SQLite-shaped scalar helpers (`julianday`, `json_extract`,
+  `strftime`, `round` and text/integer comparison) plus the standard
+  `CONCAT`/`IF`/`DATE_FORMAT`/`TO_CHAR`/`DATE_TRUNC`/`YEAR`/`MONTH`/`DAY`
+  functions, so the portable curriculum queries produce the same rows on every
+  engine. MySQL normalizes `GLOB` to `LIKE` and JSON extraction; PostgreSQL
+  rewrites SQLite casts and `LIMIT offset,count`, and adds the missing SELECT
+  columns to `GROUP BY` when a query groups by another table's key (SQLite and
+  MySQL allow this relaxed grouping; PostgreSQL normally rejects it). The
+  `sql` option is the portable default: it uses the same SQLite engine but also
+  accepts the MySQL/PostgreSQL syntax shims above, while `sqlite` runs native
+  SQLite only. So there are four SQL choices backed by three real engines
+  (SQLite, MariaDB and PostgreSQL). Engine-specific features outside this
+  subset are not available; portable standard SQL is still the safest choice.
+
 - `/sql-handbook` covers the production layer a read-only SELECT judge cannot
   grade: schema design/constraints/normalization/migrations, DDL/DML safety,
   ACID/transactions/isolation/locks, views/materialized views, roles/RLS/SQL
@@ -250,11 +349,13 @@ limits, visible in the problem list.
    editorial and difficulty label.
 3. `pnpm db:seed` — upserts the live curriculum problems and test cases. The
    seed is idempotent; run it twice on staging before a release.
-3. Rebuild the judge image after a harness **or fixture** change (`pnpm judge:build`), then
-   deploy the web and worker images.
-4. Smoke `/learn`, a live module, a live topic and a checkpoint start with a
+4. Rebuild the judge image after a harness **or fixture** change
+   (`pnpm judge:build`), then deploy the web and worker images.
+5. `pnpm sql:check` — runs every SQL reference solution against SQLite, MariaDB
+   and PostgreSQL; all submissions must be `ACCEPTED`.
+6. Smoke `/learn`, a live module, a live topic and a checkpoint start with a
    non-admin account. Confirm an unknown track returns a real `404`.
-5. Keep `SEED_DEMO_DATA=false` in production; the seed still creates the admin
+7. Keep `SEED_DEMO_DATA=false` in production; the seed still creates the admin
    account and curriculum content.
-6. Confirm no checkpoint attempts or QA submissions were left behind on the
+8. Confirm no checkpoint attempts or QA submissions were left behind on the
    staging database.

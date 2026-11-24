@@ -128,7 +128,12 @@ export function NotificationPreferencesForm({
           In-app notifications are always delivered. Emails require a verified
           address.
         </p>
-        <Button type="button" onClick={() => void save()} disabled={loading}>
+        <Button
+          type="button"
+          onClick={() => void save()}
+          disabled={loading}
+          className="h-11"
+        >
           {loading ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (

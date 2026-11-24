@@ -8,6 +8,7 @@ with them.
 """
 
 import argparse
+import functools
 import json
 import os
 import resource
@@ -84,29 +85,65 @@ def command_for(args: argparse.Namespace) -> list[str]:
         return [os.path.join(work, "main")]
     if args.language == "php":
         return ["php", os.path.join(work, "main.php")]
-    if args.language in ("sql", "sqlite", "mysql", "postgresql"):
+    if args.language in ("sql", "sqlite"):
         command = [
             "python3",
             "-B",
             "/sql-runner.py",
             os.path.join(work, "main.sql"),
-            args.language,
+            "standard" if args.language == "sql" else "sqlite",
         ]
         if os.environ.get("SQL_SCRIPT") == "1":
             command.append("--script")
         return command
+    if args.language == "mysql":
+        if os.environ.get("SQL_SCRIPT") == "1":
+            raise SystemExit("script mode is only available for SQLite")
+        return [
+            "python3",
+            "-B",
+            "/mysql-runner.py",
+            os.path.join(work, "main.sql"),
+        ]
+    if args.language == "postgresql":
+        if os.environ.get("SQL_SCRIPT") == "1":
+            raise SystemExit("script mode is only available for SQLite")
+        return [
+            "python3",
+            "-B",
+            "/postgres-runner.py",
+            os.path.join(work, "main.sql"),
+        ]
     raise SystemExit(f"unsupported language: {args.language}")
 
 
-def child_limits() -> None:
+def child_limits(language: str) -> None:
     os.setsid()
     os.setgroups([])
     os.setgid(NOBODY_GID)
     os.setuid(NOBODY_UID)
     resource.setrlimit(resource.RLIMIT_CORE, (0, 0))
-    resource.setrlimit(resource.RLIMIT_FSIZE, (OUTPUT_LIMIT_BYTES, OUTPUT_LIMIT_BYTES))
-    resource.setrlimit(resource.RLIMIT_NOFILE, (64, 64))
-    resource.setrlimit(resource.RLIMIT_NPROC, (64, 64))
+
+    # MariaDB and PostgreSQL need a writable data directory, more file
+    # descriptors and more threads than a normal submission. The databases live
+    # on the container's tmpfs; submitted SQL still runs as a read-only role.
+    file_size = (
+        256 * 1024 * 1024
+        if language in ("mysql", "postgresql")
+        else OUTPUT_LIMIT_BYTES
+    )
+    nofile = 512 if language == "mysql" else 256 if language == "postgresql" else 64
+    nproc = 256 if language == "mysql" else 64
+    hard_nofile = resource.getrlimit(resource.RLIMIT_NOFILE)[1]
+    if hard_nofile != resource.RLIM_INFINITY:
+        nofile = min(nofile, hard_nofile)
+    hard_nproc = resource.getrlimit(resource.RLIMIT_NPROC)[1]
+    if hard_nproc != resource.RLIM_INFINITY:
+        nproc = min(nproc, hard_nproc)
+
+    resource.setrlimit(resource.RLIMIT_FSIZE, (file_size, file_size))
+    resource.setrlimit(resource.RLIMIT_NOFILE, (nofile, nofile))
+    resource.setrlimit(resource.RLIMIT_NPROC, (nproc, nproc))
     resource.setrlimit(resource.RLIMIT_STACK, (64 * 1024 * 1024, 64 * 1024 * 1024))
 
 
@@ -267,7 +304,7 @@ def run_test(args: argparse.Namespace, position: int) -> dict:
             stderr=stderr_fd,
             cwd="/tmp",
             env=env,
-            preexec_fn=child_limits,
+            preexec_fn=functools.partial(child_limits, args.language),
             close_fds=True,
         )
         try:

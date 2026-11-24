@@ -49,6 +49,17 @@ export function apiError(error: unknown): NextResponse {
 
   const postgresCode = postgresErrorCode(error);
   if (postgresCode) {
+    if (postgresCode === "22P02") {
+      return NextResponse.json(
+        {
+          error: {
+            code: "NOT_FOUND",
+            message: "That record could not be found.",
+          },
+        },
+        { status: 404 },
+      );
+    }
     if (postgresCode === "42P01" || postgresCode === "42703") {
       console.error("Database migration missing for this request", error);
       return NextResponse.json(

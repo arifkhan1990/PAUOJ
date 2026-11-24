@@ -9,7 +9,7 @@ const directory = mkdtempSync(join(tmpdir(), "sql-runner-"));
 
 function run(
   query: string,
-  dialect = "sql",
+  dialect = "standard",
   setup = "",
   script = false,
 ) {
@@ -28,14 +28,14 @@ describe("SQL judge runner", () => {
   it("casts parenthesized and extracted expressions", () => {
     const simple = run(
       "SELECT (price_cents / 100)::numeric AS a, ROUND(rating, 2)::text AS b FROM products WHERE id = 5;",
-      "postgresql",
+      "standard",
     );
     expect(simple.status).toBe(0);
     expect(simple.stdout).toBe("950\t4.5");
 
     const extracted = run(
       "SELECT EXTRACT(YEAR FROM ordered_at)::text FROM orders ORDER BY id LIMIT 1;",
-      "postgresql",
+      "standard",
     );
     expect(extracted.status).toBe(0);
     expect(extracted.stdout).toBe("2026");
@@ -44,33 +44,40 @@ describe("SQL judge runner", () => {
   it("strips identifier backticks but preserves string literals", () => {
     const result = run(
       "SELECT 'a`b' AS literal, `name` FROM vendors ORDER BY id LIMIT 1;",
-      "mysql",
+      "standard",
     );
     expect(result.status).toBe(0);
     expect(result.stdout).toBe("a`b\tTechNest");
   });
 
-  it("accepts MySQL and PostgreSQL JSON forms", () => {
-    const mysql = run(
+  it("accepts SQLite, MySQL and PostgreSQL JSON forms", () => {
+    const mysqlForm = run(
       "SELECT JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.brand')) AS brand FROM product_attributes WHERE product_id = 1;",
-      "mysql",
+      "standard",
     );
-    expect(mysql.status).toBe(0);
-    expect(mysql.stdout).toBe("Logitech");
+    expect(mysqlForm.status).toBe(0);
+    expect(mysqlForm.stdout).toBe("Logitech");
 
-    const postgres = run(
+    const postgresForm = run(
       "SELECT attributes::jsonb->>'brand' AS brand FROM product_attributes WHERE product_id = 1;",
-      "postgresql",
+      "standard",
     );
-    expect(postgres.status).toBe(0);
-    expect(postgres.stdout).toBe("Logitech");
+    expect(postgresForm.status).toBe(0);
+    expect(postgresForm.stdout).toBe("Logitech");
 
     const numeric = run(
-      "SELECT attributes::jsonb->>'warranty_months' = '24' AS pg, JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.warranty_months')) = '24' AS mysql FROM product_attributes WHERE product_id = 1;",
-      "postgresql",
+      "SELECT attributes::jsonb->>'warranty_months' = '24' AS pg FROM product_attributes WHERE product_id = 1;",
+      "standard",
     );
     expect(numeric.status).toBe(0);
-    expect(numeric.stdout).toBe("1\t1");
+    expect(numeric.stdout).toBe("1");
+
+    const mysqlNumeric = run(
+      "SELECT JSON_UNQUOTE(JSON_EXTRACT(attributes, '$.warranty_months')) = '24' AS mysql FROM product_attributes WHERE product_id = 1;",
+      "standard",
+    );
+    expect(mysqlNumeric.status).toBe(0);
+    expect(mysqlNumeric.stdout).toBe("1");
   });
 
   it("rejects writes and multiple statements", () => {
@@ -93,7 +100,7 @@ describe("SQL judge runner", () => {
         "SELECT 1 AS ignored;",
         "SELECT name, stock FROM products WHERE id = 99;",
       ].join("\n"),
-      "sql",
+      "standard",
       "",
       true,
     );
@@ -112,7 +119,7 @@ describe("SQL judge runner", () => {
         "FROM products p JOIN vendors v ON v.id = p.vendor_id",
         "WHERE p.id = 8;",
       ].join("\n"),
-      "sql",
+      "standard",
       "update products set stock = 10 where id = 8;",
       true,
     );
@@ -123,20 +130,25 @@ describe("SQL judge runner", () => {
   it("denies ATTACH and PRAGMA in script mode", () => {
     const attach = run(
       "ATTACH DATABASE '/tmp/escape.db' AS stolen; SELECT 1;",
-      "sql",
+      "standard",
       "",
       true,
     );
     expect(attach.status).not.toBe(0);
     expect(attach.stderr).toContain("not authorized");
 
-    const pragma = run("PRAGMA table_info(vendors); SELECT 1;", "sql", "", true);
+    const pragma = run(
+      "PRAGMA table_info(vendors); SELECT 1;",
+      "standard",
+      "",
+      true,
+    );
     expect(pragma.status).not.toBe(0);
     expect(pragma.stderr).toContain("not authorized");
   });
 
   it("requires the script to end with a result statement", () => {
-    const result = run("DROP TABLE reviews;", "sql", "", true);
+    const result = run("DROP TABLE reviews;", "standard", "", true);
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain("SELECT or EXPLAIN");
   });

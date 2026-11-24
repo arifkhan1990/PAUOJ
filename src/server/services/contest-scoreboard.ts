@@ -1,9 +1,11 @@
-import { and, asc, eq, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, notInArray } from "drizzle-orm";
 import { errors } from "@/server/api/errors";
 import { getDb } from "@/server/db";
 import {
   contestProblems,
   contestRegistrations,
+  contestTeamMembers,
+  contestTeams,
   contests,
   problems,
   submissions,
@@ -11,8 +13,101 @@ import {
 } from "@/server/db/schema";
 import type { ContestScoreboard } from "@/lib/types";
 import { contestStatus } from "@/lib/contests";
-import { computeScoreboard } from "@/server/contests/scoring";
+import {
+  computeScoreboard,
+  type ScoringParticipant,
+  type ScoringTeam,
+} from "@/server/contests/scoring";
 import { finalizeContestRatings } from "./ratings";
+
+type ParticipantRow = {
+  userId: string;
+  username: string;
+  displayName: string;
+};
+
+async function loadParticipantRows(contestId: string): Promise<ParticipantRow[]> {
+  return getDb()
+    .select({
+      userId: contestRegistrations.userId,
+      username: users.username,
+      displayName: users.displayName,
+    })
+    .from(contestRegistrations)
+    .innerJoin(users, eq(users.id, contestRegistrations.userId))
+    .where(eq(contestRegistrations.contestId, contestId));
+}
+
+async function loadTeamBoard(
+  contestId: string,
+  registered: ParticipantRow[],
+): Promise<{ teams: ScoringTeam[]; participants: ScoringParticipant[] }> {
+  const db = getDb();
+  const teamRows = await db
+    .select({
+      id: contestTeams.id,
+      name: contestTeams.name,
+      captainId: contestTeams.captainId,
+    })
+    .from(contestTeams)
+    .where(
+      and(
+        eq(contestTeams.contestId, contestId),
+        notInArray(contestTeams.status, ["WITHDRAWN", "DISQUALIFIED"]),
+      ),
+    )
+    .orderBy(asc(contestTeams.createdAt));
+  if (teamRows.length === 0) {
+    return { teams: [], participants: [] };
+  }
+
+  const teamIds = teamRows.map((team) => team.id);
+  const memberRows = await db
+    .select({
+      teamId: contestTeamMembers.teamId,
+      userId: contestTeamMembers.userId,
+      username: users.username,
+      displayName: users.displayName,
+    })
+    .from(contestTeamMembers)
+    .innerJoin(users, eq(users.id, contestTeamMembers.userId))
+    .where(inArray(contestTeamMembers.teamId, teamIds))
+    .orderBy(asc(contestTeamMembers.joinedAt));
+
+  const registeredIds = new Set(registered.map((row) => row.userId));
+  const membersByTeam = new Map<string, ScoringParticipant[]>();
+  for (const member of memberRows) {
+    if (!registeredIds.has(member.userId)) continue;
+    const list = membersByTeam.get(member.teamId) ?? [];
+    list.push({
+      userId: member.userId,
+      username: member.username,
+      displayName: member.displayName,
+    });
+    membersByTeam.set(member.teamId, list);
+  }
+
+  const teams: ScoringTeam[] = [];
+  for (const team of teamRows) {
+    const members = membersByTeam.get(team.id);
+    if (!members || members.length === 0) continue;
+    teams.push({
+      id: team.id,
+      name: team.name,
+      captainId: team.captainId,
+      members: [...members].sort((left, right) => {
+        if (left.userId === team.captainId) return -1;
+        if (right.userId === team.captainId) return 1;
+        return 0;
+      }),
+    });
+  }
+
+  return {
+    teams,
+    participants: teams.flatMap((team) => team.members),
+  };
+}
 
 export async function getScoreboard(
   slug: string,
@@ -53,15 +148,11 @@ export async function getScoreboard(
     .where(eq(contestProblems.contestId, contest.id))
     .orderBy(asc(contestProblems.position));
 
-  const participantRows = await db
-    .select({
-      userId: contestRegistrations.userId,
-      username: users.username,
-      displayName: users.displayName,
-    })
-    .from(contestRegistrations)
-    .innerJoin(users, eq(users.id, contestRegistrations.userId))
-    .where(eq(contestRegistrations.contestId, contest.id));
+  const participantRows = await loadParticipantRows(contest.id);
+  const teamBoard =
+    contest.format === "GROUP"
+      ? await loadTeamBoard(contest.id, participantRows)
+      : null;
 
   const freezeAt =
     contest.freezeMinutes > 0
@@ -90,12 +181,10 @@ export async function getScoreboard(
   const scoreboard = computeScoreboard({
     startAt: contest.startAt,
     problems: problemRows,
-    participants: participantRows.map((row) => ({
-      userId: row.userId,
-      username: row.username,
-      displayName: row.displayName,
-    })),
+    participants: teamBoard ? teamBoard.participants : participantRows,
     submissions: submissionRows,
+    teams: teamBoard?.teams,
+    mode: teamBoard ? "TEAM" : "INDIVIDUAL",
   });
 
   return {
@@ -106,6 +195,8 @@ export async function getScoreboard(
       endAt: contest.endAt.toISOString(),
       status,
       freezeMinutes: contest.freezeMinutes,
+      format: contest.format,
+      teamSize: contest.teamSize,
     },
     frozen,
     freezeAt: freezeAt?.toISOString() ?? null,

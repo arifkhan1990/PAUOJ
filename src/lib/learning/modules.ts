@@ -9,6 +9,8 @@ import { module4 } from "./tracks/module-4";
 import { module5 } from "./tracks/module-5";
 import { module6 } from "./tracks/module-6";
 import { module7 } from "./tracks/module-7";
+import { dockerCicdModule } from "./tools/docker";
+import { gitGithubModule } from "./tools/git";
 import {
   advancedSqlModule,
   basicSqlModule,
@@ -24,6 +26,8 @@ export const LEARNING_MODULES: LearningModuleDefinition[] = [
   module7,
   basicSqlModule,
   advancedSqlModule,
+  gitGithubModule,
+  dockerCicdModule,
 ];
 
 export function getLearningModule(

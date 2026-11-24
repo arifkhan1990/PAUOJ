@@ -26,9 +26,12 @@ import { SubmissionTable } from "@/components/submissions/submission-table";
 import { buttonVariants } from "@/components/ui/button";
 import { requireUser } from "@/server/auth/guards";
 import { getDailyChallenge } from "@/server/services/daily-challenge";
+import { getDailyChallengeWeek } from "@/server/services/daily-challenge-week";
 import { listContests } from "@/server/services/contests";
 import { getProfile } from "@/server/services/profile";
+import { addUtcDays, parseWeekAnchor, startOfUtcWeek, utcDayKey } from "@/lib/week";
 import { formatPercent } from "@/lib/utils";
+import type { SearchParams } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "Coder dashboard",
@@ -36,9 +39,19 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function CoderDashboardPage() {
+export default async function CoderDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
   const user = await requireUser("/dashboard");
-  const [profile, daily, contestPage] = await Promise.all([
+  const params = await searchParams;
+  const now = new Date();
+  const currentWeek = startOfUtcWeek(now);
+  const joinWeek = startOfUtcWeek(user.createdAt);
+  const anchor = parseWeekAnchor(params.week, currentWeek, joinWeek);
+
+  const [profile, daily, contestPage, dailyWeek] = await Promise.all([
     getProfile(user.username, user),
     getDailyChallenge(user.id, user.role === "ADMIN"),
     listContests({
@@ -46,12 +59,33 @@ export default async function CoderDashboardPage() {
       filter: "UPCOMING",
       userId: user.id,
     }),
+    getDailyChallengeWeek({
+      userId: user.id,
+      isAdmin: user.role === "ADMIN",
+      anchor,
+      now,
+      joinedAt: user.createdAt,
+    }),
   ]);
   if (!profile) notFound();
 
+  const prevHref =
+    anchor.getTime() > joinWeek.getTime()
+      ? `/dashboard?week=${utcDayKey(addUtcDays(anchor, -7))}`
+      : null;
+  const nextHref =
+    anchor.getTime() < currentWeek.getTime()
+      ? `/dashboard?week=${utcDayKey(addUtcDays(anchor, 7))}`
+      : null;
+
   return (
     <div className="space-y-5">
-      <DashboardHero profile={profile} />
+      <DashboardHero
+        profile={profile}
+        dailyWeek={dailyWeek}
+        prevHref={prevHref}
+        nextHref={nextHref}
+      />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <DashboardMetric
@@ -119,7 +153,7 @@ export default async function CoderDashboardPage() {
             <DailyChallengeCard challenge={daily} />
           </div>
           <div>
-            <UpcomingContestsCard contests={contestPage.items} />
+            <UpcomingContestsCard contests={contestPage.items.slice(0, 2)} />
           </div>
         </div>
       </div>

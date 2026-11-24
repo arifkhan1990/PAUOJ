@@ -6,8 +6,9 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2, UserPlus } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants, type ButtonProps } from "@/components/ui/button";
 import { ApiClientError, apiPost } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
 
 export function ContestRegisterButton({
   slug,
@@ -15,12 +16,16 @@ export function ContestRegisterButton({
   canRegister,
   isAuthenticated,
   ended,
+  size,
+  className,
 }: {
   slug: string;
   registered: boolean;
   canRegister: boolean;
   isAuthenticated: boolean;
   ended: boolean;
+  size?: ButtonProps["size"];
+  className?: string;
 }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -28,7 +33,10 @@ export function ContestRegisterButton({
 
   if (registered) {
     return (
-      <Badge variant="success" className="h-9 gap-1.5 px-3 text-sm">
+      <Badge
+        variant="success"
+        className={cn("h-9 gap-1.5 px-3 text-sm", className)}
+      >
         <CheckCircle2 className="size-4" /> Registered
       </Badge>
     );
@@ -38,7 +46,7 @@ export function ContestRegisterButton({
     return (
       <Link
         href={`/login?next=${encodeURIComponent(`/contests/${slug}`)}`}
-        className={buttonVariants()}
+        className={cn(buttonVariants({ size }), className)}
       >
         <UserPlus className="size-4" /> Sign in to register
       </Link>
@@ -67,7 +75,13 @@ export function ContestRegisterButton({
   };
 
   return (
-    <Button type="button" onClick={() => void register()} disabled={loading}>
+    <Button
+      type="button"
+      size={size}
+      className={className}
+      onClick={() => void register()}
+      disabled={loading}
+    >
       {loading ? (
         <Loader2 className="size-4 animate-spin" />
       ) : (

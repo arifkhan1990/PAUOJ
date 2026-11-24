@@ -8,6 +8,7 @@ import {
   Settings,
   ShieldCheck,
   Trophy,
+  UserPlus,
 } from "lucide-react";
 import { MarkAllReadButton } from "@/features/notifications/mark-all-read";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -28,7 +29,7 @@ import { cn, formatRelative } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Notifications",
   description:
-    "Verdicts, contest starts, clarification answers, problem contributions and contest approvals.",
+    "Verdicts, contest starts, clarification answers, new followers, problem contributions and contest approvals.",
 };
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,10 @@ const TYPE_META: Record<
   CONTEST_APPROVAL: {
     icon: ShieldCheck,
     className: "bg-violet-500/10 text-violet-600 dark:text-violet-400",
+  },
+  FOLLOW: {
+    icon: UserPlus,
+    className: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   },
   SYSTEM: {
     icon: Bell,
@@ -91,7 +96,7 @@ export default async function NotificationsPage({
         description={
           unread > 0
             ? `${unread} unread ${unread === 1 ? "update" : "updates"} for you.`
-            : "Verdicts, contest starts, clarification answers, problem contributions and contest approvals."
+            : "Verdicts, contest starts, clarification answers, new followers, problem contributions and contest approvals."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">

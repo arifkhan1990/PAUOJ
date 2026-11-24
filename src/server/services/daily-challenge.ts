@@ -9,6 +9,7 @@ import {
   notInArray,
   or,
   sql,
+  type SQL,
 } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { problemTags, problems, submissions, tags } from "@/server/db/schema";
@@ -33,6 +34,77 @@ export type DailyChallenge = {
   streak: number;
 };
 
+export type DailyChallengeProblem = {
+  id: string;
+  slug: string;
+  title: string;
+  difficulty: Difficulty;
+  points: number;
+};
+
+export type DailyChallengeScope = {
+  isAdmin: boolean;
+  restrictedIds: string[];
+  /** `null` means no premium filter (admin); otherwise the entitled modules. */
+  entitledModules: string[] | null;
+};
+
+export async function loadDailyChallengeScope(
+  userId: string | null,
+  isAdmin: boolean,
+): Promise<DailyChallengeScope> {
+  const restrictedIds = await getRestrictedProblemIds(userId, isAdmin);
+  if (isAdmin) {
+    return { isAdmin, restrictedIds, entitledModules: null };
+  }
+
+  const { getEntitledModuleSlugs } = await import(
+    "@/server/services/learning-payments"
+  );
+  const entitledModules = userId
+    ? [...(await getEntitledModuleSlugs(userId))]
+    : [];
+  return { isAdmin, restrictedIds, entitledModules };
+}
+
+function challengeConditions(scope: DailyChallengeScope): SQL[] {
+  const conditions: SQL[] = [eq(problems.isPublic, true)];
+  if (scope.restrictedIds.length > 0) {
+    conditions.push(notInArray(problems.id, scope.restrictedIds));
+  }
+  if (!scope.isAdmin) {
+    const entitled = scope.entitledModules ?? [];
+    conditions.push(
+      entitled.length > 0
+        ? or(
+            isNull(problems.premiumModuleSlug),
+            inArray(problems.premiumModuleSlug, entitled),
+          )!
+        : isNull(problems.premiumModuleSlug),
+    );
+  }
+  return conditions;
+}
+
+export async function findDailyChallengeProblem(
+  scope: DailyChallengeScope,
+  dateKey: string,
+): Promise<DailyChallengeProblem | null> {
+  const [problem] = await getDb()
+    .select({
+      id: problems.id,
+      slug: problems.slug,
+      title: problems.title,
+      difficulty: problems.difficulty,
+      points: problems.points,
+    })
+    .from(problems)
+    .where(and(...challengeConditions(scope)))
+    .orderBy(sql`md5(${problems.id}::text || ${dateKey})`)
+    .limit(1);
+  return problem ?? null;
+}
+
 function startOfDay(): Date {
   const now = new Date();
   return new Date(
@@ -47,40 +119,8 @@ export async function getDailyChallenge(
   const db = getDb();
   const dayStart = startOfDay();
   const dateKey = dayStart.toISOString().slice(0, 10);
-  const restricted = await getRestrictedProblemIds(userId, isAdmin);
-  const conditions = [eq(problems.isPublic, true)];
-  if (restricted.length > 0) {
-    conditions.push(notInArray(problems.id, restricted));
-  }
-  if (!isAdmin) {
-    const { getEntitledModuleSlugs } = await import(
-      "@/server/services/learning-payments"
-    );
-    const entitled = userId
-      ? [...(await getEntitledModuleSlugs(userId))]
-      : [];
-    conditions.push(
-      entitled.length > 0
-        ? or(
-            isNull(problems.premiumModuleSlug),
-            inArray(problems.premiumModuleSlug, entitled),
-          )!
-        : isNull(problems.premiumModuleSlug),
-    );
-  }
-
-  const [problem] = await db
-    .select({
-      id: problems.id,
-      slug: problems.slug,
-      title: problems.title,
-      difficulty: problems.difficulty,
-      points: problems.points,
-    })
-    .from(problems)
-    .where(and(...conditions))
-    .orderBy(sql`md5(${problems.id}::text || ${dateKey})`)
-    .limit(1);
+  const scope = await loadDailyChallengeScope(userId, isAdmin);
+  const problem = await findDailyChallengeProblem(scope, dateKey);
   if (!problem) return null;
 
   const problemTagRows = await db

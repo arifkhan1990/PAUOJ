@@ -53,20 +53,18 @@ export function DailyChallengeCard({
                   Solved
                 </span>
               ) : null}
+              <span className="text-[10px] font-medium text-muted-foreground">
+                {challenge.problem.points} points
+              </span>
             </div>
             <span className="shrink-0 font-mono text-[10px] text-muted-foreground">
               {formatDate(challenge.date)}
             </span>
           </div>
 
-          <div>
-            <h3 className="text-[15px] font-semibold leading-snug">
-              {challenge.problem.title}
-            </h3>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {challenge.problem.points} points
-            </p>
-          </div>
+          <h3 className="text-[15px] font-semibold leading-snug">
+            {challenge.problem.title}
+          </h3>
 
           {challenge.problem.tags.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">

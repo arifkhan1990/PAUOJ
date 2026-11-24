@@ -4,6 +4,7 @@ export type NotificationType =
   | "CLARIFICATION"
   | "CONTRIBUTION"
   | "CONTEST_APPROVAL"
+  | "FOLLOW"
   | "SYSTEM";
 
 export type NotificationItem = {

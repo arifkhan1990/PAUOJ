@@ -1,4 +1,4 @@
-import type { ContestScoreboard } from "@/lib/types";
+import type { ContestScoreboard, ScoreboardRow } from "@/lib/types";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import {
   Table,
@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { Zap } from "lucide-react";
+import { UsersRound, Zap } from "lucide-react";
 import Link from "next/link";
 
 function rankClass(rank: number): string {
@@ -22,13 +22,65 @@ function rankClass(rank: number): string {
   return "border-border bg-background text-muted-foreground";
 }
 
+function memberLabel(count: number): string {
+  return `${count} ${count === 1 ? "member" : "members"}`;
+}
+
+function ScoreboardIdentity({ board, row }: {
+  board: ContestScoreboard;
+  row: ScoreboardRow;
+}) {
+  const isGroup = board.contest.format === "GROUP";
+  const team = isGroup ? row.team : null;
+  const name = team?.name ?? row.user.displayName;
+  const memberNames = team?.members.map((member) => member.displayName) ?? [];
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <UserAvatar
+        name={row.user.displayName}
+        username={row.user.username}
+        size="sm"
+      />
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-medium">{name}</span>
+        <span className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
+          <Link
+            href={`/users/${row.user.username}`}
+            className="truncate hover:text-primary"
+          >
+            {team ? `Captain @${row.user.username}` : `@${row.user.username}`}
+          </Link>
+          {team ? (
+            <span
+              className="inline-flex items-center gap-1"
+              title={memberNames.join(", ")}
+            >
+              <span aria-hidden="true">·</span>
+              <UsersRound className="size-3" aria-hidden="true" />
+              {memberLabel(team.memberCount)}
+              <span className="sr-only">
+                : {memberNames.join(", ")}
+              </span>
+            </span>
+          ) : null}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function ScoreboardTable({ board }: { board: ContestScoreboard }) {
+  const isGroup = board.contest.format === "GROUP";
+
   return (
     <Table className="min-w-[760px]">
       <TableHeader>
         <TableRow>
           <TableHead className="w-16">Rank</TableHead>
-          <TableHead className="min-w-56">Coder</TableHead>
+          <TableHead className="min-w-56">
+            {isGroup ? "Team / captain" : "Coder"}
+          </TableHead>
           <TableHead className="text-right">Solved</TableHead>
           <TableHead className="text-right">Penalty</TableHead>
           {board.labels.map((label) => (
@@ -40,7 +92,7 @@ export function ScoreboardTable({ board }: { board: ContestScoreboard }) {
       </TableHeader>
       <TableBody>
         {board.rows.map((row) => (
-          <TableRow key={row.user.username}>
+          <TableRow key={row.team?.id ?? row.user.username}>
             <TableCell>
               <span
                 className={cn(
@@ -52,24 +104,7 @@ export function ScoreboardTable({ board }: { board: ContestScoreboard }) {
               </span>
             </TableCell>
             <TableCell>
-              <Link
-                href={`/users/${row.user.username}`}
-                className="flex items-center gap-2.5 hover:text-primary"
-              >
-                <UserAvatar
-                  name={row.user.displayName}
-                  username={row.user.username}
-                  size="sm"
-                />
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">
-                    {row.user.displayName}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    @{row.user.username}
-                  </span>
-                </span>
-              </Link>
+              <ScoreboardIdentity board={board} row={row} />
             </TableCell>
             <TableCell className="text-right font-mono text-sm font-semibold tabular-nums">
               {row.solved}

@@ -2,6 +2,9 @@ import type { Difficulty } from "@/lib/difficulty";
 
 export type LearningModuleStatus = "LIVE" | "PLANNED";
 
+/** Core algorithm tracks, project SQL labs, and free career-toolkit modules. */
+export type LearningTrack = "core" | "sql" | "tools";
+
 export type LearningCheckpointStatus =
   | "NOT_STARTED"
   | "ACTIVE"
@@ -36,7 +39,7 @@ export type LearningCheckpointDefinition = {
   };
 };
 
-export type LearningPracticeTier = "FULL" | "COMPACT";
+export type LearningPracticeTier = "FULL" | "COMPACT" | "WORKSHOP";
 
 export type LearningModuleDefinition = {
   slug: string;
@@ -47,7 +50,7 @@ export type LearningModuleDefinition = {
   description: string;
   estimatedHours: number;
   status: LearningModuleStatus;
-  track?: "core" | "sql";
+  track?: LearningTrack;
   diagram?: {
     src: string;
     alt: string;
@@ -117,6 +120,7 @@ export type LearningModuleSummary = {
   subtitle: string;
   goal: string;
   status: LearningModuleStatus;
+  track: LearningTrack;
   estimatedHours: number;
   topicCount: number;
   problemCount: number;

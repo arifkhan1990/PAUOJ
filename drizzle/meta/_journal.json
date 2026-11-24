@@ -260,6 +260,41 @@
       "when": 1795447413707,
       "tag": "0036_smart_sleepwalker",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1795465647462,
+      "tag": "0037_lazy_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1795467767759,
+      "tag": "0038_profile_social",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1795473392863,
+      "tag": "0039_brief_thunderbolts",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795473561495,
+      "tag": "0040_profile_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795503439743,
+      "tag": "0041_calm_peter_quill",
+      "breakpoints": true
     }
   ]
 }

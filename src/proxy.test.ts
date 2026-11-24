@@ -257,3 +257,88 @@ describe("learning route proxy", () => {
     expect(response.status).toBe(404);
   });
 });
+
+describe("profile username proxy", () => {
+  beforeEach(() => {
+    sql.mockReset();
+  });
+
+  it("returns a real 404 for an unknown profile", async () => {
+    sql.mockResolvedValue([]);
+    const response = await proxy(request("/users/this-user-does-not-exist"));
+    expect(response.status).toBe(404);
+  });
+
+  it("returns a real 404 for an unknown connections page", async () => {
+    sql.mockResolvedValue([]);
+    const response = await proxy(
+      request("/users/this-user-does-not-exist/connections?tab=followers"),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  it("passes an existing profile and connections page through", async () => {
+    sql.mockResolvedValue([{ "?column?": 1 }]);
+    const profile = await proxy(request("/users/rakib"));
+    const connections = await proxy(
+      request("/users/rakib/connections?tab=following"),
+    );
+    expect(profile.status).toBe(200);
+    expect(profile.headers.get("x-middleware-next")).toBe("1");
+    expect(connections.status).toBe(200);
+  });
+
+  it("redirects mixed-case profile URLs to the lowercase canonical", async () => {
+    const response = await proxy(request("/users/RaKib/connections?tab=followers"));
+    expect(response.status).toBe(301);
+    expect(response.headers.get("location")).toBe(
+      "http://localhost/users/rakib/connections?tab=followers",
+    );
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("does not 404 every profile when the lookup fails", async () => {
+    sql.mockRejectedValue(new Error("database unavailable"));
+    const response = await proxy(request("/users/rakib"));
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("contest slug proxy", () => {
+  beforeEach(() => {
+    sql.mockReset();
+  });
+
+  it("returns a real 404 for an unknown contest or tab", async () => {
+    sql.mockResolvedValue([]);
+    const detail = await proxy(request("/contests/this-contest-does-not-exist"));
+    const standings = await proxy(
+      request("/contests/this-contest-does-not-exist/standings"),
+    );
+    expect(detail.status).toBe(404);
+    expect(standings.status).toBe(404);
+  });
+
+  it("passes an existing contest and its tabs through", async () => {
+    sql.mockResolvedValue([{ "?column?": 1 }]);
+    const detail = await proxy(request("/contests/pau-intra-2026"));
+    const sponsorship = await proxy(
+      request("/contests/pau-intra-2026/sponsor"),
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.headers.get("x-middleware-next")).toBe("1");
+    expect(sponsorship.status).toBe(200);
+  });
+
+  it("does not treat the host page as a contest slug", async () => {
+    const response = await proxy(request("/contests/host"));
+    expect(response.status).toBe(200);
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("does not 404 every contest when the lookup fails", async () => {
+    sql.mockRejectedValue(new Error("database unavailable"));
+    const response = await proxy(request("/contests/pau-intra-2026"));
+    expect(response.status).toBe(200);
+  });
+});

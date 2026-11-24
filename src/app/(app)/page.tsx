@@ -13,6 +13,7 @@ import { listRank } from "@/server/services/rank";
 import { getSiteStats, getSubmissionActivity } from "@/server/services/stats";
 import { listSubmissions } from "@/server/services/submissions";
 import { getDailyChallenge } from "@/server/services/daily-challenge";
+import { isJudgeOnline } from "@/server/worker-heartbeat";
 
 export const dynamic = "force-dynamic";
 
@@ -20,24 +21,33 @@ export default async function HomePage() {
   const user = await getCurrentUser();
   const isAdmin = user?.role === "ADMIN";
 
-  const [stats, problemPage, contestPage, rankPage, submissionPage, activity, daily] =
-    await Promise.all([
-      getSiteStats({ userId: user?.id ?? null, isAdmin }),
-      listProblems({
-        page: { page: 1, pageSize: 4 },
-        userId: user?.id ?? null,
-        isAdmin,
-      }),
-      listContests({
-        page: { page: 1, pageSize: 3 },
-        filter: "ALL",
-        userId: user?.id ?? null,
-      }),
-      listRank({ page: 1, pageSize: 5 }),
-      listSubmissions({ page: 1, pageSize: 6 }, null),
-      getSubmissionActivity(14),
-      getDailyChallenge(user?.id ?? null, isAdmin),
-    ]);
+  const [
+    stats,
+    problemPage,
+    contestPage,
+    rankPage,
+    submissionPage,
+    activity,
+    daily,
+    judgeOnline,
+  ] = await Promise.all([
+    getSiteStats({ userId: user?.id ?? null, isAdmin }),
+    listProblems({
+      page: { page: 1, pageSize: 4 },
+      userId: user?.id ?? null,
+      isAdmin,
+    }),
+    listContests({
+      page: { page: 1, pageSize: 3 },
+      filter: "ALL",
+      userId: user?.id ?? null,
+    }),
+    listRank({ page: 1, pageSize: 5 }),
+    listSubmissions({ page: 1, pageSize: 6, publicOnly: true }, null),
+    getSubmissionActivity(14, { publicOnly: true }),
+    getDailyChallenge(user?.id ?? null, isAdmin),
+    isJudgeOnline(),
+  ]);
 
   return (
     <>
@@ -52,7 +62,11 @@ export default async function HomePage() {
         contests={contestPage.items}
         rankItems={rankPage.items}
       />
-      <VerdictFeed items={submissionPage.items} activity={activity} />
+      <VerdictFeed
+        items={submissionPage.items}
+        activity={activity}
+        judgeOnline={judgeOnline}
+      />
       <AssessmentSpotlight isAdmin={isAdmin} />
       <FeatureBento />
       <FinalCta isAuthenticated={Boolean(user)} />

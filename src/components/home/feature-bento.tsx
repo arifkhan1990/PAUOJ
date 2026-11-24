@@ -73,7 +73,7 @@ function SandboxCard() {
             <TerminalRow label="memory" value="256 MB" />
             <TerminalRow label="time limit" value="2.0 s" />
           </div>
-          <p className="mt-3 flex items-center gap-1.5 text-emerald-300">
+          <p className="mt-3 flex items-center gap-1.5 whitespace-nowrap text-[10px] text-emerald-300">
             <CheckCircle2 className="size-3.5" /> exit 0 · 12 ms · 4.8 MB
           </p>
         </div>
@@ -84,11 +84,11 @@ function SandboxCard() {
 
 function LanguagesCard() {
   return (
-    <Panel className="md:col-span-2">
+    <Panel className="md:col-span-4">
       <span className="grid size-9 place-items-center rounded-md border border-border bg-background text-primary">
         <Code2 className="size-[18px]" />
       </span>
-      <h3 className="mt-4 text-base font-semibold">Five real toolchains</h3>
+      <h3 className="mt-4 text-base font-semibold">Real toolchains, ready to run</h3>
       <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
         The same compilers and runtimes the judge uses in production.
       </p>
@@ -141,49 +141,47 @@ function VerdictsCard() {
 
 function ResultsCard() {
   return (
-    <Panel className="md:col-span-4">
-      <div className="grid gap-6 sm:grid-cols-[1.1fr_0.9fr] sm:items-center">
-        <div>
-          <span className="grid size-9 place-items-center rounded-md border border-border bg-background text-primary">
-            <ListChecks className="size-[18px]" />
-          </span>
-          <h3 className="mt-4 text-base font-semibold">
-            Per-test detail, not just a number
-          </h3>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            See the exact test, runtime and memory behind every failure, then
-            fix the part that actually broke.
-          </p>
+    <Panel className="md:col-span-2">
+      <div>
+        <span className="grid size-9 place-items-center rounded-md border border-border bg-background text-primary">
+          <ListChecks className="size-[18px]" />
+        </span>
+        <h3 className="mt-4 text-base font-semibold">
+          Per-test detail, not just a number
+        </h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          See the exact test, runtime and memory behind every failure, then fix
+          the part that actually broke.
+        </p>
+      </div>
+      <div className="mt-4 rounded-lg border border-border bg-muted/30 p-3">
+        <div className="grid grid-cols-5 gap-1.5">
+          {Array.from({ length: 10 }, (_, index) => {
+            const failed = index === 3;
+            return (
+              <span
+                key={index}
+                className={cn(
+                  "flex h-9 flex-col items-center justify-center rounded-md border font-mono text-[10px]",
+                  failed
+                    ? "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
+                    : "border-emerald-300/70 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+                )}
+                title={failed ? `Test ${index + 1} failed` : `Test ${index + 1} passed`}
+              >
+                {failed ? <X className="size-3" /> : <Check className="size-3" />}
+                {index + 1}
+              </span>
+            );
+          })}
         </div>
-        <div className="rounded-lg border border-border bg-muted/30 p-3">
-          <div className="grid grid-cols-5 gap-1.5">
-            {Array.from({ length: 10 }, (_, index) => {
-              const failed = index === 3;
-              return (
-                <span
-                  key={index}
-                  className={cn(
-                    "flex h-9 flex-col items-center justify-center rounded-md border font-mono text-[10px]",
-                    failed
-                      ? "border-rose-300 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-300"
-                      : "border-emerald-300/70 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
-                  )}
-                  title={failed ? `Test ${index + 1} failed` : `Test ${index + 1} passed`}
-                >
-                  {failed ? <X className="size-3" /> : <Check className="size-3" />}
-                  {index + 1}
-                </span>
-              );
-            })}
-          </div>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-muted-foreground">
-            <span className="text-emerald-600 dark:text-emerald-400">
-              9/10 passed
-            </span>
-            <span>12 ms</span>
-            <span>4.8 MB</span>
-            <span className="ml-auto">test 4</span>
-          </div>
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-muted-foreground">
+          <span className="text-emerald-600 dark:text-emerald-400">
+            9/10 passed
+          </span>
+          <span>12 ms</span>
+          <span>4.8 MB</span>
+          <span className="ml-auto">test 4</span>
         </div>
       </div>
     </Panel>
@@ -203,9 +201,9 @@ export function FeatureBento() {
       />
       <div className="mt-6 grid gap-4 md:grid-cols-6">
         <SandboxCard />
-        <LanguagesCard />
         <VerdictsCard />
         <ResultsCard />
+        <LanguagesCard />
       </div>
     </section>
   );

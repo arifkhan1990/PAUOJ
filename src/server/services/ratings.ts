@@ -28,6 +28,7 @@ export async function finalizeContestRatings(slug: string): Promise<void> {
       id: contests.id,
       endAt: contests.endAt,
       ratedAt: contests.ratedAt,
+      format: contests.format,
     })
     .from(contests)
     .where(eq(contests.slug, slug))
@@ -42,6 +43,7 @@ export async function finalizeContestRatings(slug: string): Promise<void> {
         startAt: contests.startAt,
         endAt: contests.endAt,
         ratedAt: contests.ratedAt,
+        format: contests.format,
       })
       .from(contests)
       .where(eq(contests.id, contest.id))
@@ -49,6 +51,13 @@ export async function finalizeContestRatings(slug: string): Promise<void> {
       .limit(1);
     const locked = lockedRows[0];
     if (!locked || locked.ratedAt || locked.endAt > new Date()) return;
+    if (locked.format === "GROUP") {
+      await tx
+        .update(contests)
+        .set({ ratedAt: new Date(), updatedAt: new Date() })
+        .where(eq(contests.id, locked.id));
+      return;
+    }
 
     const [problemRows, participantRows, submissionRows] = await Promise.all([
       tx

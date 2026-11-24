@@ -104,7 +104,7 @@ function ToolbarButton({
       type="button"
       variant="ghost"
       size="icon"
-      className="size-8"
+      className="size-11 sm:size-8"
       aria-label={item.label}
       title={item.label}
       disabled={disabled}
@@ -263,7 +263,7 @@ export function MarkdownEditor({
                     value: item,
                     label: item,
                   }))}
-                  className="h-8 w-[7.25rem] text-xs"
+                  className="h-11 w-[7.25rem] text-xs sm:h-8"
                 />
               ) : null}
             </Fragment>
@@ -281,7 +281,7 @@ export function MarkdownEditor({
               aria-pressed={mode === item.id}
               onClick={() => setMode(item.id)}
               className={cn(
-                "inline-flex min-h-8 items-center rounded px-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "inline-flex min-h-11 items-center rounded px-2.5 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-8",
                 item.id === "split" && "hidden lg:inline-flex",
                 mode === item.id
                   ? "bg-foreground text-background"
@@ -353,7 +353,7 @@ export function MarkdownEditor({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 text-[11px]"
+                className="h-11 px-2 text-[11px] sm:h-8"
                 onClick={insertOutline}
               >
                 Insert outline

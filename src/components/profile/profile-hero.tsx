@@ -9,8 +9,13 @@ import {
   Settings,
   Target,
   Trophy,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import { FollowButton } from "@/components/profile/follow-button";
+import { ProfileDetails } from "@/components/profile/profile-details";
+import { ProfileShareButton } from "@/components/profile/profile-share-button";
+import { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -28,6 +33,8 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
   const { user } = profile;
   const rated = profile.contestCount > 0;
   const tier = getRatingTier(user.rating, rated);
+  const followersHref = `/users/${user.username}/connections?tab=followers`;
+  const followingHref = `/users/${user.username}/connections?tab=following`;
 
   const stats: HeroStat[] = [
     {
@@ -61,7 +68,7 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
               name={user.displayName}
               username={user.username}
               size="xl"
-              className="size-20 bg-orange-500 text-[26px] font-bold ring-0"
+              className="size-20 bg-orange-700 text-[26px] font-bold ring-0"
             />
             <div className="min-w-0 pt-0.5">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
@@ -114,25 +121,72 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
                     {user.institution}
                   </span>
                 ) : null}
+                <Link
+                  href={followersHref}
+                  className="-my-1 inline-flex items-center rounded-sm py-1 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  {user.followerCount.toLocaleString("en-US")}{" "}
+                  {user.followerCount === 1 ? "follower" : "followers"}
+                </Link>
+                <Link
+                  href={followingHref}
+                  className="-my-1 inline-flex items-center rounded-sm py-1 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  {user.followingCount.toLocaleString("en-US")} following
+                </Link>
               </div>
               {user.bio ? (
                 <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground">
                   {user.bio}
                 </p>
               ) : null}
+              <ProfileDetails
+                status={user.currentStatus}
+                companyName={user.companyName}
+                jobTitle={user.jobTitle}
+                skills={user.skills}
+              />
+              <ProfileSocialLinks
+                website={user.website}
+                github={user.github}
+                linkedin={user.linkedin}
+              />
             </div>
           </div>
-          {user.isSelf ? (
-            <Link
-              href="/settings"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "sm" }),
-                "h-9 shrink-0 gap-1.5 rounded-lg px-3 text-[13px]",
-              )}
-            >
-              <Settings className="size-3.5" aria-hidden="true" /> Edit profile
-            </Link>
-          ) : null}
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:shrink-0">
+            {user.isSelf ? (
+              <Link
+                href="/settings"
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "h-11 gap-1.5 rounded-lg px-3.5 text-sm",
+                )}
+              >
+                <Settings className="size-4" aria-hidden="true" /> Edit profile
+              </Link>
+            ) : user.canFollow ? (
+              <FollowButton
+                username={user.username}
+                initialFollowing={user.isFollowing}
+                canFollow={user.canFollow}
+              />
+            ) : (
+              <Link
+                href={`/login?next=${encodeURIComponent(`/users/${user.username}`)}`}
+                className={cn(
+                  buttonVariants({ variant: "outline" }),
+                  "h-11 gap-1.5 rounded-lg px-3.5 text-sm",
+                )}
+              >
+                <UserPlus className="size-4" aria-hidden="true" /> Sign in to
+                follow
+              </Link>
+            )}
+            <ProfileShareButton
+              username={user.username}
+              displayName={user.displayName}
+            />
+          </div>
         </div>
 
         <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-4">

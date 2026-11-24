@@ -45,9 +45,19 @@ study_lists 1─* study_list_items *─1 problems
 users 1─* learning_checkpoint_attempts (module_slug is static curriculum data)
 contests 1─* contest_problems *─1 problems
 contests 1─* contest_registrations *─1 users
+contests 1─* contest_teams 1─* contest_team_members *─1 users
+contests 1─* contest_team_invites *─1 users (invited + inviter)
+contests 1─* contest_staff *─1 users
+contests 1─* contest_staff_notes *─1 users
+contests 1─* contest_problem_candidates *─1 problems
+contests 1─* contest_problem_debuts *─1 problems
+contests 1─* contest_sponsors *─0..1 users
+contests 1─* contest_integrity_events *─1 users
+contest_series 1─* contests
 contests 1─* contest_clarifications *─1 users
 contests 1─* contest_rating_changes *─1 users
 contests 1─* virtual_contests *─1 users
+contest_host_requests *─0..1 contests
 assessments 1─* assessment_problems *─1 problems
 assessments 1─* assessment_participants *─1 users
 assessments 1─* assessment_invites (optional invite_id on the participant)
@@ -74,6 +84,18 @@ Key constraints:
   `problems_publication_public_check` constraint, and one approval per
   `(problem, reviewer, cycle)` plus at most one active hold per
   `(problem, reviewer)` (partial unique index) are enforced in the database.
+- contest team names are unique per contest (case-insensitively in the
+  service), invite codes are globally unique, and a user has one registration
+  per contest;
+- one pending/completed invite per `(team, invited user)`; later re-invites
+  reuse the row and status transitions are guarded by team → invite locks;
+- one contest crew row per `(contest, user)`; contest labels, positions and
+  team sizes are constrained;
+- a monthly series occurrence is unique per `(series_id, start_at)`;
+- `contest_problem_debuts.problem_id` is the primary key, so a fresh contest
+  problem can debut exactly once even under concurrent saves;
+- hosting fees are constrained to 3,000–5,000 BDT and the request window must
+  end after it starts.
 
 Problem counters (`accepted_count`, `submission_count`) are denormalized for the
 problem list and recomputed transactionally after every judged submission or
@@ -303,6 +325,23 @@ module/topic `subcategory`, so they participate in the existing filters, ratings
 discussions and editorial tabs. Progress is derived on read from accepted,
 non-assessment submissions; assessment attempts never count.
 
+The curriculum has three track kinds. `core` tracks unlock sequentially,
+`sql` labs are project tracks with their own entitlement rules, and `tools`
+tracks are the free, always-open career toolkit (Git & GitHub, Docker & CI/CD).
+A `tools` track has no purchase and is never blocked by the preceding track's
+checkpoint. Its topics use the `WORKSHOP` practice tier: a story-driven concept
+note with a hands-on lab, two guided drills, two solo drills, and a normal
+three-problem timed checkpoint. The judge still derives progress and badges from
+accepted submissions, so the toolkit behaves like every other learning module.
+
+Every live topic also has a data-driven visual explainer. The curriculum stores
+only a small config (`kind`, Bangla title/caption, three to five steps and a few
+labels/values/edges); reusable server-rendered SVG/CSS components turn it into an
+animated diagram. The animated stage is decorative, the same sequence is exposed
+as a visible ordered step list, and `prefers-reduced-motion` freezes the motion in a
+readable final state. There is no client-side JavaScript or chart library, and
+the module page reuses the first topic's visual as a compact preview.
+
 A timed checkpoint stores one `learning_checkpoint_attempts` row per
 `(user, module)`. Starting is authenticated and same-origin protected. The
 service checks accepted submissions whose `created_at` falls inside the attempt
@@ -354,10 +393,97 @@ full pages styled as a modal card, not a route-level overlay.
 
 - Upcoming contests hide the problem set from non-admins.
 - A problem in a running public contest is hidden from the public problem list
-  and returns `CONTEST_LOCKED` unless the user is registered or an admin.
+  and returns `CONTEST_LOCKED` unless the user is registered, belongs to a
+  registered team, or is an admin.
 - Submissions made from a running registered contest are auto-tagged with
   `contest_id`, so they count toward the scoreboard.
 - Practice submissions after the contest do not affect the final standings.
+- After a public round ends, its problem statements stay reachable from the
+  contest page even when the problem is still private in the practice list.
+  Publishing the problem to the public archive stays a separate review step.
+- Contest crew (`contest_staff` status `INVITED` or `ACCEPTED`) cannot
+  register, join a team or submit. While a round is running, non-director crew
+  (`SETTER`, `EDITORIAL`, `TESTER`, `OBSERVER`) also get `CONTEST_CREW_LOCKED`
+  on the problem page; only `DIRECTOR` may preview statements.
+- Editorials are sealed for everyone, including admins and authors, while the
+  problem has a running contest context.
+- Contest problems display a per-view watermark (`display name`,
+  `@username`, contest slug, start date) and the statement area logs
+  copy/paste/print/context-menu/tab-hidden/fullscreen-exit signals. This is a
+  deterrent and traceability layer, not a screenshot prevention claim.
+
+## Contest formats and teams
+
+`contests.format` is `SINGLE` or `GROUP`; `team_size` is constrained to 2–6.
+Solo contests keep one registration per coder. Team contests form through
+`contest_teams`, `contest_team_members` and `contest_team_invites` before the
+start. The captain can invite an exact username directly; the invited coder sees
+the invite on the contest page and accepts/declines it. Accepting re-checks the
+pre-start window, crew exclusion, one-team-per-coder and capacity under a
+per-coder advisory lock, then inserts the member and contest registration. A
+shareable 8-character code remains as a fallback path. Team names are unique per
+contest case-insensitively, the roster is capped by `team_size`, and leaving
+before the start transfers captaincy or disbands an empty team. Submission
+penalties and first blood are aggregated per team on the scoreboard. Team rounds
+are unrated because individual Elo cannot represent a team result; virtual
+replay is solo-only.
+
+Contest pages use an optional `contests.banner_url` (admin or host request);
+without it the UI renders a branded gradient/pattern banner. The page always
+shows a full description, format/eligibility, organiser rules, the standard
+platform policy and a prizes/recognition block. Missing prize details render an
+explicit “not announced” state instead of an empty section.
+
+## Contest crew and fresh problems
+
+`contest_staff` stores the crew roles (`DIRECTOR`, `SETTER`, `EDITORIAL`,
+`TESTER`, `OBSERVER`). The creator is inserted as an accepted director;
+admins/directors manage the roster; crew members get in-app notices and cannot
+compete. A contest problem's author and any pending/approved editorial or
+test-case contributor are treated as implicit crew too, so they cannot compete
+even without a staff row. `contest_staff_notes` is the internal crew thread and
+`contest_problem_candidates` is the proposal/shortlist slate; only directors
+and setters can propose, and only directors/admins decide.
+
+A contest with `requires_fresh_problems = true` accepts only problems that
+(a) never appeared in another contest, (b) have no `contest_problem_debuts` row,
+and (c) are not public yet. The save transaction reserves one debut row per
+problem; a concurrent save gets a 409. Debut history stays until the contest is
+deleted — turning the policy off does not release a problem for reuse. Existing
+contests were backfilled with the policy off. Contest-only problems are
+published to the practice archive through the normal problem publication review
+after the round.
+
+## Monthly series and hosting
+
+The worker ensures the next `contest_series` occurrence every hour. The single
+`monthly-third-sunday` row creates an official, public, 90-minute contest on the
+third Sunday at 10:00 Asia/Dhaka. Idempotence comes from the
+`(series_id, start_at)` unique index; the contest starts with a sealed problem
+set until the director attaches fresh problems.
+
+Any signed-in user can submit `contest_host_requests` with a complete data pack,
+a fee of 3,000–5,000 BDT and a payment TrxID. The host form shows the
+platform payment methods from `PAYMENT_*` (the same bKash/City Bank accounts as
+premium modules). Admins review the request; approval confirms the payment
+reference and marks it paid. Conversion creates a private draft contest with
+the requester as director and the fresh-problem policy on. The contest team then
+attaches the problems and publishes it.
+
+## Sponsors and integrity events
+
+`contest_sponsors` requests are always `PENDING`; only `APPROVED` sponsors are
+public, sorted title → gold → silver → community. Logos and links must be
+http(s). Admins approve or reject (rejection needs a note) and the requester is
+notified.
+
+Registered participants can post `contest_integrity_events` while a round runs:
+copy, paste, context menu, print, tab hidden, fullscreen exit and rapid submit.
+The server verifies the contest is running, the actor is registered (solo or
+team), the actor is not crew and the problem belongs to the contest. Events
+store only the type, problem and a short detail string; the admin operations
+page aggregates totals and the most active users. They are review signals, not
+automatic penalties.
 
 ## Contest clarifications and ratings
 
@@ -372,10 +498,11 @@ When a contest ends, the first contest/standings page view calls the rating
 finaliser. It locks the contest row, re-checks `rated_at`, computes the ICPC
 scoreboard, keeps only participants with at least one contest submission,
 compacts tied ranks, and applies Elo with `K=32`, zero-sum normalisation and a
-floor of 100. Changes are written to `contest_rating_changes` and `users.rating`
-in one transaction; `rated_at` makes the operation idempotent. Rating history
-rows use the contest end date as `created_at`, so profile charts keep the
-contest timeline even when finalisation happens on a later page view.
+floor of 100. Group contests are marked processed without rating changes.
+Changes are written to `contest_rating_changes` and `users.rating` in one
+transaction; `rated_at` makes the operation idempotent. Rating history rows use
+the contest end date as `created_at`, so profile charts keep the contest
+timeline even when finalisation happens on a later page view.
 
 ## Dashboards and roles
 
@@ -449,6 +576,54 @@ The streak milestone uses the longest accepted-day run in the rolling year, so
 a badge stays earned after a streak ends. Rating rank counts users with at least
 one `contest_rating_changes` row; unrated users see the rating process empty
 state instead of a fabricated rank.
+
+### Profile identity and social graph
+
+`users.website`, `users.github` and `users.linkedin` are optional display links.
+They are normalized at the API boundary by `src/lib/profile-links.ts` (website
+host/path, GitHub handle, LinkedIn `in/slug`), stored as `http(s)` URLs and
+rendered only as external links with `rel="me ugc nofollow noopener noreferrer"`. The app
+never fetches these URLs, so they add no SSRF surface.
+
+`user_follows` stores one directed edge per `(follower_id, following_id)` with a
+composite primary key, a `follower_id <> following_id` check, cascading user
+foreign keys and `(following_id, created_at)` / `(follower_id, created_at)`
+indexes for the two lists. Follow and unfollow are idempotent and same-origin,
+self-follow is rejected, and follows are rate limited to 40 per hour per viewer.
+The first follow inserts one in-app `FOLLOW` notification per follower pair;
+the unique `dedupe_key` prevents repeat notices. Follower/following totals,
+lists and pagination exclude banned accounts, and lists are capped at 20 rows
+per page. The profile hero and `/users/:username/connections` read the same
+service so counts and visible rows stay consistent. The proxy validates the
+username (and that the account is not banned) before the streaming boundary, so
+unknown profiles and connections pages return a real `404` instead of a
+soft-404, and mixed-case usernames redirect `301` to the lowercase canonical. Profiles also expose lowercase canonical and Open Graph/Twitter
+metadata with the brand image, and a client share button copies or shares the
+canonical profile URL.
+
+### Profile details and private contact data
+
+`users` also carries the profile-detail fields: `current_status` (STUDENT,
+EMPLOYED, FREELANCER, JOB_SEEKER, OTHER), `company_name`, `job_title`, `skills`
+(a PostgreSQL `text[]`), and the private `address`, `phone` and `tshirt_size`.
+Skills are trimmed, control characters are stripped, duplicates are removed
+case-insensitively, and the list is capped at 12. Phones accept Bangladeshi
+`01…`/`8801…` numbers or international `+` numbers and are stored normalized.
+
+The visibility split is enforced in code and in types:
+
+- **Public:** `currentStatus`, `companyName`, `jobTitle`, `skills`. `getProfile`
+  selects only these fields, `ProfileStats.user` has no private members, and the
+  public profile renders them as a status pill, company line and skill chips.
+- **Private:** `address`, `phone`, `tshirtSize`. They are part of `SafeUser` for
+  the owner's settings page and of `AdminUserDetail`, which is loaded by
+  `/admin/users/:id` behind `requireAdmin`. The admin page uses an explicit
+  column whitelist and is `noindex`. No public endpoint selects a private field,
+  so public profile HTML and RSC payloads cannot contain them.
+
+`skills` is an array on `users` rather than a join table because the profile only
+displays the list. Add a normalized skill table plus a GIN index if skill-based
+search, matching or analytics becomes a requirement.
 
 ## Virtual contests and integrity
 
@@ -615,6 +790,11 @@ Run container:
 - stdout/stderr and hidden tests are not writable by submitted code;
 - languages: C, C++, Python, Java, JavaScript, C#, Go, PHP and Kotlin in the main
   image; Swift uses the separate `JUDGE_SWIFT_IMAGE` (same harness and limits);
+- SQL runs on real engines: SQLite 3 in-process, a private MariaDB server for
+  `mysql`, and a private PostgreSQL 15 server for `postgresql`. Both servers run
+  on unix sockets with `listen_addresses=''`/`--skip-networking`, use a fresh
+  fixture copy per test, and execute the submission as a read-only role. SQL
+  script labs stay SQLite-only (allowlisted writable authorizer);
 - output checkers: exact (whitespace-normalized), token, floating-point with
   per-problem tolerance, and custom Python scripts. Custom checkers run after the
   submission with the input/expected/output paths and exit 0 to accept.

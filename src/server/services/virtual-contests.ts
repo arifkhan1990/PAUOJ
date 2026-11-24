@@ -22,6 +22,11 @@ async function loadEndedPublicContest(slug: string) {
   if (contestStatus(contest.startAt, contest.endAt) !== "ENDED") {
     throw errors.conflict("Virtual contests are available after the contest ends.");
   }
+  if (contest.format === "GROUP") {
+    throw errors.conflict(
+      "Virtual replay is only available for solo contests. Team contests are ranked on the original round.",
+    );
+  }
   return contest;
 }
 

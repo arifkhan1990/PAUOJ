@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { errors } from "@/server/api/errors";
 import type { RunResult } from "@/lib/types";
 import type { JudgeLanguage } from "@/server/judge/types";
 import { enqueueRun } from "@/server/judge/queue";
@@ -21,6 +22,15 @@ export type CreateRunInput = {
 };
 
 export async function createRun(input: CreateRunInput): Promise<string> {
+  if (
+    input.sqlScript &&
+    input.language !== "sql" &&
+    input.language !== "sqlite"
+  ) {
+    throw errors.validation(
+      "SQL script labs run on SQLite; choose SQL or SQLite 3.",
+    );
+  }
   const runId = randomUUID();
   const initial: RunResult = {
     id: runId,

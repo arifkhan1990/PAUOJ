@@ -107,6 +107,63 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const userMatch = /^\/users\/([^/]+)(\/connections)?\/?$/.exec(
+    request.nextUrl.pathname,
+  );
+  if (userMatch) {
+    let rawUsername: string;
+    try {
+      rawUsername = decodeURIComponent(userMatch[1] ?? "");
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
+    const username = rawUsername.toLowerCase();
+    if (rawUsername !== username) {
+      const url = request.nextUrl.clone();
+      url.pathname = `/users/${username}${userMatch[2] ?? ""}`;
+      return NextResponse.redirect(url, 301);
+    }
+    try {
+      const rows = await getSql()`
+        select 1 from users
+        where username = ${username} and is_banned = false
+        limit 1`;
+      if (rows.length === 0) {
+        return NextResponse.rewrite(new URL("/_not-found", request.url), {
+          status: 404,
+        });
+      }
+    } catch {
+      // A database outage should not turn every profile into a 404.
+    }
+    return NextResponse.next();
+  }
+
+  const contestMatch = /^\/contests\/([^/]+)(?:\/.*)?\/?$/.exec(
+    request.nextUrl.pathname,
+  );
+  if (contestMatch) {
+    let contestSlug: string;
+    try {
+      contestSlug = decodeURIComponent(contestMatch[1] ?? "");
+    } catch {
+      return new NextResponse(null, { status: 404 });
+    }
+    if (contestSlug === "host") return NextResponse.next();
+    try {
+      const rows = await getSql()`
+        select 1 from contests where slug = ${contestSlug} limit 1`;
+      if (rows.length === 0) {
+        return NextResponse.rewrite(new URL("/_not-found", request.url), {
+          status: 404,
+        });
+      }
+    } catch {
+      // A database outage should not turn every contest into a 404.
+    }
+    return NextResponse.next();
+  }
+
   const match = /^\/problems\/([^/]+)(\/contribute)?\/?$/.exec(
     request.nextUrl.pathname,
   );
@@ -142,9 +199,17 @@ export const config = {
   matcher: [
     "/problems/:slug",
     "/problems/:slug/contribute",
+    "/contests/:slug",
+    "/contests/:slug/standings",
+    "/contests/:slug/submissions",
+    "/contests/:slug/clarifications",
+    "/contests/:slug/virtual",
+    "/contests/:slug/sponsor",
     "/learn/:module",
     "/learn/:module/:topic",
     "/lists/:slug",
     "/lists/:slug/edit",
+    "/users/:username",
+    "/users/:username/connections",
   ],
 };

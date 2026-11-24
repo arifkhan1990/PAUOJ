@@ -5,59 +5,21 @@ import { logger } from "@/server/logger";
 import type { Verdict } from "@/lib/verdicts";
 import { runContainer } from "./docker";
 import {
+  COMPILE_COMMANDS,
+  COMPILE_MEMORY_MB,
+  COMPILE_OUTPUT_CAP,
+  LANGUAGE_SOURCE,
+  memoryWithOverhead,
+  runtimeResourceOverrides,
+  startupAllowanceMs,
+} from "./language-config";
+import {
+  JudgeInfrastructureError,
   type JudgeLanguage,
   type JudgeOutcome,
   type JudgeRequest,
   type JudgeTestOutcome,
 } from "./types";
-
-const LANGUAGE_SOURCE: Record<JudgeLanguage, string> = {
-  c: "main.c", cpp: "main.cpp", python: "main.py", javascript: "main.js",
-  java: "Main.java", csharp: "main.cs", go: "main.go", php: "main.php",
-  kotlin: "Main.kt", swift: "main.swift",
-  sql: "main.sql", mysql: "main.sql", postgresql: "main.sql",
-};
-
-const COMPILE_COMMANDS: Record<JudgeLanguage, string[]> = {
-  c: ["gcc", "-O2", "-std=c17", "-pipe", "-o", "main", "main.c"],
-  cpp: ["g++", "-O2", "-std=c++20", "-pipe", "-o", "main", "main.cpp"],
-  python: [
-    "python3",
-    "-c",
-    'compile(open("/work/main.py", encoding="utf-8").read(), "main.py", "exec")',
-  ],
-  javascript: ["node", "--check", "main.js"],
-  java: ["javac", "-encoding", "UTF-8", "Main.java"],
-  csharp: ["mcs", "-optimize+", "-out:main.exe", "main.cs"],
-  go: ["go", "build", "-o", "main", "main.go"],
-  php: ["php", "-l", "main.php"],
-  kotlin: ["kotlinc", "Main.kt", "-include-runtime", "-d", "main.jar"],
-  swift: ["swiftc", "-O", "-o", "main", "main.swift"],
-  sql: ["python3", "-c", "import sqlite3"], mysql: ["python3", "-c", "import sqlite3"], postgresql: ["python3", "-c", "import sqlite3"],
-};
-
-const COMPILE_MEMORY_MB = 1024;
-const COMPILE_OUTPUT_CAP = 16_384;
-
-function memoryWithOverhead(
-  language: JudgeLanguage,
-  memoryMb: number,
-): number {
-  const overhead: Record<JudgeLanguage, number> = {
-    c: 48,
-    cpp: 48,
-    python: 96,
-    javascript: 160,
-    java: 448,
-    csharp: 256,
-    go: 128,
-    php: 96,
-    kotlin: 512,
-    sql: 64, mysql: 64, postgresql: 64,
-    swift: 256,
-  };
-  return Math.min(2048, Math.max(192, memoryMb + overhead[language]));
-}
 
 function truncate(value: string, max: number): string {
   return value.length > max ? `${value.slice(0, max)}\n…` : value;
@@ -92,6 +54,12 @@ async function writeTextFile(
 async function prepareWorkspace(
   request: JudgeRequest,
 ): Promise<{ workDir: string; resultsDir: string; testsDir: string }> {
+  const sourceFile = LANGUAGE_SOURCE[request.language];
+  if (!sourceFile) {
+    throw new JudgeInfrastructureError(
+      `Unsupported judge language: ${String(request.language)}`,
+    );
+  }
   const root = path.resolve(getEnv().JUDGE_WORK_DIR);
   await fs.mkdir(root, { recursive: true, mode: 0o755 });
   const workDir = await fs.mkdtemp(path.join(root, "submission-"));
@@ -107,7 +75,7 @@ async function prepareWorkspace(
   await fs.chmod(expectedDir, 0o700);
 
   await writeTextFile(
-    path.join(workDir, LANGUAGE_SOURCE[request.language]),
+    path.join(workDir, sourceFile),
     request.source,
   );
   if (
@@ -271,9 +239,28 @@ export async function runJudge(request: JudgeRequest): Promise<JudgeOutcome> {
       };
     }
 
+    // Booting a real SQL server is part of each test's wall clock. Give those
+    // engines a fixed startup allowance so a correct query is not reported as
+    // a time-limit failure.
+    const effectiveTimeLimitMs =
+      request.timeLimitMs + startupAllowanceMs(request.language);
+
+    // The harness classifies memory from the child's peak RSS, which includes
+    // the database process baseline. Use the same budget the container gets so
+    // a normal MariaDB/PostgreSQL boot is not reported as a memory-limit failure.
+    const containerMemoryMb = memoryWithOverhead(
+      request.language,
+      request.memoryLimitMb,
+    );
+    const harnessMemoryLimitMb =
+      request.language === "mysql" || request.language === "postgresql"
+        ? containerMemoryMb
+        : request.memoryLimitMb;
+    const resources = runtimeResourceOverrides(request.language);
+
     const runTimeout = Math.min(
       180_000,
-      request.tests.length * (request.timeLimitMs + 800) + 8_000,
+      request.tests.length * (effectiveTimeLimitMs + 800) + 8_000,
     );
     const result = await runContainer({
       image: imageForLanguage(request.language),
@@ -286,9 +273,9 @@ export async function runJudge(request: JudgeRequest): Promise<JudgeOutcome> {
         "--language",
         request.language,
         "--time-limit-ms",
-        String(request.timeLimitMs),
+        String(effectiveTimeLimitMs),
         "--memory-limit-mb",
-        String(request.memoryLimitMb),
+        String(harnessMemoryLimitMb),
         "--tests",
         String(request.tests.length),
         "--mode",
@@ -312,11 +299,12 @@ export async function runJudge(request: JudgeRequest): Promise<JudgeOutcome> {
         "--output-dir",
         "/results",
       ],
-      memoryMb: memoryWithOverhead(request.language, request.memoryLimitMb),
+      memoryMb: containerMemoryMb,
       timeoutMs: runTimeout,
       readOnlyRootfs: true,
-      tmpfsSizeMb: 64,
-      noFileLimit: 128,
+      // MariaDB needs a writable ~25 MB data directory plus InnoDB temp files.
+      tmpfsSizeMb: resources.tmpfsSizeMb,
+      noFileLimit: resources.noFileLimit,
       // The trusted harness runs as root and writes to a root-only results
       // directory. The untrusted child is dropped to nobody, so this single
       // capability cannot be used by submitted code.

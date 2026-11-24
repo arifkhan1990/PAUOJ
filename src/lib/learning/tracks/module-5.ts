@@ -13,7 +13,7 @@ export const module5: LearningModuleDefinition = {
   practiceTier: "FULL",
   diagram: {
     src: "/learning/module-5.svg",
-    alt: "মডিউল ৫-এর শেখার ধারা: স্টেট ও ট্রানজিশন, মেমোাইজেশন ও ট্যাবুলেশন, তারপর knapsack, LCS/LIS এবং ট্রি/বিটমাস্ক DP।",
+    alt: "মডিউল ৫-এর শেখার ধারা: স্টেট ও ট্রানজিশন, মেমোইজেশন ও ট্যাবুলেশন, তারপর knapsack, LCS/LIS এবং ট্রি/বিটমাস্ক DP।",
   },
   topics: module5Topics,
   checkpoint: module5Checkpoint,

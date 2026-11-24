@@ -25,6 +25,7 @@ export const languageEnum = pgEnum("language", [
   "kotlin",
   "swift",
   "sql",
+  "sqlite",
   "mysql",
   "postgresql",
 ]);

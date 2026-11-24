@@ -1,31 +1,104 @@
-import { and, asc, count, eq, gt, inArray, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { errors } from "@/server/api/errors";
 import { toOffset, type PaginationInput } from "@/server/api/validation";
 import { getDb } from "@/server/db";
 import {
   contestProblems,
   contestRegistrations,
+  contestSponsors,
   contests,
   problems,
   submissions,
+  users,
 } from "@/server/db/schema";
+import type { ContestSponsorBadge } from "@/lib/contest-ops";
 import type {
   ContestDetail,
   ContestDivision,
   ContestListItem,
 } from "@/lib/types";
+import type { ContestFormat } from "@/lib/contest-ops";
 import { contestStatus } from "@/lib/contests";
 import { finalizeContestRatings } from "./ratings";
 import {
   participantCountSql,
   problemCountSql,
-  registeredSql,
   statusCondition,
-  type ActiveContestContext,
   type ContestFilter,
 } from "./contest-queries";
+import {
+  contestIntegrityWatermark,
+  crewStatusFor,
+  isActiveContestStaff,
+} from "./contest-context";
+import { getContestTeamState } from "./contest-teams";
+import { listApprovedContestSponsors } from "./contest-sponsors";
+import { isContestStaff } from "./contest-staff";
 
-export type { ActiveContestContext, ContestFilter } from "./contest-queries";
+export { contestStatusCounts } from "./contest-queries";
+export type {
+  ActiveContestContext,
+  ContestFilter,
+  ContestStatusCounts,
+} from "./contest-queries";
+export {
+  contestIntegrityWatermark,
+  getActiveContestForProblem,
+  getContestForSubmission,
+  isActiveContestStaff,
+  isRegisteredParticipant,
+} from "./contest-context";
+
+export function registeredContestSql(userId: string | null) {
+  if (!userId) return sql<boolean>`false`;
+  return sql<boolean>`(
+    exists(select 1 from contest_registrations cr
+      where cr.contest_id = ${contests.id} and cr.user_id = ${userId})
+    or exists(select 1 from contest_team_members ctm
+      join contest_teams ct on ct.id = ctm.team_id
+      where ct.contest_id = ${contests.id} and ctm.user_id = ${userId})
+  )`;
+}
+
+const SPONSOR_TIER_ORDER = sql`case ${contestSponsors.tier}
+  when 'TITLE' then 0 when 'GOLD' then 1 when 'SILVER' then 2 else 3 end`;
+
+async function loadTopSponsors(
+  contestIds: string[],
+): Promise<Map<string, ContestSponsorBadge>> {
+  const top = new Map<string, ContestSponsorBadge>();
+  if (contestIds.length === 0) return top;
+  const rows = await getDb()
+    .select({
+      id: contestSponsors.id,
+      contestId: contestSponsors.contestId,
+      name: contestSponsors.name,
+      tier: contestSponsors.tier,
+      websiteUrl: contestSponsors.websiteUrl,
+      logoUrl: contestSponsors.logoUrl,
+      message: contestSponsors.message,
+    })
+    .from(contestSponsors)
+    .where(
+      and(
+        inArray(contestSponsors.contestId, contestIds),
+        eq(contestSponsors.status, "APPROVED"),
+      ),
+    )
+    .orderBy(SPONSOR_TIER_ORDER, asc(contestSponsors.createdAt));
+  for (const row of rows) {
+    if (top.has(row.contestId)) continue;
+    top.set(row.contestId, {
+      id: row.id,
+      name: row.name,
+      tier: row.tier,
+      websiteUrl: row.websiteUrl,
+      logoUrl: row.logoUrl,
+      message: row.message,
+    });
+  }
+  return top;
+}
 
 async function finalizeRatingsIfEnded(
   slug: string,
@@ -39,10 +112,16 @@ async function finalizeRatingsIfEnded(
   }
 }
 
+function nullableText(value: string | null): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 export async function listContests(input: {
   page: PaginationInput;
   filter: ContestFilter;
   division?: ContestDivision;
+  format?: ContestFormat;
   userId: string | null;
 }): Promise<{ items: ContestListItem[]; total: number }> {
   const db = getDb();
@@ -51,6 +130,7 @@ export async function listContests(input: {
     eq(contests.isPublic, true),
     statusCondition(input.filter, now),
     input.division ? eq(contests.division, input.division) : undefined,
+    input.format ? eq(contests.format, input.format) : undefined,
   );
 
   const [totalRow] = await db
@@ -64,23 +144,31 @@ export async function listContests(input: {
       slug: contests.slug,
       title: contests.title,
       description: contests.description,
+      bannerUrl: contests.bannerUrl,
       startAt: contests.startAt,
       endAt: contests.endAt,
-      isPublic: contests.isPublic,
       division: contests.division,
+      format: contests.format,
+      teamSize: contests.teamSize,
+      isOfficial: contests.isOfficial,
+      seriesId: contests.seriesId,
+      feeStatus: contests.feeStatus,
       freezeMinutes: contests.freezeMinutes,
       participantCount: participantCountSql(),
       problemCount: problemCountSql(),
-      registered: registeredSql(input.userId),
+      registered: registeredContestSql(input.userId),
     })
     .from(contests)
     .where(where)
     .orderBy(
       sql`case when ${contests.endAt} > now() then 0 else 1 end`,
-      asc(contests.startAt),
+      sql`case when ${contests.endAt} > now() then ${contests.startAt} end asc nulls last`,
+      sql`case when ${contests.endAt} <= now() then ${contests.startAt} end desc nulls last`,
     )
     .limit(input.page.pageSize)
     .offset(toOffset(input.page));
+
+  const sponsors = await loadTopSponsors(rows.map((row) => row.id));
 
   return {
     total: Number(totalRow?.value ?? 0),
@@ -89,10 +177,17 @@ export async function listContests(input: {
       slug: row.slug,
       title: row.title,
       description: row.description,
+      bannerUrl: row.bannerUrl,
       startAt: row.startAt.toISOString(),
       endAt: row.endAt.toISOString(),
       status: contestStatus(row.startAt, row.endAt, now),
       division: row.division,
+      format: row.format,
+      teamSize: row.teamSize,
+      isOfficial: row.isOfficial,
+      seriesId: row.seriesId,
+      feeStatus: row.feeStatus,
+      sponsor: sponsors.get(row.id) ?? null,
       freezeMinutes: row.freezeMinutes,
       participantCount: Number(row.participantCount),
       problemCount: Number(row.problemCount),
@@ -116,29 +211,53 @@ export async function getContestBySlug(
   const contest = rows[0];
   if (!contest) return null;
   if (!contest.isPublic && !isAdmin && contest.createdBy !== userId) {
-    return null;
+    const crew = userId ? await isContestStaff(contest.id, userId) : null;
+    if (!crew) return null;
   }
 
   const status = contestStatus(contest.startAt, contest.endAt, now);
   await finalizeRatingsIfEnded(contest.slug, status);
-  const [registration] = userId
-    ? await db
-        .select({ contestId: contestRegistrations.contestId })
+
+  const [registration, participantRow, viewerRow, teamState, crew, sponsors] =
+    await Promise.all([
+      userId
+        ? db
+            .select({ contestId: contestRegistrations.contestId })
+            .from(contestRegistrations)
+            .where(
+              and(
+                eq(contestRegistrations.contestId, contest.id),
+                eq(contestRegistrations.userId, userId),
+              ),
+            )
+            .limit(1)
+            .then((result) => result[0])
+        : Promise.resolve(undefined),
+      db
+        .select({ value: count() })
         .from(contestRegistrations)
-        .where(
-          and(
-            eq(contestRegistrations.contestId, contest.id),
-            eq(contestRegistrations.userId, userId),
-          ),
-        )
-        .limit(1)
-    : [];
+        .where(eq(contestRegistrations.contestId, contest.id))
+        .then((result) => result[0]),
+      userId
+        ? db
+            .select({ username: users.username, displayName: users.displayName })
+            .from(users)
+            .where(eq(users.id, userId))
+            .limit(1)
+            .then((result) => result[0])
+        : Promise.resolve(undefined),
+      getContestTeamState(contest.id, userId),
+      crewStatusFor(contest.id, userId),
+      listApprovedContestSponsors(contest.id),
+    ]);
+
+  const registered = Boolean(registration) || Boolean(teamState.team);
+  const isCrew = crew ? isActiveContestStaff(crew.status) : false;
 
   const problemRows = await db
     .select({
       id: problems.id,
       label: contestProblems.label,
-      position: contestProblems.position,
       slug: problems.slug,
       title: problems.title,
       difficulty: problems.difficulty,
@@ -148,11 +267,6 @@ export async function getContestBySlug(
     .innerJoin(problems, eq(problems.id, contestProblems.problemId))
     .where(eq(contestProblems.contestId, contest.id))
     .orderBy(asc(contestProblems.position));
-
-  const [participantRow] = await db
-    .select({ value: count() })
-    .from(contestRegistrations)
-    .where(eq(contestRegistrations.contestId, contest.id));
 
   const showProblems = status !== "UPCOMING" || isAdmin;
 
@@ -176,21 +290,52 @@ export async function getContestBySlug(
   );
   const attempted = new Set(userSubmissions.map((row) => row.problemId));
 
+  const canRegister =
+    Boolean(userId) &&
+    !isCrew &&
+    status !== "ENDED" &&
+    !registered &&
+    contest.format === "SINGLE";
+  const watermark =
+    status === "RUNNING" && registered && viewerRow
+      ? contestIntegrityWatermark({ viewer: viewerRow, contest })
+      : null;
+
   return {
     id: contest.id,
     slug: contest.slug,
     title: contest.title,
     description: contest.description,
+    bannerUrl: contest.bannerUrl,
     startAt: contest.startAt.toISOString(),
     endAt: contest.endAt.toISOString(),
     status,
     division: contest.division,
+    format: contest.format,
+    teamSize: contest.teamSize,
+    isOfficial: contest.isOfficial,
+    seriesId: contest.seriesId,
+    feeStatus: contest.feeStatus,
+    sponsor: sponsors[0] ?? null,
     freezeMinutes: contest.freezeMinutes,
     participantCount: Number(participantRow?.value ?? 0),
     problemCount: problemRows.length,
-    registered: Boolean(registration),
-    canRegister: Boolean(userId) && status !== "ENDED" && !registration,
+    registered,
+    canRegister,
     registrationCount: Number(participantRow?.value ?? 0),
+    teamCount: teamState.teamCount,
+    sponsors,
+    viewerTeam: teamState.team,
+    incomingTeamInvite: teamState.incomingInvite,
+    canCreateTeam: teamState.canCreate,
+    canJoinTeam: teamState.canJoin,
+    eligibility: nullableText(contest.eligibility),
+    rules: nullableText(contest.rules),
+    prizes: nullableText(contest.prizes),
+    editorialLocked: status === "RUNNING",
+    integrityWatermark: watermark,
+    viewerStaffRole: crew?.role ?? null,
+    viewerStaffStatus: crew?.status ?? null,
     problems: showProblems
       ? problemRows.map((row) => ({
           label: row.label,
@@ -221,6 +366,15 @@ export async function registerForContest(
   if (status === "ENDED") {
     throw errors.conflict("This contest has already ended.");
   }
+  if (contest.format === "GROUP") {
+    throw errors.conflict(
+      "Register a team for this team contest. Open the contest page to create or join a team.",
+    );
+  }
+  const crew = await crewStatusFor(contest.id, userId);
+  if (crew && isActiveContestStaff(crew.status)) {
+    throw errors.forbidden("Contest crew cannot compete in their own contest.");
+  }
 
   await db
     .insert(contestRegistrations)
@@ -233,123 +387,6 @@ export async function registerForContest(
     .where(eq(contestRegistrations.contestId, contest.id));
 
   return { registrationCount: Number(row?.value ?? 0) };
-}
-
-export async function getActiveContestForProblem(
-  problemId: string,
-  userId: string | null,
-  isAdmin: boolean,
-): Promise<{
-  active: ActiveContestContext | null;
-  restricted: boolean;
-  blockingContest: { slug: string; title: string } | null;
-}> {
-  const db = getDb();
-  const now = new Date();
-  const rows = await db
-    .select({
-      contestId: contests.id,
-      slug: contests.slug,
-      title: contests.title,
-      label: contestProblems.label,
-      startAt: contests.startAt,
-      endAt: contests.endAt,
-    })
-    .from(contestProblems)
-    .innerJoin(contests, eq(contests.id, contestProblems.contestId))
-    .where(
-      and(
-        eq(contestProblems.problemId, problemId),
-        lte(contests.startAt, now),
-        gt(contests.endAt, now),
-      ),
-    )
-    .orderBy(asc(contests.startAt));
-
-  if (rows.length === 0) {
-    return { active: null, restricted: false, blockingContest: null };
-  }
-  if (isAdmin) {
-    return { active: rows[0] ?? null, restricted: false, blockingContest: null };
-  }
-  if (userId) {
-    const registrations = await db
-      .select({ contestId: contestRegistrations.contestId })
-      .from(contestRegistrations)
-      .where(
-        and(
-          eq(contestRegistrations.userId, userId),
-          inArray(
-            contestRegistrations.contestId,
-            rows.map((row) => row.contestId),
-          ),
-        ),
-      );
-    const registered = new Set(registrations.map((row) => row.contestId));
-    const active = rows.find((row) => registered.has(row.contestId));
-    if (active) {
-      return {
-        active,
-        restricted: false,
-        blockingContest: null,
-      };
-    }
-  }
-  const blocker = rows[0];
-  return {
-    active: null,
-    restricted: true,
-    blockingContest: blocker
-      ? { slug: blocker.slug, title: blocker.title }
-      : null,
-  };
-}
-
-export async function getContestForSubmission(
-  contestId: string,
-  problemId: string,
-  userId: string,
-): Promise<{ contestId: string; startAt: Date }> {
-  const db = getDb();
-  const rows = await db
-    .select({ id: contests.id, startAt: contests.startAt, endAt: contests.endAt })
-    .from(contests)
-    .where(eq(contests.id, contestId))
-    .limit(1);
-  const contest = rows[0];
-  if (!contest) throw errors.notFound("Contest not found.");
-  if (contestStatus(contest.startAt, contest.endAt) !== "RUNNING") {
-    throw errors.conflict("This contest is not running.");
-  }
-
-  const [registration] = await db
-    .select({ contestId: contestRegistrations.contestId })
-    .from(contestRegistrations)
-    .where(
-      and(
-        eq(contestRegistrations.contestId, contestId),
-        eq(contestRegistrations.userId, userId),
-      ),
-    )
-    .limit(1);
-  if (!registration) {
-    throw errors.forbidden("Register for the contest before submitting.");
-  }
-
-  const [entry] = await db
-    .select({ problemId: contestProblems.problemId })
-    .from(contestProblems)
-    .where(
-      and(
-        eq(contestProblems.contestId, contestId),
-        eq(contestProblems.problemId, problemId),
-      ),
-    )
-    .limit(1);
-  if (!entry) {
-    throw errors.validation("That problem is not part of this contest.");
-  }
-  return { contestId: contest.id, startAt: contest.startAt };
 }
 
 export { getScoreboard } from "./contest-scoreboard";

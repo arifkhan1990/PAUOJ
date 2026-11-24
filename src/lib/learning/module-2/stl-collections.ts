@@ -5,7 +5,7 @@ export const stlCollectionsTopic: LearningTopicDefinition = {
   title: "STL / Collections Framework",
   titleBn: "STL ও কালেকশন",
   summary: "C++ STL, Python collections আর Java Collections-এর দরকারি অংশ।",
-  concept: `রফি প্রথমদিকে প্রতিটা সমস্যায় নিজের হাতে তালিকা বানাত, সাজাত, খোঁজার জন্য লুপ লিখত। এক সপ্তাহে সে বুঝল প্রায় প্রতিটি ভাষায় সেই কাজগুলোর জন্য আগে থেকেই তৈরি কালেকশন আছে — C++-এ STL, Python-এ \`collections\` মডিউল, Java-এ Collections Framework। তাই মূল দক্ষতা হলো নতুন কালেকশন আবিষ্কার করা নয়, বরং কোন সমস্যায় কোনটা বেছে নেওয়া। সাজানো চাইলে \`set\` বা \`sort\`, কাউন্ট চাইলে \`map\`/\`Counter\`, দুই পাশ থেকে কাজ চাইলে \`deque\`, ছোট থেকে বড় বের করতে \`priority_queue\` — এই নোটে এই চারটা পরিবারের দরকারি অংশ দেখা যাবে।
+  concept: `রফি শুরুর দিকে প্রতিটা সমস্যায় নিজের হাতে তালিকা বানাত, সাজাত, খোঁজার জন্য লুপ লিখত। এক সপ্তাহে সে বুঝল প্রায় প্রতিটি ভাষায় সেই কাজগুলোর জন্য আগে থেকেই তৈরি কালেকশন আছে — C++-এ STL, Python-এ \`collections\` মডিউল, Java-এ Collections Framework। তাই মূল দক্ষতা হলো নতুন কালেকশন আবিষ্কার করা নয়, বরং কোন সমস্যায় কোনটা বেছে নেওয়া। সাজানো চাইলে \`set\` বা \`sort\`, কাউন্ট চাইলে \`map\`/\`Counter\`, দুই পাশ থেকে কাজ চাইলে \`deque\`, ছোট থেকে বড় বের করতে \`priority_queue\` — এই নোটে এই চারটা পরিবারের দরকারি অংশ দেখা যাবে।
 
 ## কেন দরকার
 
@@ -20,7 +20,7 @@ export const stlCollectionsTopic: LearningTopicDefinition = {
 | সাজানো | \`sorted(a)\` | \`sort(v.begin(), v.end())\` | \`Collections.sort(list)\` | \`O(n \log n)\` |
 | আলাদা মান রাখা | \`set(a)\` | \`unordered_set\` | \`HashSet\` | গড় \`O(n)\` |
 | key-value হিসাব | \`Counter\` / \`dict\` | \`unordered_map\` | \`HashMap\` | গড় \`O(1)\` |
-| ক্রমযুক্ত key | \`sorted(d)\` | \`map\` (\`O(\log n)\`) | \`TreeMap\` | \`O(\log n)\` |
+| ক্রমযুক্ত key | \`sorted(d)\` | \`map\` (\`O(\log n)\`) | \`TreeMap\` | প্রতি কাজ \`O(\log n)\` |
 | দুই পাশে কাজ | \`deque\` | \`deque\` | \`ArrayDeque\` | \`O(1)\` |
 | সবচেয়ে ছোট/বড় | \`heapq\` | \`priority_queue\` | \`PriorityQueue\` | push/pop \`O(\log n)\` |
 | স্ট্যাক/কিউ | \`list\` / \`deque\` | \`stack\` / \`queue\` | \`Deque\` | \`O(1)\` |
@@ -56,12 +56,14 @@ for word in ordered:
     print(word)
 \`\`\`
 
-একই ধারণা C++ STL-এ — \`map\` key সাজিয়ে রাখে, আর কাউন্টার \`++\` দিয়ে এক ধাপে বাড়ে:
+একই ফল C++ STL-এ — \`map\` দিয়ে কাউন্ট, তারপর \`vector\` আর \`sort\` দিয়ে একই ক্রম:
 
 \`\`\`cpp
 #include <iostream>
 #include <map>
 #include <string>
+#include <vector>
+#include <algorithm>
 using namespace std;
 
 int main() {
@@ -73,9 +75,12 @@ int main() {
         cin >> word;
         freq[word]++;
     }
-    for (auto &entry : freq) {
-        cout << entry.first << " " << entry.second << "\\n";
-    }
+    vector<pair<int, string>> items;
+    for (auto &entry : freq)
+        items.push_back({-entry.second, entry.first});
+    sort(items.begin(), items.end());
+    for (auto &item : items)
+        cout << item.second << "\\n";
     return 0;
 }
 \`\`\`
@@ -108,7 +113,7 @@ print(heappop(heap))    # -> 12
 
 - \`d[key]\` দিয়ে নতুন key খোঁজা — Python-এ \`KeyError\`, C++ \`unordered_map\`-এ চুপচাপ নতুন ঘর তৈরি হয়। \`get(key, 0)\` বা \`count(key)\` নাও।
 - \`for x in dict\`-এ ক্রম ধরে নেওয়া — ম্যাপ ক্রম দেয় না; উত্তর ছাপার আগে \`sorted\` করা বাধ্যতামূলক।
-- \`a.sort()\` করেও ফল বসানো হয়নি — \`sort()\` তালিকাটার নিজের জায়গায় সাজায়, কিন্তু যে তালিকা ঘুরাচ্ছিল সেটা এখনো আগের ক্রমেই থাকে; সাজানো তালিকাটাই ঘোরাও।
+- \`b = a.sort()\` লিখে ফল ধরার চেষ্টা — \`sort()\` নিজের জায়গায় সাজায়, নতুন তালিকা ফেরত দেয় না (ফেরত দেয় \`None\`)। নতুন তালিকা চাইলে \`b = sorted(a)\` নাও, আর \`a.sort()\` চালালে সাজানোটা \`a\`-তেই থাকে।
 - ভুল কালেকশন বেছে নেওয়া: ক্রম লাগলেও \`set\` নিলে পরে আবার সাজাতে \`O(n \log n)\` লাগবে — একবারেই ঠিকটা বেছে নাও।
 - লুপের ভিতরে কালেকশন পরিবর্তন করা (মুছে দেওয়া বা নতুন যোগ) — Python-এ রান্টাইম এরর; আগে key তালিকায় নিয়ে পরে কাজ করো।
 
@@ -119,7 +124,7 @@ print(heappop(heap))    # -> 12
 - [ ] নতুন key-তে ধরার জন্য \`get\`/\`count\` ব্যবহার করছ?
 - [ ] সময় হিসাব করেছ — \`O(n^2)\` লুপ তো বাকি নেই?
 - [ ] সীমার সর্বোচ্চ \`n = 200000\` দিয়ে একবার চেষ্টা করেছ?
-- [ ] একই কাজ আরেক জায়গায় লিখছিলে কি আগে থেকেই থাকা কালেকশন বা ইউটিল দেখেছ?
+- [ ] একই কাজ নতুন করে লিখতে যাওয়ার আগে, আগে থেকেই থাকা কালেকশন বা ইউটিল একবার দেখেছ?
 
 ## এবার হাতে-কলমে দেখি
 

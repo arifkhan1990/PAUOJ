@@ -99,8 +99,56 @@ revokes every session.
 ### PATCH `/users/me`
 
 ```json
-{ "displayName": "Tanvir A.", "bio": "C++ and graphs.", "country": "Bangladesh", "institution": "PrimeAsia University" }
+{
+  "displayName": "Tanvir A.",
+  "bio": "C++ and graphs.",
+  "country": "Bangladesh",
+  "institution": "PrimeAsia University",
+  "website": "tanvir.dev",
+  "github": "@tanvir",
+  "linkedin": "tanvir-ahmed",
+  "currentStatus": "EMPLOYED",
+  "companyName": "Acme",
+  "jobTitle": "Backend Engineer",
+  "skills": ["TypeScript", "PostgreSQL"],
+  "phone": "01712-345678",
+  "address": "House 42, Road 7, Dhaka 1200",
+  "tshirtSize": "L"
+}
 ```
+
+`website`, `github` and `linkedin` are optional. A bare domain, `@handle`,
+`github.com/handle`, `linkedin.com/in/slug` or a full profile URL is normalized
+to a public `https` URL. Only `http(s)` targets are accepted; credentials,
+other schemes, foreign hosts and invalid paths return `422`. Send an empty
+string to clear any optional profile field; omitting a field keeps the stored value.
+
+`currentStatus` is one of `STUDENT`, `EMPLOYED`, `FREELANCER`, `JOB_SEEKER` or
+`OTHER`; `skills` accepts up to 12 items of 1–30 characters (deduplicated
+case-insensitively); `tshirtSize` is `XS`–`XXXL`. `phone` accepts a Bangladeshi
+`01XXXXXXXXX` / `8801XXXXXXXXX` number or an international `+` number and is
+stored normalized (for example `+8801712345678`).
+
+Public profile fields are `currentStatus`, `companyName`, `jobTitle` and
+`skills`. `address`, `phone` and `tshirtSize` are **private**: they are returned
+only to the account owner and to admins on `/admin/users/:id`; they are never
+included in the public profile or another user's response.
+
+### POST/DELETE `/users/:username/follow`
+
+`POST` follows the user and `DELETE` unfollows them. Both are idempotent and
+return the caller-visible state:
+
+```json
+{ "data": { "following": true, "followerCount": 12, "followingCount": 8 } }
+```
+
+`followerCount` and `followingCount` are the target user's totals. Rules: `401`
+anonymous, `404` unknown or banned user, `422` self-follow, `429` after 40
+follows or 40 unfollows per hour. Following creates one in-app `FOLLOW` notification
+for the target (`dedupeKey` per follower); no email is sent. Follower/following
+counts and the paginated lists at `/users/:username/connections` exclude banned
+accounts.
 
 ### POST `/users/me/password`
 
@@ -335,6 +383,10 @@ Rate limited (5 per 30s, 100/hour per user). Returns `{ id, status: "QUEUED" }`.
 Query: `page`, `pageSize`, `mine=true|false`, `status`, `language`,
 `problem=<slug>`, `user=<username>`.
 
+Anonymous and non-admin callers only receive public rows: published problems
+and contest submissions from public contests that have ended. Admins can see the
+full feed, and `mine=true` keeps the caller's own submissions visible.
+
 ### GET `/submissions/:id`
 
 Returns verdict, test results, compile output and source when permitted.
@@ -421,10 +473,111 @@ by an admin. Deletion is soft and admin deletions are written to the audit log.
 - `POST /contests/:slug/register`
 - `GET /contests/:slug/standings`
 
-Standings rows include `rank`, `user`, `solved`, `penalty` and a map of problem
-labels to `{ solved, attempts, solveTimeMinutes }`. When a freeze window is
-active, public responses set `frozen: true` and include `freezeAt`; admins get
-the live board.
+Standings rows include `rank`, `user`, `team`, `solved`, `penalty` and a map of
+problem labels to `{ solved, attempts, solveTimeMinutes, firstBlood }`. In a
+`GROUP` contest the `team` object carries the team name, member count and roster,
+and the row identity is the captain. When a freeze window is active, public
+responses set `frozen: true` and include `freezeAt`; admins get the live board.
+
+### Team contests
+
+A `GROUP` contest rejects individual registration (`409`); use teams:
+
+- `POST /contests/:slug/teams` body `{ "name": "Team name" }` — creates the
+  team, registers the captain and returns the invite code.
+- `POST /contests/:slug/teams/join` body `{ "inviteCode": "ABCD2345" }` —
+  joins a forming team before the start and registers the member.
+- `DELETE /contests/:slug/teams/leave` — leaves before the start; captaincy
+  transfers to the earliest remaining member or the team is disbanded.
+
+Captain invitations are the primary flow:
+
+- `POST /contests/:slug/teams/invites` body `{ "username": "nafisa" }` —
+  captain only, before the start; the target gets an in-app notification.
+- `PATCH /contests/:slug/teams/invites/:inviteId` body
+  `{ "action": "ACCEPT" | "DECLINE" }` — invited coder only; accept registers
+  them, decline closes the request.
+- `DELETE /contests/:slug/teams/invites/:inviteId` — captain cancels a pending
+  invitation.
+
+Invite responses contain `{ invite }` (or `{ status: "CANCELLED" }`).
+`GET /contests/:slug` includes `viewerTeam.pendingInvites` for the captain and
+`incomingTeamInvite` for an unteamed invited coder. Crew members get `403`, a
+full team gets `409`, and a duplicate team name is case-insensitively `409`.
+
+### Sponsorships
+
+- `POST /contests/:slug/sponsors` body
+  `{ name, tier: TITLE|GOLD|SILVER|COMMUNITY, websiteUrl?, logoUrl?, message?, amountBdt? }`
+  — any signed-in user; rate limited to 5 per hour; always `PENDING`.
+- `GET /admin/contests/:id/sponsors` — admin/crew list with status and amount.
+- `PATCH /admin/contests/:id/sponsors/:sponsorId` body
+  `{ decision: APPROVED|REJECTED, note? }` — admin only; rejection needs a note.
+  Approved sponsors appear on the public contest page and list card.
+
+### Community hosting
+
+- `POST /contests/host-requests` — any signed-in user; full data pack,
+  `feeBdt` 3000–5000, `paymentReference` and `agreement: true`.
+  The form shows the platform `PAYMENT_*` accounts. Rate limited to 5 per hour;
+  duplicate open titles and reused TrxIDs are `409`.
+- `GET /contests/host-requests` — the caller's own requests.
+- `GET /admin/host-requests?status=…&page=…` — admin queue.
+- `PATCH /admin/host-requests/:id` body
+  `{ decision: UNDER_REVIEW|APPROVED|REJECTED|CONVERTED, note? }`.
+  `APPROVED` marks the fee `PAID`; `CONVERTED` creates a private draft contest,
+  makes the requester `DIRECTOR`, returns `{ status, contestId, slug }`.
+
+### Monthly series
+
+- `GET /admin/contest-series` — the monthly series row with cadence,
+  Asia/Dhaka hour, duration and next/last generation time.
+- `PUT /admin/contest-series` body `{ isActive, hour?, minute?, durationMinutes? }`
+  — admin only; 10–300 minutes in the service, 30–300 in the route schema.
+- `POST /admin/contest-series/ensure` — idempotently ensures the next
+  third-Sunday 10:00 Asia/Dhaka 90-minute official contest and returns
+  `{ created, contestId, startAt }`. The worker calls the same service hourly.
+
+### Contest crew and operations
+
+Contest crew endpoints are under `/admin/contests/:id` but authorize an admin,
+the contest creator or an invited/accepted crew member. A problem author and a
+pending/approved editorial or test contributor are implicit crew for
+participation checks.
+
+- `GET /admin/contests/:id/operations` — aggregate overview, crew, notes,
+  candidates, sponsors and integrity summary.
+- `GET|POST /admin/contests/:id/staff`; `DELETE /admin/contests/:id/staff/:staffId`
+  — add/remove crew by `{ username, role }`; only admin/director.
+- `GET|POST /admin/contests/:id/notes` — internal crew thread.
+- `GET|POST /admin/contests/:id/candidates`; `PATCH /admin/contests/:id/candidates/:candidateId`
+  body `{ status: SHORTLISTED|REJECTED }` — directors/setters propose,
+  directors/admins decide.
+- `GET /admin/contests/:id/integrity` — event totals, recent events and flagged
+  users.
+
+The crew workspace UI is at `/dashboard/contests/:id/operations` for directors
+and crew; admins also use `/admin/contests/:id/operations`.
+
+### Integrity events
+
+`POST /contests/:slug/integrity-events` body
+`{ type: TAB_HIDDEN|PASTE|COPY|CONTEXT_MENU|PRINT|FULLSCREEN_EXIT|RAPID_SUBMIT, problemId?, detail? }`.
+Requires a running contest, a registered solo/team participant, a non-crew
+actor and a problem that belongs to the contest; rate limited to 60/minute.
+Events never contain code, keystrokes or PII and are review signals only.
+
+### Contest editor fields
+
+`POST/PUT /admin/contests` now also accept `bannerUrl`, `format`, `teamSize`
+(2–6), `isOfficial`, `requiresFreshProblems`, `feeBdt` (3000–5000),
+`feeReference`, `eligibility`, `rules` and `prizes`. `GET /contests/:slug` and
+the list cards return `bannerUrl`; `POST /contests/host-requests` accepts an
+optional `bannerUrl` that is copied into the converted contest. A fresh contest
+accepts only unpublished problems that never appeared in another contest;
+violations return `422` with `details.problems`. Debut rows are permanent until
+the contest is deleted. Public contests still require every problem author's
+approval.
 
 ### POST `/contests/:slug/virtual`
 
@@ -439,7 +592,10 @@ Ends the current user's virtual replay early.
 ### Contest integrity
 
 Admins can open `/admin/contests/:id/plagiarism` for token-shingle Jaccard
-similarity signals between different users' contest submissions.
+similarity signals between different users' contest submissions. The contest
+operations Integrity tab adds live copy/paste/print/tab-hidden/fullscreen
+signals from `contest_integrity_events`; both are review aids, not automatic
+penalties.
 
 ### GET `/contests/:slug/submissions?mine=true&status=ACCEPTED&language=cpp`
 
@@ -495,7 +651,8 @@ automatically. A teacher adding another setter's public problem creates a
 When a contest ends, the first page view of the contest or its standings
 finalises the ratings exactly once. The update uses Elo with `K=32`, zero-sum
 normalisation and a rating floor of 100. Only participants with at least one
-contest submission are rated. History is stored in `contest_rating_changes` and
+contest submission are rated. Team contests are marked processed without
+individual rating changes. History is stored in `contest_rating_changes` and
 exposed on profile pages.
 
 ## Coding assessments

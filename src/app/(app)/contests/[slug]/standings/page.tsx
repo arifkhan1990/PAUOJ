@@ -4,6 +4,7 @@ import { Trophy } from "lucide-react";
 import { AutoRefresh } from "@/components/shared/auto-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
+import { ContestFormatBadge } from "@/components/contests/contest-format-badge";
 import { ContestTabs } from "@/components/contests/contest-tabs";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,7 +13,11 @@ import { getCurrentUser } from "@/server/auth/session";
 import { ApiError } from "@/server/api/errors";
 import { getScoreboard } from "@/server/services/contests";
 import type { ContestScoreboard } from "@/lib/types";
-import { formatDateTime } from "@/lib/utils";
+import { contestDurationMs } from "@/lib/contests";
+import {
+  formatDhakaDateTime,
+  formatDuration,
+} from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -62,13 +67,20 @@ export default async function StandingsPage({
     );
   }
 
+  const format = board.contest.format ?? "SINGLE";
+  const isGroup = format === "GROUP";
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <AutoRefresh enabled={board.contest.status === "RUNNING"} intervalMs={15000} />
       <PageHeader
         eyebrow="Live standings"
         title={board.contest.title}
-        description={`ICPC scoring. Started ${formatDateTime(board.contest.startAt)} and ends ${formatDateTime(board.contest.endAt)}.`}
+        description={`ICPC scoring · ${
+          isGroup
+            ? `team round, up to ${board.contest.teamSize} coders per team`
+            : "solo round"
+        } · ${formatDuration(contestDurationMs(board.contest.startAt, board.contest.endAt))}. Started ${formatDhakaDateTime(board.contest.startAt)} and ends ${formatDhakaDateTime(board.contest.endAt)}.`}
         actions={
           <Link
             href={`/contests/${board.contest.slug}`}
@@ -79,7 +91,19 @@ export default async function StandingsPage({
         }
       />
 
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <ContestFormatBadge
+          format={format}
+          teamSize={board.contest.teamSize}
+        />
+        <span className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+          {isGroup
+            ? `${board.rows.length} team${board.rows.length === 1 ? "" : "s"}`
+            : `${board.rows.length} coder${board.rows.length === 1 ? "" : "s"}`}
+        </span>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">
           Solve more problems to rank higher. Ties are broken by lower penalty,
           then by the time of the last accepted submission.
@@ -97,7 +121,7 @@ export default async function StandingsPage({
 
       {board.frozen && board.freezeAt ? (
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          Standings are frozen from {formatDateTime(board.freezeAt)} until the
+          Standings are frozen from {formatDhakaDateTime(board.freezeAt)} until the
           contest ends. Admins still see the live scoreboard.
         </div>
       ) : null}

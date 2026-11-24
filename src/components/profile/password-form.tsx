@@ -95,7 +95,7 @@ export function PasswordForm() {
           {error}
         </p>
       ) : null}
-      <Button type="submit" disabled={loading}>
+      <Button type="submit" disabled={loading} className="h-11">
         {loading ? (
           <Loader2 className="size-4 animate-spin" />
         ) : (

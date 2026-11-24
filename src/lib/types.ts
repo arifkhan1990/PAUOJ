@@ -1,6 +1,14 @@
 import type { Difficulty } from "./difficulty";
 export type { Difficulty } from "./difficulty";
 import type { ProblemRatingSummary } from "./problem-extras-types";
+import type {
+  ContestFormat,
+  ContestSponsorBadge,
+  ContestStaffRole,
+  ContestStaffStatus,
+  ContestTeamInviteView,
+  ContestTeamView,
+} from "./contest-ops";
 export type {
   ProblemRatingSummary,
   ProblemResourceItem,
@@ -74,6 +82,7 @@ export type ProblemDetail = {
   id: string;
   slug: string;
   title: string;
+  isPublic: boolean;
   statement: string;
   inputFormat: string | null;
   outputFormat: string | null;
@@ -96,7 +105,16 @@ export type ProblemDetail = {
   rating: ProblemRatingSummary;
   solvedByMe: boolean;
   attemptedByMe: boolean;
-  contestContext: { id: string; slug: string; title: string; label: string } | null;
+  contestContext: {
+    id: string;
+    slug: string;
+    title: string;
+    label: string;
+    endAt: string;
+    status: ContestStatus;
+    integrityWatermark: string | null;
+    editorialLocked: boolean;
+  } | null;
   assessmentContext: {
     id: string;
     slug: string;
@@ -156,10 +174,17 @@ export type ContestListItem = {
   slug: string;
   title: string;
   description: string;
+  bannerUrl: string | null;
   startAt: string;
   endAt: string;
   status: ContestStatus;
   division: ContestDivision;
+  format: ContestFormat;
+  teamSize: number;
+  isOfficial: boolean;
+  seriesId: string | null;
+  feeStatus: "NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "REFUNDED";
+  sponsor: ContestSponsorBadge | null;
   freezeMinutes: number;
   participantCount: number;
   problemCount: number;
@@ -180,6 +205,19 @@ export type ContestDetail = ContestListItem & {
   problems: ContestProblemItem[];
   canRegister: boolean;
   registrationCount: number;
+  teamCount: number;
+  sponsors: ContestSponsorBadge[];
+  viewerTeam: ContestTeamView | null;
+  incomingTeamInvite: ContestTeamInviteView | null;
+  canCreateTeam: boolean;
+  canJoinTeam: boolean;
+  eligibility: string | null;
+  rules: string | null;
+  prizes: string | null;
+  editorialLocked: boolean;
+  integrityWatermark: string | null;
+  viewerStaffRole: ContestStaffRole | null;
+  viewerStaffStatus: ContestStaffStatus | null;
 };
 
 export * from "./clarification-types";
@@ -298,6 +336,12 @@ export type ScoreboardCell = {
 export type ScoreboardRow = {
   rank: number;
   user: { username: string; displayName: string };
+  team: {
+    id: string;
+    name: string;
+    memberCount: number;
+    members: { username: string; displayName: string }[];
+  } | null;
   solved: number;
   penalty: number;
   problems: Record<string, ScoreboardCell>;
@@ -323,6 +367,8 @@ export type ContestScoreboard = {
     endAt: string;
     status: ContestStatus;
     freezeMinutes: number;
+    format: ContestFormat;
+    teamSize: number;
   };
   frozen: boolean;
   freezeAt: string | null;

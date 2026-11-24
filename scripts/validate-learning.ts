@@ -178,10 +178,11 @@ function main(): void {
       if (item.guidedProblemSlugs.length < 2) {
         errors.push(`${module.slug}/${item.slug}: needs at least 2 guided problems`);
       }
+      const workshop = module.practiceTier === "WORKSHOP";
       const fullTier = module.practiceTier === "FULL";
-      const easyTarget = fullTier ? 3 : 1;
-      const mediumTarget = fullTier ? 3 : 1;
-      const hardTarget = fullTier ? 2 : 1;
+      const easyTarget = workshop ? 0 : fullTier ? 3 : 1;
+      const mediumTarget = workshop ? 0 : fullTier ? 3 : 1;
+      const hardTarget = workshop ? 0 : fullTier ? 2 : 1;
       if (item.practiceProblemSlugs.easy.length < easyTarget) {
         errors.push(
           `${module.slug}/${item.slug}: needs at least ${easyTarget} easy practice problems`,
@@ -197,8 +198,13 @@ function main(): void {
           `${module.slug}/${item.slug}: needs at least ${hardTarget} hard practice problems`,
         );
       }
-      if (item.extraProblemSlugs.length < 2) {
+      if (!workshop && item.extraProblemSlugs.length < 2) {
         errors.push(`${module.slug}/${item.slug}: needs at least 2 extra problems`);
+      }
+      if (workshop && item.extraProblemSlugs.length < 1) {
+        errors.push(
+          `${module.slug}/${item.slug}: needs at least 1 solo problem`,
+        );
       }
       if (item.concept.length < 1_000 || !item.concept.includes("##")) {
         errors.push(

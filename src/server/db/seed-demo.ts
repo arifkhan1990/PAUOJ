@@ -74,8 +74,9 @@ const WRONG_SOURCE: Record<LanguageId, string> = {
   kotlin: "fun main() {}\n",
   swift: 'print("not quite")\n',
   sql: 'SELECT 1;\n',
+  sqlite: 'SELECT 1;\n',
   mysql: 'SELECT 1;\n',
-  postgresql: 'SELECT 1;\n', 
+  postgresql: 'SELECT 1;\n',
 };
 
 async function insertWrongAttempt(input: {

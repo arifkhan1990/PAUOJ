@@ -128,12 +128,12 @@ Tanvir	2026-11-02	2026-11-03	2`,
     outputFormat: `প্রতি লাইনে \`city\`, \`median_order_cents\`, \`paid_orders\`, শহরের নাম অনুযায়ী। median পূর্ণসংখ্যা।`,
     constraints: "ShopSphere fixture. Standard SQL (SQLite-compatible engine).",
     editorial: `## ধারণা
-মধ্যম মান পেতে প্রতি শহরের ভেতরে অর্ডারের মান ক্রমে সাজিয়ে মাঝের সারি(গুলো) বের করতে হয়। \`ROW_NUMBER() OVER (PARTITION BY city ORDER BY cents)\` আর \`COUNT(*) OVER (PARTITION BY city)\` একসাথে ব্যবহার করলে প্রতি সারি নিজের অবস্থান আর মোট সংখ্যা দুটোই জানে; rn IN ((n+1)/2, (n+2)/2) দুই কেসই সামলায়।
+মধ্যম মান পেতে প্রতি শহরের ভেতরে অর্ডারের মান ক্রমে সাজিয়ে মাঝের সারি(গুলো) বের করতে হয়। \`ROW_NUMBER() OVER (PARTITION BY city ORDER BY cents)\` আর \`COUNT(*) OVER (PARTITION BY city)\` একসাথে ব্যবহার করলে প্রতি সারি নিজের অবস্থান আর মোট সংখ্যা দুটোই জানে; rn IN (FLOOR((n+1)/2.0), FLOOR((n+2)/2.0)) দুই কেসই সামলায়।
 
 ## ধাপে ধাপে
 ১. প্রতি অর্ডারের মোট মান বের করো (GROUP BY order)।
 ২. শহর ধরে rn ও n উইন্ডো বসাও — ORDER BY cents, order_id টাই-ব্রেক।
-৩. rn IN ((n+1)/2, (n+2)/2) ফিল্টার করে শহর ধরে AVG নাও — বিজোড়ে একটি সারি নিজেই মধ্যম।
+৩. rn IN (FLOOR((n+1)/2.0), FLOOR((n+2)/2.0)) ফিল্টার করে শহর ধরে AVG নাও — বিজোড়ে একটি সারি নিজেই মধ্যম।
 ৪. CAST দিয়ে পূর্ণসংখ্যা করো, ORDER BY city।
 
 ## কোডে দেখি
@@ -150,7 +150,7 @@ ranked AS (
   FROM order_totals)
 SELECT city, CAST(ROUND(AVG(cents),0) AS INTEGER) AS median_order_cents,
        MAX(n) AS paid_orders
-FROM ranked WHERE rn IN ((n+1)/2, (n+2)/2)
+FROM ranked WHERE rn IN (FLOOR((n+1)/2.0), FLOOR((n+2)/2.0))
 GROUP BY city ORDER BY city;
 \`\`\`
 
@@ -177,7 +177,7 @@ ranked AS (
   FROM order_totals)
 SELECT city, CAST(ROUND(AVG(cents),0) AS INTEGER) AS median_order_cents,
        MAX(n) AS paid_orders
-FROM ranked WHERE rn IN ((n+1)/2, (n+2)/2)
+FROM ranked WHERE rn IN (FLOOR((n+1)/2.0), FLOOR((n+2)/2.0))
 GROUP BY city ORDER BY city;`,
     tests: [
       {

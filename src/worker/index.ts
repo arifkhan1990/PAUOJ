@@ -22,6 +22,7 @@ import { logger } from "@/server/logger";
 import { closeRedis, getRedis } from "@/server/redis";
 import { clearWorkerHeartbeat, recordWorkerHeartbeat } from "@/server/worker-heartbeat";
 import { updateRun } from "@/server/services/runs";
+import { ensureMonthlyContestSeries } from "@/server/services/contest-series";
 import { notifyStartingContests } from "@/server/services/notifications";
 import { sendReviewDigests } from "@/server/services/review-digest";
 import { notifyOverdueReviews } from "@/server/services/review-sla";
@@ -253,6 +254,31 @@ async function main(): Promise<void> {
   reviewReport();
   const reviewReportNotifier = setInterval(reviewReport, 60 * 60_000);
 
+  let contestSeriesRunning = false;
+  const ensureContestSeries = () => {
+    if (contestSeriesRunning) return;
+    contestSeriesRunning = true;
+    void ensureMonthlyContestSeries()
+      .then((result) => {
+        if (result.created) {
+          logger.info("Monthly official contest scheduled", {
+            contestId: result.contestId,
+            startAt: result.startAt,
+          });
+        }
+      })
+      .catch((error) => {
+        logger.warn("Monthly contest series sweep failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        contestSeriesRunning = false;
+      });
+  };
+  ensureContestSeries();
+  const contestSeriesSweeper = setInterval(ensureContestSeries, 60 * 60_000);
+
   worker.on("ready", () => logger.info("Judge worker ready"));
   worker.on("failed", (job, error) => {
     logger.error("Judge job failed", {
@@ -268,6 +294,7 @@ async function main(): Promise<void> {
     clearInterval(reviewDigestNotifier);
     clearInterval(reviewSlaNotifier);
     clearInterval(reviewReportNotifier);
+    clearInterval(contestSeriesSweeper);
     await clearWorkerHeartbeat().catch(() => undefined);
     await worker.close();
     await closeDb();

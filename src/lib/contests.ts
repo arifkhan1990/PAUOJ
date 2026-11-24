@@ -1,4 +1,64 @@
-import type { ContestStatus, ContestDivision } from "./types";
+import type { ContestListItem, ContestStatus, ContestDivision } from "./types";
+import type { ContestFormat } from "./contest-ops";
+
+export type ContestListStatusFilter = ContestStatus | "ALL";
+
+export const CONTEST_GROUP_LABEL: Record<ContestStatus, string> = {
+  RUNNING: "Live now",
+  UPCOMING: "Upcoming",
+  ENDED: "Past contests",
+};
+
+export type ContestListGroup = {
+  status: ContestStatus;
+  label: string;
+  items: ContestListItem[];
+};
+
+/**
+ * Groups an already-sorted list into the hub's Live → Upcoming → Past
+ * sections. Empty sections are dropped so a filtered page never renders a
+ * heading with no rows under it.
+ */
+export function groupContestsByStatus(
+  items: ContestListItem[],
+): ContestListGroup[] {
+  const buckets: Record<ContestStatus, ContestListItem[]> = {
+    RUNNING: [],
+    UPCOMING: [],
+    ENDED: [],
+  };
+  for (const item of items) buckets[item.status].push(item);
+  return (["RUNNING", "UPCOMING", "ENDED"] as const)
+    .map((status) => ({
+      status,
+      label: CONTEST_GROUP_LABEL[status],
+      items: buckets[status],
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
+export type ContestListFilterState = {
+  filter?: ContestListStatusFilter;
+  division?: ContestDivision;
+  format?: ContestFormat;
+};
+
+/**
+ * Canonical `/contests` URL for a filter combination. Filters are additive,
+ * `ALL`/empty values are dropped, and the page param is always reset so a
+ * filter change never lands on an out-of-range page.
+ */
+export function contestListHref(state: ContestListFilterState = {}): string {
+  const search = new URLSearchParams();
+  if (state.filter && state.filter !== "ALL") {
+    search.set("filter", state.filter);
+  }
+  if (state.division) search.set("division", state.division);
+  if (state.format) search.set("format", state.format);
+  const query = search.toString();
+  return query ? `/contests?${query}` : "/contests";
+}
 
 export const CONTEST_DIVISION_LABEL: Record<ContestDivision, string> = {
   OPEN: "Open",

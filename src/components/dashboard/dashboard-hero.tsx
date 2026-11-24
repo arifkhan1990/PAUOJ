@@ -10,11 +10,13 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { DailyChallengeCalendar } from "@/components/dashboard/daily-challenge-calendar";
 import { BadgeArt } from "@/components/profile/achievement-badges";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ProfileStats } from "@/lib/profile-types";
+import type { DailyChallengeWeek } from "@/server/services/daily-challenge-week";
 import {
   getNextRatingTier,
   getRatingTier,
@@ -22,7 +24,17 @@ import {
 } from "@/lib/rating-tiers";
 import { cn, formatDate } from "@/lib/utils";
 
-export function DashboardHero({ profile }: { profile: ProfileStats }) {
+export function DashboardHero({
+  profile,
+  dailyWeek,
+  prevHref,
+  nextHref,
+}: {
+  profile: ProfileStats;
+  dailyWeek: DailyChallengeWeek;
+  prevHref: string | null;
+  nextHref: string | null;
+}) {
   const { user } = profile;
   const rated = profile.contestCount > 0;
   const tier = getRatingTier(user.rating, rated);
@@ -64,7 +76,7 @@ export function DashboardHero({ profile }: { profile: ProfileStats }) {
               name={user.displayName}
               username={user.username}
               size="xl"
-              className="size-16 bg-orange-500 text-xl font-bold ring-0"
+              className="size-16 bg-orange-700 text-xl font-bold ring-0"
             />
             <div className="min-w-0 pt-0.5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -138,6 +150,14 @@ export function DashboardHero({ profile }: { profile: ProfileStats }) {
                 ) : null}
               </div>
             </div>
+          </div>
+
+          <div className="order-last flex w-full justify-center xl:order-none xl:w-auto xl:min-w-0 xl:flex-1 xl:self-center xl:px-2">
+            <DailyChallengeCalendar
+              week={dailyWeek}
+              prevHref={prevHref}
+              nextHref={nextHref}
+            />
           </div>
 
           <div className="flex shrink-0 flex-wrap gap-2">

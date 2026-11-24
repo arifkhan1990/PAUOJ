@@ -36,7 +36,7 @@ city_stats AS (
   FROM cust_stats GROUP BY city)
 SELECT city, customers, repeat_buyers,
        ROUND(100.0*repeat_buyers/customers, 1) AS repeat_rate_pct,
-       CAST(ROUND(repeat_cents*1.0/repeat_orders, 0) AS INTEGER) AS repeat_avg_order_cents
+       CAST(ROUND(repeat_cents*1.0/NULLIF(repeat_orders,0), 0) AS INTEGER) AS repeat_avg_order_cents
 FROM city_stats ORDER BY city;
 \`\`\`
 
@@ -67,7 +67,7 @@ city_stats AS (
   FROM cust_stats GROUP BY city)
 SELECT city, customers, repeat_buyers,
        ROUND(100.0*repeat_buyers/customers, 1) AS repeat_rate_pct,
-       CAST(ROUND(repeat_cents*1.0/repeat_orders, 0) AS INTEGER) AS repeat_avg_order_cents
+       CAST(ROUND(repeat_cents*1.0/NULLIF(repeat_orders,0), 0) AS INTEGER) AS repeat_avg_order_cents
 FROM city_stats ORDER BY city;`,
     tests: [
       {

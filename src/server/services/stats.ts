@@ -1,9 +1,18 @@
-import { and, count, eq, gte, inArray, isNull, or, sql } from "drizzle-orm";
+import {
+  and,
+  count,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
 import { getDb } from "@/server/db";
-import { problems, submissions, users } from "@/server/db/schema";
+import { contests, problems, submissions, users } from "@/server/db/schema";
 import type { HeatmapDay, SiteStats } from "@/lib/types";
 import { buildHeatmap } from "./activity";
-import { countedSubmission } from "./submission-filters";
+import { countedSubmission, publicSubmissionCondition } from "./submission-filters";
 
 export async function getSiteStats(viewer?: {
   userId: string | null;
@@ -48,10 +57,17 @@ export async function getSiteStats(viewer?: {
   };
 }
 
-export async function getSubmissionActivity(days = 14): Promise<HeatmapDay[]> {
+export async function getSubmissionActivity(
+  days = 14,
+  options: { publicOnly?: boolean } = {},
+): Promise<HeatmapDay[]> {
   const start = new Date();
   start.setUTCDate(start.getUTCDate() - (days - 1));
   start.setUTCHours(0, 0, 0, 0);
+  const conditions = [gte(submissions.createdAt, start), countedSubmission()];
+  if (options.publicOnly) {
+    conditions.push(publicSubmissionCondition());
+  }
   const rows = await getDb()
     .select({
       date: sql<string>`to_char(date_trunc('day', ${submissions.createdAt} at time zone 'UTC'), 'YYYY-MM-DD')`,
@@ -59,7 +75,9 @@ export async function getSubmissionActivity(days = 14): Promise<HeatmapDay[]> {
       accepted: sql<number>`(count(*) filter (where ${submissions.status} = 'ACCEPTED'))::int`,
     })
     .from(submissions)
-    .where(and(gte(submissions.createdAt, start), countedSubmission()))
+    .innerJoin(problems, eq(problems.id, submissions.problemId))
+    .leftJoin(contests, eq(contests.id, submissions.contestId))
+    .where(and(...conditions))
     .groupBy(sql`1`)
     .orderBy(sql`1`);
   return buildHeatmap(rows, days);

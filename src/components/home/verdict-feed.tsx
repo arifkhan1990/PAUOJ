@@ -57,9 +57,11 @@ function VerdictRow({ item }: { item: SubmissionListItem }) {
 export function VerdictFeed({
   items,
   activity,
+  judgeOnline,
 }: {
   items: SubmissionListItem[];
   activity: HeatmapDay[];
+  judgeOnline: boolean;
 }) {
   const accepted = items.filter((item) => isAccepted(item.status)).length;
 
@@ -68,7 +70,7 @@ export function VerdictFeed({
       <SectionHeading
         eyebrow="The judge"
         title="Every verdict, out in the open"
-        description="Compiled and tested in isolation, then reported with runtime, memory and the exact tests that failed."
+        description="Compiled and tested in isolation, then reported with runtime, memory and how many tests passed. Open a submission for the exact failed tests."
         href="/submissions"
         linkLabel="All submissions"
         size="lg"
@@ -99,11 +101,37 @@ export function VerdictFeed({
           <>
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/30 px-4 py-3 sm:px-5">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span className="relative flex size-2">
-                  <span className="absolute inline-flex size-full rounded-full bg-emerald-500/50 animate-pulse-soft" />
-                  <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
+                <span className="relative flex size-2" aria-hidden>
+                  <span
+                    className={cn(
+                      "absolute inline-flex size-full rounded-full",
+                      judgeOnline
+                        ? "bg-emerald-500/50 animate-pulse-soft"
+                        : "bg-amber-500/40",
+                    )}
+                  />
+                  <span
+                    className={cn(
+                      "relative inline-flex size-2 rounded-full",
+                      judgeOnline ? "bg-emerald-500" : "bg-amber-500",
+                    )}
+                  />
                 </span>
-                Judge active
+                <span
+                  role="status"
+                  className={cn(
+                    judgeOnline
+                      ? "text-emerald-700 dark:text-emerald-400"
+                      : "text-amber-700 dark:text-amber-400",
+                  )}
+                  title={
+                    judgeOnline
+                      ? "A judge worker has checked in recently."
+                      : "No judge worker has checked in recently."
+                  }
+                >
+                  {judgeOnline ? "Judge active" : "Judge offline"}
+                </span>
                 <span className="text-border">/</span>
                 {accepted} of the latest {items.length} accepted
               </div>

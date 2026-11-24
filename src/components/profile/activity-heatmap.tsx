@@ -8,75 +8,7 @@ import {
 import { Card } from "@/components/ui/card";
 import type { HeatmapDay } from "@/lib/types";
 import { cn } from "@/lib/utils";
-
-function intensityClass(count: number): string {
-  if (count <= 0) return "bg-slate-200/80 dark:bg-slate-800";
-  if (count === 1) return "bg-emerald-200 dark:bg-emerald-950";
-  if (count <= 4) return "bg-emerald-300 dark:bg-emerald-900";
-  if (count <= 9) return "bg-emerald-400 dark:bg-emerald-700";
-  if (count <= 15) return "bg-emerald-500 dark:bg-emerald-500";
-  return "bg-emerald-600 dark:bg-emerald-400";
-}
-
-type Week = {
-  key: string;
-  days: Array<HeatmapDay | null>;
-};
-
-type Month = {
-  key: string;
-  label: string;
-  weeks: Week[];
-};
-
-const monthFormatter = new Intl.DateTimeFormat("en-GB", {
-  month: "short",
-  timeZone: "UTC",
-});
-
-function monthOf(date: string): string {
-  return monthFormatter.format(new Date(`${date}T00:00:00Z`));
-}
-
-function weekdayOf(date: string): number {
-  return (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
-}
-
-function buildMonths(days: HeatmapDay[]): Month[] {
-  const months: Month[] = [];
-  let index = 0;
-
-  while (index < days.length) {
-    const first = days[index];
-    const monthKey = first.date.slice(0, 7);
-    const monthDays: HeatmapDay[] = [];
-
-    while (index < days.length && days[index].date.startsWith(monthKey)) {
-      monthDays.push(days[index]);
-      index += 1;
-    }
-
-    const cells: Array<HeatmapDay | null> = [
-      ...Array.from({ length: weekdayOf(first.date) }, () => null),
-      ...monthDays,
-    ];
-    while (cells.length % 7 !== 0) cells.push(null);
-
-    const weeks: Week[] = [];
-    for (let start = 0; start < cells.length; start += 7) {
-      const weekDays = cells.slice(start, start + 7);
-      const anchor = weekDays.find((day): day is HeatmapDay => day !== null);
-      weeks.push({
-        key: anchor?.date ?? `${monthKey}-${start}`,
-        days: weekDays,
-      });
-    }
-
-    months.push({ key: monthKey, label: monthOf(first.date), weeks });
-  }
-
-  return months;
-}
+import { ActivityGrid } from "./activity-grid";
 
 function Metric({
   icon: Icon,
@@ -118,7 +50,6 @@ export function ActivityHeatmap({
 }) {
   const total = days.reduce((sum, day) => sum + day.total, 0);
   const accepted = days.reduce((sum, day) => sum + day.accepted, 0);
-  const months = buildMonths(days);
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -174,89 +105,13 @@ export function ActivityHeatmap({
         />
       </div>
 
-      <div className="mt-5 overflow-hidden">
-        <div
-          className="w-full"
-          role="img"
-          aria-label={`Activity heatmap: ${activeDays} active days, ${accepted} accepted submissions in the last year`}
-        >
-          <div className="flex items-stretch gap-2">
-            <div className="grid w-7 shrink-0 grid-rows-7 gap-[2px] text-[8px] text-muted-foreground">
-              {["Mon", "", "Wed", "", "Fri", "", "Sun"].map((day, index) => (
-                <span key={`${day}-${index}`} className="flex items-center">
-                  {day}
-                </span>
-              ))}
-            </div>
-            <div className="flex min-w-0 flex-1 gap-x-1 sm:gap-x-2">
-              {months.map((month) => (
-                <div
-                  key={month.key}
-                  className="flex min-w-0 gap-[2px]"
-                  style={{
-                    flexGrow: month.weeks.length,
-                    flexBasis: 0,
-                  }}
-                >
-                  {month.weeks.map((week) => (
-                    <div
-                      key={week.key}
-                      className="grid min-w-0 flex-1 grid-rows-7 gap-[2px]"
-                    >
-                      {week.days.map((day, index) =>
-                        day ? (
-                          <span
-                            key={day.date}
-                            className={cn(
-                              "aspect-square w-full rounded-[2px] transition-colors hover:ring-1 hover:ring-emerald-500",
-                              intensityClass(day.accepted),
-                              day.date === today &&
-                                "ring-1 ring-emerald-500 ring-inset",
-                            )}
-                            title={`${day.date}: ${day.accepted} accepted / ${day.total} submissions`}
-                          />
-                        ) : (
-                          <span
-                            key={`empty-${index}`}
-                            className="aspect-square w-full"
-                          />
-                        ),
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="mt-1.5 flex gap-x-1 pl-9 text-[8px] text-muted-foreground sm:gap-x-2">
-            {months.map((month) => (
-              <div
-                key={month.key}
-                className="min-w-0"
-                style={{
-                  flexGrow: month.weeks.length,
-                  flexBasis: 0,
-                }}
-              >
-                <span className="block truncate">{month.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-3 flex items-center justify-end gap-1.5 text-[9px] text-muted-foreground">
-        <span>Less</span>
-        {[0, 1, 3, 6, 10, 16].map((value) => (
-          <span
-            key={value}
-            className={cn(
-              "size-3 rounded-[3px]",
-              intensityClass(value),
-            )}
-          />
-        ))}
-        <span>More</span>
+      <div className="mt-5">
+        <ActivityGrid
+          days={days}
+          today={today}
+          activeDays={activeDays}
+          accepted={accepted}
+        />
       </div>
     </Card>
   );

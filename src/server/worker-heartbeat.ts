@@ -21,3 +21,23 @@ export async function getWorkerCount(): Promise<number> {
   await redis.zremrangebyscore(WORKERS_KEY, 0, now - STALE_AFTER_MS);
   return redis.zcard(WORKERS_KEY);
 }
+
+export async function isJudgeOnline(timeoutMs = 1000): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const count = await Promise.race([
+      getWorkerCount(),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("Worker heartbeat timed out.")),
+          timeoutMs,
+        );
+      }),
+    ]);
+    return count > 0;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}

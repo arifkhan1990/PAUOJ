@@ -67,7 +67,7 @@ WITH october_gross AS (
   JOIN orders o ON o.id = oi.order_id
   JOIN products p ON p.id = oi.product_id
   WHERE o.status IN ('paid', 'shipped')
-    AND o.ordered_at BETWEEN '2026-10-01' AND '2026-10-31'
+    AND o.ordered_at >= '2026-10-01' AND o.ordered_at < '2026-11-01'
   GROUP BY p.vendor_id
 )
 SELECT v.name AS vendor, g.gross_cents

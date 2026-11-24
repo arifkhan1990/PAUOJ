@@ -79,6 +79,8 @@ export const LEARNING_ROUTE_SLUGS: Record<string, string[]> = {
     "dml-and-transactions",
     "capstone",
   ],
+  "git-github": ["snapshots", "branches", "collaboration"],
+  "docker-cicd": ["containers", "compose-production", "pipelines"],
 };
 
 export function isLearningRoute(

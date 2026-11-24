@@ -24,7 +24,7 @@ json_extract(attributes, '$.brand') — প্রথম আর্গুমেন
 \`\`\`sql
 SELECT json_extract(pa.attributes, '$.brand') AS brand,
        COUNT(*) AS products,
-       ROUND(AVG(json_extract(pa.attributes, '$.warranty_months')), 1) AS avg_warranty_months
+       ROUND(AVG(CAST(json_extract(pa.attributes, '$.warranty_months') AS REAL)), 1) AS avg_warranty_months
 FROM product_attributes pa
 GROUP BY json_extract(pa.attributes, '$.brand')
 ORDER BY products DESC, brand;
@@ -46,7 +46,7 @@ path-এ $ বাদ দেওয়া (তখন NULL আসে); brand কল
     referencePython: "",
     referenceSql: `SELECT json_extract(pa.attributes, '$.brand') AS brand,
        COUNT(*) AS products,
-       ROUND(AVG(json_extract(pa.attributes, '$.warranty_months')), 1) AS avg_warranty_months
+       ROUND(AVG(CAST(json_extract(pa.attributes, '$.warranty_months') AS REAL)), 1) AS avg_warranty_months
 FROM product_attributes pa
 GROUP BY json_extract(pa.attributes, '$.brand')
 ORDER BY products DESC, brand;`,

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" width="1200" height="320" role="img" aria-labelledby="git-title git-title-desc" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif">
+  <title id="git-title">Module 10: Git &amp; GitHub concept map</title>
+  <desc id="git-title-desc">Free toolkit module in three steps: taking snapshots, staging files and building a readable history first, then branches, merges and pull requests, and finally team collaboration with safe recovery, reverts and tagged releases.</desc>
+  <defs>
+    <pattern id="git-dots" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.1" fill="#cbd5e1" opacity="0.45"/>
+    </pattern>
+    <marker id="git-arrow" viewBox="0 0 12 12" markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse" refX="10" refY="6" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="320" fill="#f8fafc"/>
+  <rect width="1200" height="320" fill="url(#git-dots)"/>
+  <rect x="48" y="36" width="140" height="36" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="118" y="60" text-anchor="middle" font-size="18" font-weight="700" fill="#b45309" letter-spacing="2">MODULE 10</text>
+  <text x="210" y="60" font-size="26" font-weight="700" fill="#0f172a">Git &amp; GitHub</text>
+  <rect x="1004" y="36" width="148" height="36" rx="18" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="1078" y="60" text-anchor="middle" font-size="15" font-weight="700" fill="#b45309" letter-spacing="1">FREE TOOLKIT</text>
+  <rect x="48" y="128" width="344" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="64" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="81" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">01</text>
+  <text x="220" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Snapshots</text>
+  <text x="220" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">stage · commit</text>
+  <line x1="398" y1="206" x2="420" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#git-arrow)"/>
+  <rect x="428" y="128" width="344" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="444" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="461" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">02</text>
+  <text x="600" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Branches &amp; PR</text>
+  <text x="600" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">merge · review</text>
+  <line x1="778" y1="206" x2="800" y2="206" stroke="#f59e0b" stroke-width="3" stroke-linecap="round" marker-end="url(#git-arrow)"/>
+  <rect x="808" y="128" width="344" height="156" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+  <rect x="824" y="144" width="34" height="34" rx="9" fill="#fff7ed" stroke="#fdba74" stroke-width="1"/>
+  <text x="841" y="167" text-anchor="middle" font-size="20" font-weight="700" fill="#b45309">03</text>
+  <text x="980" y="224" text-anchor="middle" font-size="26" font-weight="700" fill="#0f172a">Collaboration</text>
+  <text x="980" y="264" text-anchor="middle" font-size="21" font-weight="500" fill="#64748b">recovery · release</text>
+</svg>

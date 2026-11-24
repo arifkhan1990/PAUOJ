@@ -1,6 +1,7 @@
 import type { Difficulty } from "./difficulty";
 import type { RatingBucket } from "./rating-distribution";
 import type { RatingHistoryItem } from "./rating-types";
+import type { UserCurrentStatus } from "./profile-fields";
 import type {
   HeatmapDay,
   SubmissionListItem,
@@ -78,9 +79,20 @@ export type ProfileStats = {
     bio: string | null;
     country: string | null;
     institution: string | null;
+    website: string | null;
+    github: string | null;
+    linkedin: string | null;
+    currentStatus: UserCurrentStatus | null;
+    companyName: string | null;
+    jobTitle: string | null;
+    skills: string[];
     rating: number;
     createdAt: string;
     isSelf: boolean;
+    followerCount: number;
+    followingCount: number;
+    isFollowing: boolean;
+    canFollow: boolean;
   };
   solvedCount: number;
   submissionCount: number;

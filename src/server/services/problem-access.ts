@@ -7,6 +7,7 @@ import {
   assessments,
   contestProblems,
   contestRegistrations,
+  contestTeamMembers,
   contests,
 } from "@/server/db/schema";
 
@@ -62,7 +63,7 @@ export async function getRestrictedProblemIds(
     const assessmentIds = [
       ...new Set(assessmentRows.map((row) => row.assessmentId)),
     ];
-    const [registrations, participations] = await Promise.all([
+    const [registrations, teamMemberships, participations] = await Promise.all([
       contestIds.length > 0
         ? db
             .select({ contestId: contestRegistrations.contestId })
@@ -70,6 +71,24 @@ export async function getRestrictedProblemIds(
             .where(
               and(
                 eq(contestRegistrations.userId, userId),
+                inArray(contestRegistrations.contestId, contestIds),
+              ),
+            )
+        : Promise.resolve([]),
+      // Team membership counts as access: a member of a registered team
+      // (contest_registrations.team_id) can open the running contest
+      // problems even if only the captain holds the registration row.
+      contestIds.length > 0
+        ? db
+            .select({ contestId: contestRegistrations.contestId })
+            .from(contestRegistrations)
+            .innerJoin(
+              contestTeamMembers,
+              eq(contestTeamMembers.teamId, contestRegistrations.teamId),
+            )
+            .where(
+              and(
+                eq(contestTeamMembers.userId, userId),
                 inArray(contestRegistrations.contestId, contestIds),
               ),
             )
@@ -88,7 +107,9 @@ export async function getRestrictedProblemIds(
             )
         : Promise.resolve([]),
     ]);
-    for (const row of registrations) accessibleContests.add(row.contestId);
+    for (const row of [...registrations, ...teamMemberships]) {
+      accessibleContests.add(row.contestId);
+    }
     for (const row of participations) {
       accessibleAssessments.add(row.assessmentId);
     }

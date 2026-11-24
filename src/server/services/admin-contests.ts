@@ -2,7 +2,12 @@ import { and, asc, count, eq, inArray, or, sql } from "drizzle-orm";
 import { ApiError, errors } from "@/server/api/errors";
 import { toOffset, type PaginationInput } from "@/server/api/validation";
 import { getDb } from "@/server/db";
-import { contestProblems, contests, problems } from "@/server/db/schema";
+import {
+  contestProblems,
+  contestStaff,
+  contests,
+  problems,
+} from "@/server/db/schema";
 import type { ContestInput } from "@/lib/schemas/contest";
 import type {
   AdminContestDetail,
@@ -17,6 +22,49 @@ import {
   notifyContestApprovalRequests,
   syncContestProblemApprovals,
 } from "./contest-problem-approvals";
+import { applyFreshProblemPolicy } from "./contest-fresh-problems";
+
+type FeeStatus = (typeof contests.$inferSelect)["feeStatus"];
+
+type Transaction = Parameters<
+  Parameters<ReturnType<typeof getDb>["transaction"]>[0]
+>[0];
+
+function resolveFeeStatus(
+  feeBdt: number | undefined,
+  current?: FeeStatus,
+): FeeStatus {
+  if (feeBdt === undefined) return "NOT_REQUIRED";
+  if (current && current !== "NOT_REQUIRED") return current;
+  return "PENDING";
+}
+
+async function upsertDirector(
+  tx: Transaction,
+  contestId: string,
+  userId: string,
+): Promise<void> {
+  const now = new Date();
+  await tx
+    .insert(contestStaff)
+    .values({
+      contestId,
+      userId,
+      role: "DIRECTOR",
+      status: "ACCEPTED",
+      invitedById: userId,
+      respondedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: [contestStaff.contestId, contestStaff.userId],
+      set: {
+        role: "DIRECTOR",
+        status: "ACCEPTED",
+        respondedAt: now,
+        updatedAt: now,
+      },
+    });
+}
 
 export async function listAdminContests(
   page: PaginationInput,
@@ -37,6 +85,10 @@ export async function listAdminContests(
       endAt: contests.endAt,
       isPublic: contests.isPublic,
       division: contests.division,
+      format: contests.format,
+      teamSize: contests.teamSize,
+      isOfficial: contests.isOfficial,
+      feeStatus: contests.feeStatus,
       freezeMinutes: contests.freezeMinutes,
       problemCount: problemCountSql(),
       participantCount: participantCountSql(),
@@ -58,6 +110,10 @@ export async function listAdminContests(
       endAt: row.endAt.toISOString(),
       isPublic: row.isPublic,
       division: row.division,
+      format: row.format,
+      teamSize: row.teamSize,
+      isOfficial: row.isOfficial,
+      feeStatus: row.feeStatus,
       freezeMinutes: row.freezeMinutes,
       problemCount: Number(row.problemCount),
       participantCount: Number(row.participantCount),
@@ -93,10 +149,22 @@ export async function getAdminContestDetail(
     slug: contest.slug,
     title: contest.title,
     description: contest.description,
+    bannerUrl: contest.bannerUrl,
     startAt: contest.startAt.toISOString(),
     endAt: contest.endAt.toISOString(),
     isPublic: contest.isPublic,
     division: contest.division,
+    format: contest.format,
+    teamSize: contest.teamSize,
+    isOfficial: contest.isOfficial,
+    feeStatus: contest.feeStatus,
+    feeBdt: contest.feeBdt,
+    feeReference: contest.feeReference,
+    requiresFreshProblems: contest.requiresFreshProblems,
+    eligibility: contest.eligibility,
+    rules: contest.rules,
+    prizes: contest.prizes,
+    seriesId: contest.seriesId,
     freezeMinutes: contest.freezeMinutes,
     problemIds: problemRows.map((row) => row.problemId),
     problemApprovals,
@@ -149,6 +217,29 @@ async function assertApprovalsComplete(
   );
 }
 
+function contestValues(input: ContestInput, feeStatus: FeeStatus) {
+  return {
+    title: input.title,
+    description: input.description,
+    bannerUrl: input.bannerUrl || null,
+    startAt: new Date(input.startAt),
+    endAt: new Date(input.endAt),
+    isPublic: input.isPublic,
+    division: input.division,
+    format: input.format,
+    teamSize: input.teamSize,
+    isOfficial: input.isOfficial,
+    requiresFreshProblems: input.requiresFreshProblems,
+    feeStatus,
+    feeBdt: input.feeBdt ?? null,
+    feeReference: input.feeReference || null,
+    eligibility: input.eligibility || null,
+    rules: input.rules || null,
+    prizes: input.prizes || null,
+    freezeMinutes: input.freezeMinutes,
+  };
+}
+
 export async function createContest(
   actor: Pick<SafeUser, "id" | "role" | "displayName">,
   input: ContestInput,
@@ -168,14 +259,8 @@ export async function createContest(
     const [created] = await tx
       .insert(contests)
       .values({
+        ...contestValues(input, resolveFeeStatus(input.feeBdt)),
         slug,
-        title: input.title,
-        description: input.description,
-        startAt: new Date(input.startAt),
-        endAt: new Date(input.endAt),
-        isPublic: input.isPublic,
-        division: input.division,
-        freezeMinutes: input.freezeMinutes,
         createdBy: actor.id,
       })
       .returning({ id: contests.id });
@@ -183,6 +268,12 @@ export async function createContest(
       throw new ApiError("CREATE_FAILED", "Could not create contest.", 500);
     }
     await tx.insert(contestProblems).values(contestLinkRows(created.id, problemIds));
+    await applyFreshProblemPolicy(tx, {
+      contestId: created.id,
+      problemIds,
+      requiresFresh: input.requiresFreshProblems,
+    });
+    await upsertDirector(tx, created.id, actor.id);
     const pending = await syncContestProblemApprovals(tx, {
       contestId: created.id,
       contestTitle: input.title,
@@ -207,8 +298,12 @@ export async function updateContest(
 ): Promise<AdminContestDetail> {
   const db = getDb();
   const createdBy = actor.role === "TEACHER" ? actor.id : undefined;
-  const owned = await db
-    .select({ id: contests.id })
+  const [owned] = await db
+    .select({
+      id: contests.id,
+      createdBy: contests.createdBy,
+      feeStatus: contests.feeStatus,
+    })
     .from(contests)
     .where(
       createdBy
@@ -216,7 +311,7 @@ export async function updateContest(
         : eq(contests.id, id),
     )
     .limit(1);
-  if (!owned[0]) throw errors.notFound("Contest not found.");
+  if (!owned) throw errors.notFound("Contest not found.");
   const problemIds = await prepareProblems(input.problemIds, createdBy);
   const slug = input.slug || slugify(input.title);
 
@@ -233,19 +328,22 @@ export async function updateContest(
     await tx
       .update(contests)
       .set({
+        ...contestValues(
+          input,
+          resolveFeeStatus(input.feeBdt, owned.feeStatus),
+        ),
         slug,
-        title: input.title,
-        description: input.description,
-        startAt: new Date(input.startAt),
-        endAt: new Date(input.endAt),
-        isPublic: input.isPublic,
-        division: input.division,
-        freezeMinutes: input.freezeMinutes,
         updatedAt: new Date(),
       })
       .where(eq(contests.id, id));
     await tx.delete(contestProblems).where(eq(contestProblems.contestId, id));
     await tx.insert(contestProblems).values(contestLinkRows(id, problemIds));
+    await applyFreshProblemPolicy(tx, {
+      contestId: id,
+      problemIds,
+      requiresFresh: input.requiresFreshProblems,
+    });
+    await upsertDirector(tx, id, owned.createdBy ?? actor.id);
     const pending = await syncContestProblemApprovals(tx, {
       contestId: id,
       contestTitle: input.title,

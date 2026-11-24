@@ -107,8 +107,10 @@ let input = String(data: FileHandle.standardInput.readDataToEndOfFile(), encodin
 // write your solution here
 `,
   sql: "-- Write a SQL query against the ShopSphere dataset\nSELECT ...\n",
-  mysql: "-- Write a MySQL-style query\nSELECT ...\n",
-  postgresql: "-- Write a PostgreSQL-style query\nSELECT ...\n",
+  sqlite: "-- SQLite 3 · write a query against the ShopSphere dataset\nSELECT ...\n",
+  mysql: "-- MariaDB/MySQL · write a query against the ShopSphere dataset\nSELECT ...\n",
+  postgresql:
+    "-- PostgreSQL 15 · write a query against the ShopSphere dataset\nSELECT ...\n",
 };
 
 const SQL_SCRIPT_STARTER = `-- SQL script: multiple statements allowed...
@@ -166,11 +168,16 @@ export function SubmitPanel({
     judgeLanguage === "sql" || judgeLanguage === "sql-script";
   const isSqlScript = judgeLanguage === "sql-script";
   const starterFor = (id: LanguageId): string =>
-    isSqlScript && id === "sql" ? SQL_SCRIPT_STARTER : STARTERS[id];
+    isSqlScript && (id === "sql" || id === "sqlite")
+      ? SQL_SCRIPT_STARTER
+      : STARTERS[id];
+  // Script-mode labs are SQLite-only: MySQL/PostgreSQL run a single read-only
+  // statement, so DDL/DML scripts are not offered for them.
+  const sqlLanguageIds = isSqlScript
+    ? ["sql", "sqlite"]
+    : ["sql", "sqlite", "mysql", "postgresql"];
   const languageOptions = isSqlProblem
-    ? LANGUAGES.filter((item) =>
-        ["sql", "mysql", "postgresql"].includes(item.id),
-      )
+    ? LANGUAGES.filter((item) => sqlLanguageIds.includes(item.id))
     : LANGUAGES;
   const initialLanguage: LanguageId = isSqlProblem ? "sql" : defaultLanguage;
   const [language, setLanguage] = useState<LanguageId>(initialLanguage);

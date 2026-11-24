@@ -5,9 +5,37 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { ProblemSectionCard } from "@/components/problems/problem-section-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { CONTEST_EDITORIAL_LOCK_MESSAGE } from "@/lib/contest-ops";
 import type { ProblemDetail } from "@/lib/types";
 
 export function ProblemEditorial({ problem }: { problem: ProblemDetail }) {
+  if (problem.contestContext?.status === "RUNNING") {
+    return (
+      <Card className="overflow-hidden">
+        <div className="flex flex-col items-center px-6 py-12 text-center">
+          <span className="grid size-14 place-items-center rounded-full bg-muted text-muted-foreground">
+            <LockKeyhole className="size-6" />
+          </span>
+          <h3 className="mt-4 text-base font-semibold">
+            Editorial sealed while the contest runs
+          </h3>
+          <p className="mt-1 max-w-md text-sm text-muted-foreground">
+            {CONTEST_EDITORIAL_LOCK_MESSAGE}
+          </p>
+          <Link
+            href={`/contests/${problem.contestContext.slug}`}
+            className={buttonVariants({
+              variant: "outline",
+              className: "mt-5",
+            })}
+          >
+            Open the contest
+          </Link>
+        </div>
+      </Card>
+    );
+  }
+
   if (problem.editorialLocked) {
     return (
       <Card className="overflow-hidden">

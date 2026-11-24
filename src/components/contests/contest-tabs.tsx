@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  Info,
   ListChecks,
   MessageSquare,
   Send,
@@ -9,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export const CONTEST_TABS = [
+  "about",
   "problems",
   "standings",
   "submissions",
@@ -24,10 +26,16 @@ const tabs: {
   path: (slug: string) => string;
 }[] = [
   {
+    value: "about",
+    label: "About",
+    icon: Info,
+    path: (slug) => `/contests/${slug}`,
+  },
+  {
     value: "problems",
     label: "Problems",
     icon: ListChecks,
-    path: (slug) => `/contests/${slug}`,
+    path: (slug) => `/contests/${slug}?tab=problems`,
   },
   {
     value: "standings",
@@ -77,7 +85,7 @@ export function ContestTabs({
             className={cn(
               "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors",
               isActive
-                ? "bg-primary/10 font-medium text-primary"
+                ? "bg-primary/10 font-semibold text-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >

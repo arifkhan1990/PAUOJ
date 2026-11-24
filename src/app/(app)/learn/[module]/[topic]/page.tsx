@@ -8,6 +8,7 @@ import { LearningSection } from "@/components/learning/learning-section";
 import { ProblemGroup } from "@/components/learning/problem-group";
 import { PremiumPaywall } from "@/components/learning/premium-paywall";
 import { SqlTopicStory } from "@/components/learning/sql-topic-story";
+import { LessonVisual } from "@/components/learning/visuals/lesson-visual";
 import {
   CheckpointCta,
   LessonHeader,
@@ -20,6 +21,7 @@ import { LessonToc, type LessonTocItem } from "@/features/learning/lesson-toc";
 import { LessonSocial } from "@/features/learning/lesson-social";
 import { getLearningModule as getLearningModuleDefinition } from "@/lib/learning/modules";
 import { purchasePriceBdt } from "@/lib/learning/payments";
+import { getLessonVisual } from "@/lib/learning/visuals";
 import {
   extractMarkdownHeadings,
   type LessonOutlineHeading,
@@ -87,7 +89,6 @@ export default async function LearningTopicPage({
 
   const checkpoint = definition.checkpoint;
   const isPlanned = definition.status === "PLANNED";
-  const isSql = definition.track === "sql";
   const topicPosition =
     definition.topics.findIndex((item) => item.slug === topicSlug) + 1;
 
@@ -133,22 +134,63 @@ export default async function LearningTopicPage({
     extractMarkdownHeadings(topic.concept, "concept"),
   );
 
+  const isTools = definition.track === "tools";
+  const isSql = definition.track === "sql";
+  const visual = getLessonVisual(moduleSlug, topicSlug);
+  const labels = isTools
+    ? {
+        concept: "Story & concept",
+        visual: "Visual story",
+        guided: "Guided drills",
+        tiered: "Tiered practice",
+        extra: "Solo drills",
+      }
+    : {
+        concept: "Concept note",
+        visual: "Visual explainer",
+        guided: "Guided practice",
+        tiered: "Tiered practice",
+        extra: "Extra practice",
+      };
+  // Toolkit topics have no tiered sets; hide empty groups instead of showing
+  // "in production" placeholders. Other tracks keep their existing behavior.
+  const showGuided = !isTools || topic.guided.length > 0;
+  const hasTiered = LEVELS.some(
+    (level) => topic.practice[level.key].length > 0,
+  );
+  const hasExtra = topic.extra.length > 0;
+  const sectionOrder = [
+    "concept",
+    ...(visual ? ["visual"] : []),
+    ...(showGuided ? ["guided"] : []),
+    ...(hasTiered ? ["tiered"] : []),
+    ...(hasExtra ? ["extra"] : []),
+    ...(checkpoint ? ["checkpoint"] : []),
+    "discussion",
+  ];
+  const stepOf = (id: string) => sectionOrder.indexOf(id) + 1;
+
   const tocItems: LessonTocItem[] = [
     {
       id: "concept",
-      label: "Concept note",
+      label: labels.concept,
       ...(conceptOutline.length > 0 ? { children: conceptOutline } : {}),
     },
-    { id: "guided", label: "Guided practice" },
-    {
-      id: "tiered",
-      label: "Tiered practice",
-      children: LEVELS.map((level) => ({
-        id: `tiered-${level.key}`,
-        label: level.label,
-      })),
-    },
-    { id: "extra", label: "Extra practice" },
+    ...(visual ? [{ id: "visual", label: labels.visual }] : []),
+    ...(showGuided ? [{ id: "guided", label: labels.guided }] : []),
+    ...(hasTiered
+      ? [
+          {
+            id: "tiered",
+            label: labels.tiered,
+            children: LEVELS.map((level) => ({
+              id: `tiered-${level.key}`,
+              label: level.label,
+            })),
+          },
+        ]
+      : []),
+    ...(hasExtra ? [{ id: "extra", label: labels.extra }] : []),
     ...(checkpoint ? [{ id: "checkpoint", label: "Checkpoint" }] : []),
     { id: "discussion", label: "Discussion" },
   ];
@@ -190,17 +232,24 @@ export default async function LearningTopicPage({
           </p>
 
           <div className="lg:hidden">
-            <LessonNav showCheckpoint={Boolean(checkpoint)} />
+            <LessonNav
+              showCheckpoint={Boolean(checkpoint)}
+              items={tocItems.map(({ id, label }) => ({ id, label }))}
+            />
           </div>
 
           <div className="mt-8">
             {isPlanned ? <ContentInProduction className="mb-8" /> : null}
 
             <LearningSection
-              step={1}
+              step={stepOf("concept")}
               id="concept"
-              title="Concept note"
-              description="Read this first; it sets up the mental model for the problems."
+              title={labels.concept}
+              description={
+                isTools
+                  ? "Start with the situation, then the idea that makes the tools click."
+                  : "Read this first; it sets up the mental model for the problems."
+              }
             >
               {isSql && !isPlanned ? (
                 <SqlTopicStory topicSlug={topicSlug} className="mb-4" />
@@ -218,56 +267,81 @@ export default async function LearningTopicPage({
               </Card>
             </LearningSection>
 
-            <LearningSection
-              step={2}
-              id="guided"
-              title="Guided practice"
-              description="Warm up with worked, story-driven problems."
-            >
-              <ProblemGroup
-                title="Guided problems"
-                problems={topic.guided}
-                emptyText="Guided problems are in production."
-              />
-            </LearningSection>
+            {visual ? (
+              <LearningSection
+                step={stepOf("visual")}
+                id="visual"
+                title={labels.visual}
+                description="See the mental model first — the animation and the steps below it say the same thing."
+              >
+                <LessonVisual config={visual} />
+              </LearningSection>
+            ) : null}
 
-            <LearningSection
-              step={3}
-              id="tiered"
-              title="Tiered practice"
-              description="Build control by working up from easy to hard."
-            >
-              <div className="space-y-6">
-                {LEVELS.map((level) => (
-                  <ProblemGroup
-                    key={level.key}
-                    id={`tiered-${level.key}`}
-                    title={level.label}
-                    tone={level.key}
-                    problems={topic.practice[level.key]}
-                    emptyText={`${level.label} problems are in production.`}
-                  />
-                ))}
-              </div>
-            </LearningSection>
+            {showGuided ? (
+              <LearningSection
+                step={stepOf("guided")}
+                id="guided"
+                title={labels.guided}
+                description={
+                  isTools
+                    ? "Follow the walkthrough with the solution in view."
+                    : "Warm up with worked, story-driven problems."
+                }
+              >
+                <ProblemGroup
+                  title={isTools ? "Worked examples" : "Guided problems"}
+                  problems={topic.guided}
+                  emptyText="Guided problems are in production."
+                />
+              </LearningSection>
+            ) : null}
 
-            <LearningSection
-              step={4}
-              id="extra"
-              title="Extra practice"
-              description="Try these without hints before moving on."
-            >
-              <ProblemGroup
-                title="নিজে চেষ্টা করুন"
-                titleLang="bn"
-                problems={topic.extra}
-                emptyText="Extra problems are in production."
-              />
-            </LearningSection>
+            {hasTiered ? (
+              <LearningSection
+                step={stepOf("tiered")}
+                id="tiered"
+                title={labels.tiered}
+                description="Build control by working up from easy to hard."
+              >
+                <div className="space-y-6">
+                  {LEVELS.map((level) => (
+                    <ProblemGroup
+                      key={level.key}
+                      id={`tiered-${level.key}`}
+                      title={level.label}
+                      tone={level.key}
+                      problems={topic.practice[level.key]}
+                      emptyText={`${level.label} problems are in production.`}
+                    />
+                  ))}
+                </div>
+              </LearningSection>
+            ) : null}
+
+            {hasExtra ? (
+              <LearningSection
+                step={stepOf("extra")}
+                id="extra"
+                title={labels.extra}
+                description={
+                  isTools
+                    ? "Now repeat the workflow on your own."
+                    : "Try these without hints before moving on."
+                }
+              >
+                <ProblemGroup
+                  title={isTools ? "Independent set" : "নিজে চেষ্টা করুন"}
+                  titleLang={isTools ? undefined : "bn"}
+                  problems={topic.extra}
+                  emptyText="Extra problems are in production."
+                />
+              </LearningSection>
+            ) : null}
 
             {checkpoint ? (
               <LearningSection
-                step={5}
+                step={stepOf("checkpoint")}
                 id="checkpoint"
                 title="Checkpoint"
                 description="One timed attempt. Solve every problem to earn the module badge."
@@ -280,7 +354,7 @@ export default async function LearningTopicPage({
             ) : null}
 
             <LearningSection
-              step={checkpoint ? 6 : 5}
+              step={stepOf("discussion")}
               id="discussion"
               title="Discussion"
               description="Ask questions, share an approach or leave a study tip for this lesson."

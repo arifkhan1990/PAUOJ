@@ -93,13 +93,58 @@ export async function updateProfile(
   userId: string,
   input: ProfileInput,
 ): Promise<SafeUser> {
+  const textValues = {
+    ...(input.bio === undefined
+      ? {}
+      : { bio: input.bio.trim() ? input.bio.trim() : null }),
+    ...(input.country === undefined
+      ? {}
+      : { country: input.country.trim() ? input.country.trim() : null }),
+    ...(input.institution === undefined
+      ? {}
+      : {
+          institution: input.institution.trim()
+            ? input.institution.trim()
+            : null,
+        }),
+    ...(input.address === undefined
+      ? {}
+      : { address: input.address?.trim() ? input.address.trim() : null }),
+    ...(input.phone === undefined
+      ? {}
+      : { phone: input.phone?.trim() ? input.phone.trim() : null }),
+    ...(input.companyName === undefined
+      ? {}
+      : {
+          companyName: input.companyName?.trim()
+            ? input.companyName.trim()
+            : null,
+        }),
+    ...(input.jobTitle === undefined
+      ? {}
+      : { jobTitle: input.jobTitle?.trim() ? input.jobTitle.trim() : null }),
+  };
+  const detailValues = {
+    ...(input.currentStatus === undefined
+      ? {}
+      : { currentStatus: input.currentStatus }),
+    ...(input.tshirtSize === undefined
+      ? {}
+      : { tshirtSize: input.tshirtSize }),
+    ...(input.skills === undefined ? {} : { skills: input.skills }),
+  };
+  const linkValues = {
+    ...(input.website === undefined ? {} : { website: input.website }),
+    ...(input.github === undefined ? {} : { github: input.github }),
+    ...(input.linkedin === undefined ? {} : { linkedin: input.linkedin }),
+  };
   const rows = await getDb()
     .update(users)
     .set({
       displayName: input.displayName,
-      bio: input.bio?.trim() ? input.bio.trim() : null,
-      country: input.country?.trim() ? input.country.trim() : null,
-      institution: input.institution?.trim() ? input.institution.trim() : null,
+      ...textValues,
+      ...detailValues,
+      ...linkValues,
       updatedAt: new Date(),
     })
     .where(eq(users.id, userId))

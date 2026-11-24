@@ -4,7 +4,7 @@ import { enforceRateLimit } from "@/server/api/rate-limit";
 import { apiCreated, apiError } from "@/server/api/responses";
 import { parseJson } from "@/server/api/validation";
 import { runCodeSchema } from "@/lib/schemas/submission";
-import { getProblemForSubmission } from "@/server/services/problems";
+import { getProblemForSubmission } from "@/server/services/problem-submission-context";
 import { createRun } from "@/server/services/runs";
 
 export async function POST(request: NextRequest) {

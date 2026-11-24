@@ -178,7 +178,13 @@ def main() -> None:
 
     extra = sys.stdin.read()
     if extra.strip():
-        connection.executescript(extra)
+        # Setup (including custom-run stdin) may write rows, but it must not
+        # ATTACH a database, change PRAGMAs or open a virtual table.
+        connection.set_authorizer(authorize_script)
+        try:
+            connection.executescript(extra)
+        finally:
+            connection.set_authorizer(None)
 
     with open(query_path, encoding="utf-8") as handle:
         submission = handle.read()

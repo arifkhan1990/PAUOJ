@@ -12,6 +12,7 @@ export const languageSchema = z.enum([
   "kotlin",
   "swift",
   "sql",
+  "sqlite",
   "mysql",
   "postgresql",
 ]);

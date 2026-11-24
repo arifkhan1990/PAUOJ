@@ -54,6 +54,8 @@ import {
   NETWORK_FLOW_PROBLEMS,
   STRING_MATCHING_PROBLEMS,
 } from "./module-7";
+import { GIT_GITHUB_PROBLEMS } from "./tools/git";
+import { DOCKER_CICD_PROBLEMS } from "./tools/docker";
 
 function curriculumProblems(
   problems: SeedProblem[],
@@ -108,4 +110,6 @@ export const LEARNING_PROBLEMS: SeedProblem[] = [
   ...curriculumProblems(ADVANCED_NUMBER_THEORY_PROBLEMS, "Module 7 · Advanced Number Theory"),
   ...curriculumProblems(GAME_THEORY_PROBLEMS, "Module 7 · Game Theory"),
   ...curriculumProblems(MODULE7_CHECKPOINT_PROBLEMS, "Module 7 · Checkpoint"),
+  ...curriculumProblems(GIT_GITHUB_PROBLEMS, "Career Toolkit · Git & GitHub"),
+  ...curriculumProblems(DOCKER_CICD_PROBLEMS, "Career Toolkit · Docker & CI/CD"),
 ];

@@ -13,7 +13,7 @@ import {
   or,
   sql,
 } from "drizzle-orm";
-import { ApiError, errors } from "@/server/api/errors";
+import { ApiError } from "@/server/api/errors";
 import { toOffset, type PaginationInput } from "@/server/api/validation";
 import { getDb } from "@/server/db";
 import {
@@ -33,11 +33,16 @@ import type {
 } from "@/lib/types";
 import { getActiveAssessmentForProblem } from "./assessment-access";
 import { getActiveContestForProblem } from "./contests";
+import {
+  assertProblemContextUnlocked,
+  buildProblemContestView,
+  enforceContestCrewGuard,
+  getEndedContestForProblem,
+} from "./problem-contest-guard";
 import { getRestrictedProblemIds } from "./problem-access";
 import { getProblemRating } from "./problem-extras";
 
 export type ProblemListInput = {
-
   page: PaginationInput;
   q?: string;
   difficulty?: Difficulty;
@@ -48,7 +53,6 @@ export type ProblemListInput = {
   userId: string | null;
   isAdmin: boolean;
 };
-
 
 async function loadTagsForProblems(
   problemIds: string[],
@@ -197,7 +201,6 @@ export async function listProblems(
   };
 }
 
-
 export async function getProblemBySlug(
   slug: string,
   userId: string | null,
@@ -216,9 +219,26 @@ export async function getProblemBySlug(
     getActiveContestForProblem(problem.id, userId, isAdmin),
     getActiveAssessmentForProblem(problem.id, userId, isAdmin),
   ]);
-  const contestAllowed = Boolean(contestAccess.active);
+  const directorContext = await enforceContestCrewGuard(
+    problem.id,
+    userId,
+    !isAdmin && Boolean(contestAccess.active || contestAccess.restricted),
+  );
+  const contestAllowed =
+    Boolean(contestAccess.active) || Boolean(directorContext);
   const assessmentAllowed = Boolean(assessmentAccess.active);
-  if (!problem.isPublic && !isAdmin && !contestAllowed && !assessmentAllowed) {
+  const archivedContest =
+    !problem.isPublic && !contestAllowed && !assessmentAllowed
+      ? await getEndedContestForProblem(problem.id)
+      : null;
+  const archivedAllowed = Boolean(archivedContest);
+  if (
+    !problem.isPublic &&
+    !isAdmin &&
+    !contestAllowed &&
+    !assessmentAllowed &&
+    !archivedAllowed
+  ) {
     return null;
   }
   if (problem.premiumModuleSlug && !isAdmin) {
@@ -247,22 +267,15 @@ export async function getProblemBySlug(
     assessmentAllowed ||
     assessmentAccess.restricted;
 
-  if (hasActiveContext && !isAdmin && !contestAllowed && !assessmentAllowed) {
-    if (assessmentAccess.restricted && assessmentAccess.blockingAssessment) {
-      throw new ApiError(
-        "ASSESSMENT_LOCKED",
-        "This problem belongs to a running coding assessment. Join the assessment with your access code to open it.",
-        403,
-        assessmentAccess.blockingAssessment,
-      );
-    }
-    throw new ApiError(
-      "CONTEST_LOCKED",
-      "This problem belongs to a running contest. Register for the contest to open it.",
-      403,
-      contestAccess.blockingContest,
-    );
-  }
+  assertProblemContextUnlocked({
+    hasActiveContext,
+    contestAllowed,
+    assessmentAllowed,
+    isAdmin,
+    blockingContest: contestAccess.blockingContest,
+    assessmentRestricted: assessmentAccess.restricted,
+    blockingAssessment: assessmentAccess.blockingAssessment,
+  });
 
   const tagMap = await loadTagsForProblems([problem.id]);
   const samples = await db
@@ -310,16 +323,30 @@ export async function getProblemBySlug(
     solvedByMe = userRows.some((row) => row.status === "ACCEPTED");
   }
 
+  const contestView = await buildProblemContestView({
+    contestAccess,
+    directorContext,
+    userId,
+    isAdmin,
+  });
+
   return {
     id: problem.id,
     slug: problem.slug,
     title: problem.title,
+    isPublic: problem.isPublic,
     statement: problem.statement,
     inputFormat: problem.inputFormat,
     outputFormat: problem.outputFormat,
     constraints: problem.constraints,
-    editorial: solvedByMe || isAdmin ? problem.editorial : null,
-    editorialLocked: Boolean(problem.editorial) && !solvedByMe && !isAdmin,
+    editorial: contestView.editorialSealed
+      ? null
+      : solvedByMe || isAdmin
+        ? problem.editorial
+        : null,
+    editorialLocked: contestView.editorialSealed
+      ? true
+      : Boolean(problem.editorial) && !solvedByMe && !isAdmin,
     difficulty: problem.difficulty,
     points: problem.points,
     judgeLanguage: problem.judgeLanguage,
@@ -336,14 +363,29 @@ export async function getProblemBySlug(
     rating,
     solvedByMe,
     attemptedByMe,
-    contestContext: contestAccess.active
+    contestContext: contestView.activeContest
       ? {
-          id: contestAccess.active.contestId,
-          slug: contestAccess.active.slug,
-          title: contestAccess.active.title,
-          label: contestAccess.active.label,
+          id: contestView.activeContest.contestId,
+          slug: contestView.activeContest.slug,
+          title: contestView.activeContest.title,
+          label: contestView.activeContest.label,
+          endAt: contestView.activeContest.endAt.toISOString(),
+          status: contestView.status ?? "RUNNING",
+          integrityWatermark: contestView.integrityWatermark,
+          editorialLocked: contestView.editorialSealed,
         }
-      : null,
+      : archivedContest
+        ? {
+            id: archivedContest.contestId,
+            slug: archivedContest.slug,
+            title: archivedContest.title,
+            label: archivedContest.label,
+            endAt: archivedContest.endAt.toISOString(),
+            status: "ENDED",
+            integrityWatermark: null,
+            editorialLocked: false,
+          }
+        : null,
     assessmentContext: assessmentAccess.active
       ? {
           id: assessmentAccess.active.assessmentId,
@@ -353,39 +395,6 @@ export async function getProblemBySlug(
           expiresAt: (
             assessmentAccess.active.expiresAt ?? assessmentAccess.active.endAt
           ).toISOString(),
-        }
-      : null,
-  };
-}
-
-export async function getProblemForSubmission(
-  problemId: string,
-  userId: string | null,
-  isAdmin: boolean,
-): Promise<{
-  problem: ProblemDetail;
-  contestContext: { id: string; label: string } | null;
-  assessmentContext: { id: string; label: string } | null;
-}> {
-  const db = getDb();
-  const rows = await db
-    .select({ slug: problems.slug })
-    .from(problems)
-    .where(eq(problems.id, problemId))
-    .limit(1);
-  const row = rows[0];
-  if (!row) throw errors.notFound("Problem not found.");
-  const problem = await getProblemBySlug(row.slug, userId, isAdmin);
-  if (!problem) throw errors.notFound("Problem not found.");
-  return {
-    problem,
-    contestContext: problem.contestContext
-      ? { id: problem.contestContext.id, label: problem.contestContext.label }
-      : null,
-    assessmentContext: problem.assessmentContext
-      ? {
-          id: problem.assessmentContext.id,
-          label: problem.assessmentContext.label,
         }
       : null,
   };

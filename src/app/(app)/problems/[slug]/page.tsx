@@ -3,10 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   ClipboardCheck,
-  LockKeyhole,
   Trophy,
 } from "lucide-react";
-import { EmptyState } from "@/components/shared/empty-state";
+import { ContestIntegrityShield } from "@/components/contests/contest-integrity-shield";
 import { ProblemDescription } from "@/components/problems/problem-description";
 import { ProblemDiscussion } from "@/components/problems/problem-discussion";
 import { ProblemEditorial } from "@/components/problems/problem-editorial";
@@ -17,15 +16,13 @@ import { ProblemSidebar } from "@/components/problems/problem-sidebar";
 import { ProblemStats } from "@/components/problems/problem-stats";
 import { ProblemSubmissions } from "@/components/problems/problem-submissions";
 import { SectionHeading } from "@/components/shared/section-heading";
-import { buttonVariants } from "@/components/ui/button";
 import { SubmitPanel } from "@/features/submit/submit-panel";
 import { getCurrentUser } from "@/server/auth/session";
 import {
   lockedProblemFrom,
   type LockedProblem,
 } from "./locked-problem";
-import { getLearningModule } from "@/lib/learning/modules";
-import { modulePriceBdt } from "@/lib/learning/payments";
+import { LockedProblemView } from "./locked-problem-view";
 import { getProblemBySlug } from "@/server/services/problems";
 import {
   getProblemRankboard,
@@ -99,72 +96,8 @@ export default async function ProblemPage({
     if (!locked) throw error;
   }
 
-  const premiumModule =
-    locked?.kind === "premium" && locked.moduleSlug
-      ? getLearningModule(locked.moduleSlug)
-      : null;
-  const premiumTitle =
-    premiumModule?.title.split(" · ")[0] ?? "premium module";
-  const premiumPrice =
-    locked?.kind === "premium" && locked.moduleSlug
-      ? (modulePriceBdt(locked.moduleSlug) ?? 500)
-      : 500;
-
   if (locked) {
-    return (
-      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
-        <EmptyState
-          title="This problem is locked"
-          description={
-            locked.kind === "assessment"
-              ? `It is part of the running coding assessment "${locked.title}". Open the assessment and join with your access code.`
-              : locked.kind === "premium"
-                ? `"${locked.title}" is part of the ${premiumTitle} track. Unlock it once for ৳${premiumPrice} to open the statement, editorial and submissions.`
-                : `It is part of the running contest "${locked.title}". Register for the contest to open the statement and submit.`
-          }
-          icon={LockKeyhole}
-          action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <Link
-                href={
-                  locked.kind === "assessment"
-                    ? `/assessments/${locked.slug}`
-                    : locked.kind === "premium"
-                      ? "/learn/pricing"
-                      : `/contests/${locked.slug}`
-                }
-                className={buttonVariants()}
-              >
-                {locked.kind === "assessment"
-                  ? "Open assessment"
-                  : locked.kind === "premium"
-                    ? `Unlock ${premiumTitle} · ৳${premiumPrice}`
-                    : "Open contest"}
-              </Link>
-              {locked.kind === "premium" ? (
-                <Link
-                  href={`/learn/${locked.moduleSlug ?? "advanced-sql"}`}
-                  className={buttonVariants({ variant: "outline" })}
-                >
-                  See the track
-                </Link>
-              ) : !user ? (
-                <Link
-                  href={`/login?next=${encodeURIComponent(
-                    locked.kind === "assessment"
-                      ? `/assessments/${locked.slug}`
-                      : `/contests/${locked.slug}`,
-                  )}`}
-                  className={buttonVariants({ variant: "outline" })}
-                >
-                  Sign in first
-                </Link>
-              ) : null}
-            </div>
-          }
-        />
-      </div>
-    );
+    return <LockedProblemView locked={locked} isSignedIn={Boolean(user)} />;
   }
 
   if (!problem) notFound();
@@ -176,12 +109,15 @@ export default async function ProblemPage({
   const sampleInput = problem.samples[0]?.input ?? "";
   const canSubmit = Boolean(user);
   const showInsights = !problem.contestContext && !problem.assessmentContext;
+  const contestContext = problem.contestContext;
+  const contestRunning = contestContext?.status === "RUNNING";
   const requestedTab = parseProblemTab(firstValue(query.tab));
   const activeTab: ProblemTab =
-    !showInsights &&
-    (requestedTab === "rankboard" ||
-      requestedTab === "discussion" ||
-      requestedTab === "resources")
+    (!showInsights &&
+      (requestedTab === "rankboard" ||
+        requestedTab === "discussion" ||
+        requestedTab === "resources")) ||
+    (contestRunning && requestedTab === "editorial")
       ? "description"
       : requestedTab;
   const page = readPage(query);
@@ -203,6 +139,10 @@ export default async function ProblemPage({
             page,
             pageSize: SUBMISSIONS_PAGE_SIZE,
             problem: problem.slug,
+            // Standalone public problem pages only expose public rows; contest
+            // and assessment pages keep their own participants-only views.
+            publicOnly:
+              problem.isPublic && !contestContext && user?.role !== "ADMIN",
           },
           user,
         )
@@ -256,20 +196,20 @@ export default async function ProblemPage({
             }
           : null;
 
-  return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      {problem.contestContext ? (
+  const statementBody = (
+    <>
+      {contestContext ? (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <Trophy className="size-4 text-primary" />
           <span className="text-muted-foreground">Contest problem</span>
           <Link
-            href={`/contests/${problem.contestContext.slug}`}
+            href={`/contests/${contestContext.slug}`}
             className="font-medium text-primary hover:underline"
           >
-            {problem.contestContext.title}
+            {contestContext.title}
           </Link>
           <span className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs">
-            {problem.contestContext.label}
+            {contestContext.label}
           </span>
         </div>
       ) : null}
@@ -292,6 +232,7 @@ export default async function ProblemPage({
       <ProblemHeader
         problem={problem}
         showInsights={showInsights}
+        showEditorial={!contestRunning}
         activeTab={activeTab}
         action={contributionAction}
       />
@@ -359,6 +300,23 @@ export default async function ProblemPage({
           />
         ) : null}
       </div>
+    </>
+  );
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      {contestRunning && contestContext ? (
+        <ContestIntegrityShield
+          contestSlug={contestContext.slug}
+          contestTitle={contestContext.title}
+          watermark={contestContext.integrityWatermark}
+          problemId={problem.id}
+        >
+          {statementBody}
+        </ContestIntegrityShield>
+      ) : (
+        statementBody
+      )}
 
       <section id="submit" className="mt-14 scroll-mt-24 border-t border-border pt-10">
         <SectionHeading

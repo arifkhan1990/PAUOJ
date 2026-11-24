@@ -136,7 +136,7 @@ function Stat({
       <dd className="mt-0.5 font-mono text-[15px] font-semibold leading-none tabular-nums">
         {value}
       </dd>
-      <p className="mt-0.5 text-[9px] text-muted-foreground">{hint}</p>
+      <dd className="mt-0.5 text-[9px] text-muted-foreground">{hint}</dd>
     </div>
   );
 }

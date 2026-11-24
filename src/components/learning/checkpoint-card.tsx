@@ -124,7 +124,7 @@ function StartAction({
     return (
       <Link
         href={`/login?next=/learn/${moduleSlug}`}
-        className={buttonVariants({ className: "shrink-0" })}
+        className={buttonVariants({ className: "min-h-11 shrink-0" })}
       >
         Sign in to start
       </Link>

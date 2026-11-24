@@ -33,7 +33,13 @@ export async function GET(request: NextRequest) {
     const query = parseQuery(request, submissionListQuerySchema);
     const viewer = await optionalApiUser();
     if (query.mine === "true" && !viewer) throw errors.unauthorized();
-    const { items, total } = await listSubmissions(query, viewer);
+    const { items, total } = await listSubmissions(
+      {
+        ...query,
+        publicOnly: viewer?.role !== "ADMIN" && query.mine !== "true",
+      },
+      viewer,
+    );
     return apiOk(items, pageMeta(total, query));
   } catch (error) {
     return apiError(error);

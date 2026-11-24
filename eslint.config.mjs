@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
       "react-hooks/purity": "off",
     },
   },
+  {
+    files: ["judge/**/*.js"],
+    rules: {
+      // The judge scripts run as plain CommonJS files inside the sandbox image;
+      // they are not part of the Next.js bundle.
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",
