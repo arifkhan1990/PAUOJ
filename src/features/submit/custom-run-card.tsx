@@ -4,28 +4,69 @@ import { useEffect, useRef, useState } from "react";
 import { FlaskConical, Loader2, Play } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { VerdictBadge } from "@/components/shared/verdict-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiClientError, apiPost, apiRequest } from "@/lib/api-client";
 import type { RunResult } from "@/lib/types";
 import { formatMemory, formatRuntime } from "@/lib/utils";
+import {
+  findMatchingSample,
+  outputsMatch,
+  type RunSample,
+} from "./run-sample";
+
+function RunOutcomeChip({
+  matched,
+  passed,
+}: {
+  matched: boolean;
+  passed: boolean;
+}) {
+  if (!matched) {
+    return (
+      <Badge
+        variant="muted"
+        title="Custom runs show output but are not judged."
+      >
+        Ran
+      </Badge>
+    );
+  }
+  return passed ? (
+    <Badge
+      variant="success"
+      title="Your output matches this sample. Submit for a real verdict."
+    >
+      Sample passed
+    </Badge>
+  ) : (
+    <Badge
+      variant="destructive"
+      title="Your output differs from this sample. Custom runs are not judged."
+    >
+      Differs from sample
+    </Badge>
+  );
+}
 
 export function CustomRunCard({
   problemId,
   language,
   source,
-  sampleInput,
+  samples,
 }: {
   problemId: string;
   language: string;
   source: string;
-  sampleInput: string;
+  samples: RunSample[];
 }) {
-  const [stdin, setStdin] = useState(sampleInput);
+  const [stdin, setStdin] = useState(samples[0]?.input ?? "");
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<RunResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [executedStdin, setExecutedStdin] = useState("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
 
@@ -66,6 +107,7 @@ export function CustomRunCard({
     setRunning(true);
     setError(null);
     setResult(null);
+    setExecutedStdin(stdin);
     try {
       const { runId } = await apiPost<{ runId: string }>("/api/v1/runs", {
         problemId,
@@ -85,6 +127,18 @@ export function CustomRunCard({
     }
   };
 
+  // Custom runs are not judged against expected output. The backend reports a
+  // clean custom run as EXECUTED (older responses used ACCEPTED); neither is a
+  // real verdict, so the badge is replaced by a sample comparison instead.
+  const status = result ? (result.status as string) : "";
+  const executed = status === "EXECUTED" || status === "ACCEPTED";
+  const finished = Boolean(result?.finished);
+  const matched =
+    result && executed && finished
+      ? findMatchingSample(samples, executedStdin)
+      : null;
+  const passed = result ? outputsMatch(result.stdout, matched?.sample.output ?? "") : false;
+
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between gap-2">
@@ -95,13 +149,16 @@ export function CustomRunCard({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => setStdin(sampleInput)}
+          onClick={() => setStdin(samples[0]?.input ?? "")}
         >
           Use sample
         </Button>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
         Run against your own input. This does not create a submission.
+      </p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">
+        Custom runs are not judged. Submit for a real verdict.
       </p>
       <Textarea
         value={stdin}
@@ -138,7 +195,13 @@ export function CustomRunCard({
       {result ? (
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <VerdictBadge status={result.status} short />
+            {executed ? (
+              finished ? (
+                <RunOutcomeChip matched={Boolean(matched)} passed={passed} />
+              ) : null
+            ) : (
+              <VerdictBadge status={result.status} short />
+            )}
             <span className="font-mono text-muted-foreground">
               {formatRuntime(result.runtimeMs)}
             </span>
@@ -159,7 +222,28 @@ export function CustomRunCard({
               </pre>
             </div>
           ) : null}
-          {result.stdout ? (
+          {matched ? (
+            <>
+              {result.stdout ? (
+                <div>
+                  <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                    Your output
+                  </p>
+                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
+                    {result.stdout}
+                  </pre>
+                </div>
+              ) : null}
+              <div>
+                <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                  Sample output
+                </p>
+                <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
+                  {matched.sample.output}
+                </pre>
+              </div>
+            </>
+          ) : result.stdout ? (
             <div>
               <p className="mb-1 text-[11px] font-medium text-muted-foreground">
                 stdout

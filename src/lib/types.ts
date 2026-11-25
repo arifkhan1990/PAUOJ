@@ -297,9 +297,19 @@ export type AssessmentResults = {
   rows: AssessmentResultRow[];
 };
 
+/**
+ * Run mode has no expected output, so a clean finish is reported as "EXECUTED"
+ * rather than "ACCEPTED". Submission verdicts keep their own meaning.
+ */
+export type RunStatus =
+  | "QUEUED"
+  | "JUDGING"
+  | "EXECUTED"
+  | Exclude<Verdict, "QUEUED" | "JUDGING" | "ACCEPTED">;
+
 export type RunResult = {
   id: string;
-  status: Verdict;
+  status: RunStatus;
   stdout: string;
   stderr: string;
   compileOutput: string;

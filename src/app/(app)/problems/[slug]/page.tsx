@@ -106,7 +106,6 @@ export default async function ProblemPage({
     problem.submissionCount > 0
       ? (problem.acceptedCount / problem.submissionCount) * 100
       : 0;
-  const sampleInput = problem.samples[0]?.input ?? "";
   const canSubmit = Boolean(user);
   const showInsights = !problem.contestContext && !problem.assessmentContext;
   const contestContext = problem.contestContext;
@@ -331,7 +330,10 @@ export default async function ProblemPage({
             virtualContestId={virtualContestId}
             timeLimitMs={problem.timeLimitMs}
             memoryLimitMb={problem.memoryLimitMb}
-            sampleInput={sampleInput}
+            samples={problem.samples.map(({ input, output }) => ({
+              input,
+              output,
+            }))}
             canSubmit={canSubmit}
             loginNext={`/problems/${problem.slug}`}
             judgeLanguage={problem.judgeLanguage}

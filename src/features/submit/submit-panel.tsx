@@ -20,6 +20,7 @@ import { getLanguage, LANGUAGES, type LanguageId } from "@/lib/languages";
 import { isPendingVerdict, verdictMeta } from "@/lib/verdicts";
 import { CodeEditor } from "./code-editor";
 import { CustomRunCard } from "./custom-run-card";
+import type { RunSample } from "./run-sample";
 import { useSubmissionStream } from "./use-submission-stream";
 import { VerdictCard } from "./verdict-card";
 
@@ -146,7 +147,7 @@ export function SubmitPanel({
   virtualContestId,
   timeLimitMs,
   memoryLimitMb,
-  sampleInput,
+  samples,
   canSubmit,
   loginNext,
   judgeLanguage = null,
@@ -158,7 +159,7 @@ export function SubmitPanel({
   virtualContestId?: string | null;
   timeLimitMs: number;
   memoryLimitMb: number;
-  sampleInput: string;
+  samples: RunSample[];
   canSubmit: boolean;
   loginNext: string;
   judgeLanguage?: string | null;
@@ -387,7 +388,7 @@ export function SubmitPanel({
             problemId={problemId}
             language={language}
             source={source}
-            sampleInput={sampleInput}
+            samples={samples}
           />
         ) : null}
       </div>

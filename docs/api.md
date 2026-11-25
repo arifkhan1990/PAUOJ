@@ -527,14 +527,16 @@ data: { "id": "uuid" }
 ```
 
 Returns `{ runId }`. Runs are private to the authenticated user and expire after
-15 minutes.
+15 minutes. Custom runs execute the code but are not judged against expected
+output, so a clean run is reported as `EXECUTED`, never `ACCEPTED`. Compile,
+runtime, time, memory and output failures still return their usual verdict.
 
 ### GET `/runs/:id`
 
 ```json
 {
   "id": "uuid",
-  "status": "ACCEPTED",
+  "status": "EXECUTED",
   "stdout": "5\n",
   "stderr": "",
   "compileOutput": "",

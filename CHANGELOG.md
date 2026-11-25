@@ -5,6 +5,13 @@ All notable changes to PAU OJ are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- Custom-test runs no longer report a green “AC”. A clean run is now
+  `EXECUTED`, the result card shows “Ran” (or a sample comparison when the
+  input matches an official sample) and never presents an unjudged run as
+  correct. Empty output on a sample now shows the expected output and
+  “Differs from sample” instead of a misleading AC.
+
 ### Changed
 - Conversation info now uses three tabs (Media, Documents, Links), shows
   each detail as a label/value row, binds the profile link to

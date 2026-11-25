@@ -4,6 +4,7 @@ import { closeDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 import { checkDocker, hasImage } from "@/server/judge/docker";
 import { runJudge } from "@/server/judge/engine";
+import { runStatusForOutcome } from "@/server/judge/run-status";
 import {
   JUDGE_QUEUE,
   enqueueSubmission,
@@ -105,7 +106,7 @@ async function handleRun(job: RunJob): Promise<void> {
       sqlScript: job.sqlScript,
     });
     await updateRun(job.userId, job.runId, {
-      status: outcome.status,
+      status: runStatusForOutcome(outcome.status),
       stdout: outcome.runStdout,
       stderr: outcome.runStderr,
       compileOutput: outcome.compileOutput ?? "",
