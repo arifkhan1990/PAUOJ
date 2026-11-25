@@ -235,6 +235,15 @@ reconnects.
 - `/health` must report the package version and `workers >= 1`.
 - `/problems/<unknown-slug>` must return `404`; a `200` not-found shell means the
   proxy check is missing.
+- The deploy runs `deploy/check-upload-limit.sh <base-url>`, which POSTs a
+  5 MiB unauthenticated body to
+  `/api/v1/messages/conversations/00000000-0000-0000-0000-000000000000/images`.
+  `401` or `422` means the proxy passed the body (auth/validation rejected it);
+  `413` means the edge proxy limit is below the app's 5 MiB DM images, so raise
+  `request_body { max_size }` to at least `8MB`. The deploy fails and rolls back
+  unless the probe gets `401`/`422`. Run it manually against any base URL to
+  re-check:
+  `bash deploy/check-upload-limit.sh https://oj.example.edu`.
 - Retry the public URL for up to a minute after a restart (Cloudflare 502/530).
 - After migration `0025`, an image-only rollback to 0.6.5 is unsafe: drop
   `problems_publication_public_check` first, because 0.6.5 problem creation inserts
@@ -253,6 +262,12 @@ sudo bash deploy/backup.sh
 Cron runs it daily at 02:00 (from `server-setup.sh`). Files are written to
 `/var/backups/pauoj/postgres` and `/var/backups/pauoj/redis`, with 14-day
 retention. Copy backups off the server regularly.
+
+Capacity: DM image bytes live in `message_attachments` (bytea) and are part of
+every Postgres dump, so image traffic grows database and backup size directly —
+monitor both. Per-sender quotas bound growth (50 images per rolling 24 hours,
+250 MiB stored). If image volume ever outgrows DM use, object storage is the
+future scale path instead of `bytea` in Postgres.
 
 Restore (destructive):
 
@@ -414,7 +429,9 @@ deploy job on a shared/dirty machine.
 - Rebuild the judge image when compiler/security updates are needed.
 - Verify the reverse proxy allows an 8 MB request body (Caddy
   `request_body { max_size 8MB }`); anything lower makes DM image uploads
-  return `413`. Rebuild the app/worker image after this change so the running
+  return `413`. The deploy verifies this end to end with the 5 MiB
+  `check-upload-limit.sh` probe and fails/rolls back if the probe does not get
+  `401`/`422`. Rebuild the app/worker image after this change so the running
   containers pick up the new upload limits.
 - Review `docker compose ... logs` after every deploy.
 - Test restores on a schedule; an untested backup is not a backup.

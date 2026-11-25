@@ -9,12 +9,21 @@ COMPOSE_FILE="${COMPOSE_FILE:-$DEPLOY_DIR/deploy/docker-compose.prod.yml}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:3000/health}"
 env_value() {
   [ -f "$ENV_FILE" ] || return 0
-  grep -E "^$1=" "$ENV_FILE" | tail -n 1 | cut -d= -f2-
+  # Missing key is not an error; `set -o pipefail` would otherwise abort callers.
+  grep -E "^$1=" "$ENV_FILE" | tail -n 1 | cut -d= -f2- || true
 }
 JUDGE_IMAGE="${JUDGE_IMAGE:-$(env_value JUDGE_IMAGE)}"
 JUDGE_IMAGE="${JUDGE_IMAGE:-pauoj/judge:latest}"
 JUDGE_SWIFT_IMAGE="${JUDGE_SWIFT_IMAGE:-$(env_value JUDGE_SWIFT_IMAGE)}"
 JUDGE_SWIFT_IMAGE="${JUDGE_SWIFT_IMAGE:-pauoj/judge-swift:latest}"
+# The upload probe must go through the public proxy, not the loopback app URL.
+PUBLIC_URL="${PUBLIC_URL:-$(env_value APP_URL)}"
+if [ -z "$PUBLIC_URL" ]; then
+  APP_DOMAIN_VALUE="$(env_value APP_DOMAIN)"
+  if [ -n "$APP_DOMAIN_VALUE" ]; then
+    PUBLIC_URL="https://$APP_DOMAIN_VALUE"
+  fi
+fi
 
 die() {
   echo "ERROR: $*" >&2
@@ -77,11 +86,31 @@ echo "Starting stack..."
 compose up -d --wait
 
 if wait_for_health 45; then
+  health_ok=1
+else
+  health_ok=0
+fi
+
+upload_ok=0
+if [ "$health_ok" -eq 1 ]; then
+  if [ -n "$PUBLIC_URL" ]; then
+    if bash "$SCRIPT_DIR/check-upload-limit.sh" "$PUBLIC_URL"; then
+      upload_ok=1
+    else
+      echo "Upload-limit probe failed: the public proxy does not forward a 5 MiB upload." >&2
+    fi
+  else
+    echo "APP_URL/APP_DOMAIN is not set in $ENV_FILE; cannot verify the public upload limit." >&2
+    upload_ok=0
+  fi
+fi
+
+if [ "$upload_ok" -eq 1 ]; then
   echo "Deployment complete."
   exit 0
 fi
 
-echo "Health check failed; collecting logs..." >&2
+echo "Deployment checks failed; collecting logs..." >&2
 compose ps >&2 || true
 compose logs --tail 80 app worker caddy >&2 || true
 

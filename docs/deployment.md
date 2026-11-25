@@ -148,7 +148,9 @@ delivery.
   in Postgres, so no upload directory is ever mounted. Caddy must allow an 8 MB
   request body (`request_body { max_size 8MB }` in the Compose Caddyfile and
   the shared-host site block). Per-sender DM image quotas are 50 images per
-  rolling 24 hours and 250 MiB stored.
+  rolling 24 hours and 250 MiB stored. Every deploy checks a 5 MiB body end to
+  end with `deploy/check-upload-limit.sh` and fails if the probe does not get
+  `401`/`422` (including `413`).
 
 ## Updating
 
@@ -170,4 +172,5 @@ Keep migrations backward compatible so a rollback of the app image is safe.
 | `EADDRINUSE` on 5432/6379 | Change `POSTGRES_PORT`/`REDIS_PORT` in `.env` |
 | Login succeeds then immediately logs out | `APP_URL` protocol/origin and proxy headers |
 | Health 503 | `docker compose logs db redis app` |
+| `413` on DM image upload | Edge proxy `request_body { max_size }` is below 8MB; raise it to at least `8MB` and run `bash deploy/check-upload-limit.sh <base-url>` to confirm the 5 MiB body passes (`401`/`422` = pass, `413` = still blocked; the deploy fails/rolls back on any non-pass probe) |
 | Java always CE/RE | public class must be named `Main` |

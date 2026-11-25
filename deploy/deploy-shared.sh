@@ -225,6 +225,15 @@ else
   echo "WARNING: https://${APP_HOST}/health is not reachable yet; check the Cloudflare tunnel catch-all and SSL mode."
 fi
 
+echo "Checking the edge proxy accepts a 5 MiB upload..."
+UPLOAD_PROBE="$REPO_DIR/deploy/check-upload-limit.sh"
+[ -f "$UPLOAD_PROBE" ] || die "Missing $UPLOAD_PROBE"
+if [ -z "${APP_URL:-}" ]; then
+  die "APP_URL is not set in $ENV_FILE; cannot probe the public upload limit"
+fi
+bash "$UPLOAD_PROBE" "$APP_URL" ||
+  die "Public upload probe failed for ${APP_URL}: either the edge proxy rejects a 5 MiB body (raise request_body { max_size } to at least 8MB on the Caddy site, any CDN and any load balancer), or HTTPS is not reachable yet. Fix the proxy, then rerun this script."
+
 echo "Testing SMTP..."
 if [ -n "${SMTP_HOST:-}" ] && [ -n "${SMTP_PASSWORD:-}" ]; then
   if compose exec -T app node -e '
