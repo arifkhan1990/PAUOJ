@@ -1,12 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  AlarmClock,
+  Award,
   Bell,
+  CalendarCheck,
+  CalendarClock,
   CheckCircle2,
+  CreditCard,
   FilePenLine,
+  GraduationCap,
+  Medal,
+  Megaphone,
   MessageSquare,
+  MessagesSquare,
+  Rocket,
   Settings,
   ShieldCheck,
+  Sparkles,
+  TrendingUp,
   Trophy,
   UserCheck,
   UserPlus,
@@ -31,7 +43,7 @@ import { cn, formatRelative } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "Notifications",
   description:
-    "Verdicts, contest starts, clarification answers, new followers, problem contributions and contest approvals.",
+    "Verdicts, contest updates, learning progress, badges, announcements and messages in one place.",
 };
 
 export const dynamic = "force-dynamic";
@@ -47,6 +59,18 @@ const TYPE_META: Record<
   CONTEST_START: {
     icon: Trophy,
     className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  CONTEST_REGISTRATION: {
+    icon: CalendarCheck,
+    className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  },
+  CONTEST_REMINDER: {
+    icon: AlarmClock,
+    className: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  },
+  CONTEST_RESULT: {
+    icon: Award,
+    className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
   },
   CLARIFICATION: {
     icon: MessageSquare,
@@ -75,6 +99,42 @@ const TYPE_META: Record<
   MESSAGE: {
     icon: MessageSquare,
     className: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
+  },
+  DISCUSSION: {
+    icon: MessagesSquare,
+    className: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  },
+  WELCOME: {
+    icon: Sparkles,
+    className: "bg-fuchsia-500/10 text-fuchsia-600 dark:text-fuchsia-400",
+  },
+  LEARNING_ENROLLMENT: {
+    icon: GraduationCap,
+    className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  },
+  LEARNING_PAYMENT: {
+    icon: CreditCard,
+    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  LEARNING_REMINDER: {
+    icon: CalendarClock,
+    className: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  },
+  ACHIEVEMENT: {
+    icon: Medal,
+    className: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  },
+  MILESTONE: {
+    icon: TrendingUp,
+    className: "bg-lime-500/10 text-lime-600 dark:text-lime-400",
+  },
+  ANNOUNCEMENT: {
+    icon: Megaphone,
+    className: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  },
+  MARKETING: {
+    icon: Rocket,
+    className: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
   },
   SYSTEM: {
     icon: Bell,
@@ -110,7 +170,7 @@ export default async function NotificationsPage({
         description={
           unread > 0
             ? `${unread} unread ${unread === 1 ? "update" : "updates"} for you.`
-            : "Verdicts, contest starts, clarification answers, new followers, problem contributions and contest approvals."
+            : "Contest updates, verdicts, learning progress, badges, announcements and messages."
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -129,7 +189,7 @@ export default async function NotificationsPage({
         {result.items.length === 0 ? (
           <EmptyState
             title="No notifications yet"
-            description="Submit a solution or join a contest to start receiving updates."
+            description="Join a contest, submit a solution or start a learning module to see updates here."
             icon={Bell}
             action={
               <Link href="/problems" className={buttonVariants()}>

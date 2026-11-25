@@ -35,6 +35,7 @@ import {
 import { getContestTeamState } from "./contest-teams";
 import { listApprovedContestSponsors } from "./contest-sponsors";
 import { isContestStaff } from "./contest-staff";
+import { notifyContestRegistrationSafe } from "./contest-notifications";
 
 export { contestStatusCounts } from "./contest-queries";
 export type {
@@ -380,15 +381,20 @@ export async function registerForContest(
     throw errors.forbidden("Contest crew cannot compete in their own contest.");
   }
 
-  await db
+  const [created] = await db
     .insert(contestRegistrations)
     .values({ contestId: contest.id, userId })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ userId: contestRegistrations.userId });
 
   const [row] = await db
     .select({ value: count() })
     .from(contestRegistrations)
     .where(eq(contestRegistrations.contestId, contest.id));
+
+  if (created) {
+    await notifyContestRegistrationSafe(userId, contest);
+  }
 
   return { registrationCount: Number(row?.value ?? 0) };
 }

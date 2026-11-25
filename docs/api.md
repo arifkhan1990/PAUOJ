@@ -1215,27 +1215,41 @@ capped at 1 MiB (`413 PAYLOAD_TOO_LARGE`).
 - `GET /notifications?page=1` returns the current user's notifications, newest
   first, with `type`, `title`, `body`, `href`, `readAt` and `createdAt`.
 - `PATCH /notifications/read` marks every unread notification as read.
-- `PATCH /users/me/notifications` updates email and in-app preferences:
-  `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": false, "emailReviews": true, "notifyMessages": true, "notifyFollows": true, "reviewEmailFrequency": "INSTANT" }`.
-  `notifyMessages`/`notifyFollows` control in-app MESSAGE and FOLLOW_* notices
-  only; unread badges and security/account notices are unaffected.
+- `PATCH /users/me/notifications` replaces the full preference object:
+  `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": true, "emailReviews": true, "emailAccount": true, "emailLearning": true, "emailAchievements": true, "emailAnnouncements": true, "emailMarketing": true, "emailDiscussions": true, "emailMessages": true, "notifyMessages": true, "notifyFollows": true, "notifyMarketing": true, "reviewEmailFrequency": "INSTANT" }`.
+  `notifyMessages`/`notifyFollows` control in-app MESSAGE and FOLLOW_* notices;
+  `notifyMarketing` controls in-app new-contest/new-module notices (off also
+  suppresses their email), while the `email*` switches control inbox copies.
+  Unread badges and security/account notices are unaffected.
   `reviewEmailFrequency` is `INSTANT`, `HOURLY` or `DAILY`.
 - `POST /notifications/unsubscribe` with `{ "token": "...", "scope": "all" }`
   disables email categories from a one-click email link. Scopes: `all`,
-  `verdicts`, `contests`, `clarifications`, `reviews`.
+  `account`, `verdicts`, `contests`, `clarifications`, `reviews`, `learning`,
+  `achievements`, `announcements`, `marketing`, `discussions`, `messages`.
+- `POST /admin/announcements` (ADMIN) creates a manual announcement and fans it
+  out immediately. Body: `{ "title": "...", "body": "...", "href": "/problems" }`
+  where title is 4–120 characters, body 10–2000 and `href` is an optional
+  in-app path. Returns `{ "created": true, "recipients": n }`; all non-banned
+  users get the in-app notice and verified users get an email subject to
+  `emailAnnouncements`. Recent broadcasts (manual and automatic marketing) are
+  listed at `/admin/announcements` with delivery counts and baseline markers.
 
-In-app notifications are created for finished verdicts, contest starts,
-clarification activity, follow requests/acceptance, first unread direct
-messages, problem contribution proposals/reviews, contest problem approval
-requests/decisions and problem publication review events
-(submit, hold, respond, resolve, reopen and publish). Email copies follow the user's preferences
-and require a verified email address. Review emails cover contribution and
-contest-approval events, have their own `emailReviews` toggle, and follow the
-`reviewEmailFrequency` setting: `INSTANT` sends each event immediately, while
-`HOURLY` and `DAILY` group them into one digest per user. Admins with review
-emails enabled also receive one weekly backlog report (pending proposals,
-overdue items, oldest age and pending contest requests) as an in-app SYSTEM
-notification and an email; the ISO week key prevents duplicates.
+In-app notifications are created for finished verdicts, contest
+registration/start/30-minute reminder/final result, clarification activity,
+follow requests/acceptance, first unread direct messages, problem and lesson
+discussion replies, learning enrollment/payment/reminders, exact milestones and
+badges, announcements, new-contest/new-module marketing, problem contribution
+proposals/reviews, contest problem approval requests/decisions and problem
+publication review events (submit, hold, respond, resolve, reopen and publish).
+Email copies follow the user's preferences and require a verified email address,
+except the welcome mail sent to the just-registered address. Review emails
+cover contribution and contest-approval events, have their own `emailReviews`
+toggle, and follow the `reviewEmailFrequency` setting: `INSTANT` sends each
+event immediately, while `HOURLY` and `DAILY` group them into one digest per
+user. Admins with review emails enabled also receive one weekly backlog report
+(pending proposals, overdue items, oldest age and pending contest requests) as
+an in-app SYSTEM notification and an email; the ISO week key prevents
+duplicates.
 
 ## Health
 

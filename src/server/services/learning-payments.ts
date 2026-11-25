@@ -19,10 +19,12 @@ import {
   type PaidProduct,
 } from "@/lib/learning/payments";
 import type { SafeUser } from "@/server/auth/session";
+import { logger } from "@/server/logger";
 import type {
   FreeAccessRequestInput,
   PurchaseOrderInput,
 } from "@/lib/schemas/learning-payments";
+import { notifyUser } from "./notifications";
 
 export const PAYMENT_PAGE_SIZE = 20;
 
@@ -91,6 +93,34 @@ export function mapOrder(row: OrderRow): PaymentOrderView {
     user: { username: row.username, displayName: row.displayName },
     label: productLabel(product, row.moduleSlug),
   };
+}
+
+/**
+ * Acknowledge a submitted order. The learner already gets it in-app; email
+ * delivery still follows the `emailLearning` preference.
+ */
+async function notifyPaymentReceived(
+  userId: string,
+  title: string,
+  body: string,
+  dedupeKey: string,
+): Promise<void> {
+  try {
+    await notifyUser({
+      userId,
+      type: "LEARNING_PAYMENT",
+      title,
+      body,
+      href: "/learn/pricing",
+      dedupeKey,
+    });
+  } catch (error) {
+    logger.warn("Could not send the payment received notification", {
+      userId,
+      dedupeKey,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 export const orderSelection = {
@@ -199,7 +229,14 @@ export async function createPurchaseOrder(
       .where(eq(paymentOrders.id, row.id))
       .limit(1);
     if (!view) throw errors.unavailable("Could not load your payment.");
-    return mapOrder(view);
+    const order = mapOrder(view);
+    await notifyPaymentReceived(
+      user.id,
+      `Payment received: ${order.label}`,
+      "We received your payment details and will verify them shortly.",
+      `payment-submitted:${order.id}`,
+    );
+    return order;
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw errors.conflict("This transaction ID has already been submitted.");
@@ -257,7 +294,14 @@ export async function createFreeAccessRequest(
     .where(eq(paymentOrders.id, row.id))
     .limit(1);
   if (!view) throw errors.unavailable("Could not load your request.");
-  return mapOrder(view);
+  const order = mapOrder(view);
+  await notifyPaymentReceived(
+    user.id,
+    `Free access request received: ${order.label}`,
+    "We received your free-access request and will review it shortly.",
+    `free-request:${order.id}`,
+  );
+  return order;
 }
 
 export async function listAdminOrders({

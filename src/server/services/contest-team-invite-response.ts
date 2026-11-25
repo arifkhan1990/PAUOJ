@@ -20,6 +20,7 @@ import {
   registerTeamMember,
 } from "./contest-team-shared";
 import { notifyUser } from "./notifications";
+import { notifyContestRegistrationSafe } from "./contest-notifications";
 
 export async function respondContestTeamInvite(
   slug: string,
@@ -146,6 +147,11 @@ export async function respondContestTeamInvite(
     href: `/contests/${contest.slug}`,
     dedupeKey: `contest-team-invite:${inviteId}:${outcome.accepted ? "accepted" : "declined"}:${Date.now()}`,
   });
+
+  if (outcome.accepted) {
+    // Accepting a team invite is also a new contest registration for the actor.
+    await notifyContestRegistrationSafe(actorId, contest);
+  }
 
   return view;
 }

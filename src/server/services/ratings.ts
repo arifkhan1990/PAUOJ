@@ -31,8 +31,49 @@ import {
 } from "@/lib/contest-rating";
 import { isPendingVerdict } from "@/lib/verdicts";
 import { logger } from "@/server/logger";
+import { notifyContestResults } from "./contest-notifications";
+import { notifyRatingAchievements } from "./achievement-notifications";
 
 type FinalizeOutcome = "finalized" | "skipped";
+
+/**
+ * Post-commit notices for a contest this call just finalised. The rating rows
+ * are already durable, so every failure here is logged and swallowed rather
+ * than surfaced to the caller.
+ */
+async function notifyFinalizedContest(contestId: string): Promise<void> {
+  try {
+    await notifyContestResults(contestId);
+  } catch (error) {
+    logger.warn("Contest result notifications failed", {
+      contestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  try {
+    const participants = await getDb()
+      .select({ userId: contestRatingChanges.userId })
+      .from(contestRatingChanges)
+      .where(eq(contestRatingChanges.contestId, contestId));
+    for (const participant of participants) {
+      try {
+        await notifyRatingAchievements(participant.userId);
+      } catch (error) {
+        logger.warn("Rating achievement notification failed", {
+          contestId,
+          userId: participant.userId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+  } catch (error) {
+    logger.warn("Rating achievement sweep failed", {
+      contestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
 
 export const PENDING_SUBMISSION_STATUSES = ["QUEUED", "JUDGING"] as const;
 
@@ -75,7 +116,7 @@ export async function runContestRatingFinalization(
   if (isContestRatingLocked(contest.ratedAt)) return "skipped";
   if (isRatingReviewOpen(contest.endAt, now)) return "skipped";
 
-  return db.transaction(async (tx): Promise<FinalizeOutcome> => {
+  const outcome = await db.transaction(async (tx): Promise<FinalizeOutcome> => {
     const lockedRows = await tx
       .select({
         id: contests.id,
@@ -300,6 +341,13 @@ export async function runContestRatingFinalization(
     });
     return "finalized";
   });
+
+  // Outside the transaction: a mail/notification failure must not undo or
+  // fail a finalization that is already committed.
+  if (outcome === "finalized") {
+    await notifyFinalizedContest(contest.id);
+  }
+  return outcome;
 }
 
 /**

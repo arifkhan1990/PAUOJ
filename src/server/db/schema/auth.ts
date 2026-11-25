@@ -93,8 +93,16 @@ export const users = pgTable(
     emailContests: boolean("email_contests").notNull().default(true),
     emailClarifications: boolean("email_clarifications").notNull().default(true),
     emailReviews: boolean("email_reviews").notNull().default(true),
+    emailAccount: boolean("email_account").notNull().default(true),
+    emailLearning: boolean("email_learning").notNull().default(true),
+    emailAchievements: boolean("email_achievements").notNull().default(true),
+    emailAnnouncements: boolean("email_announcements").notNull().default(true),
+    emailMarketing: boolean("email_marketing").notNull().default(true),
+    emailDiscussions: boolean("email_discussions").notNull().default(true),
+    emailMessages: boolean("email_messages").notNull().default(true),
     notifyMessages: boolean("notify_messages").notNull().default(true),
     notifyFollows: boolean("notify_follows").notNull().default(true),
+    notifyMarketing: boolean("notify_marketing").notNull().default(true),
     reviewEmailFrequency: reviewEmailFrequencyEnum("review_email_frequency")
       .notNull()
       .default("INSTANT"),

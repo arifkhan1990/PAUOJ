@@ -15,10 +15,17 @@ export const metadata: Metadata = {
 
 const SCOPES: UnsubscribeScope[] = [
   "all",
+  "account",
   "verdicts",
   "contests",
   "clarifications",
   "reviews",
+  "learning",
+  "achievements",
+  "announcements",
+  "marketing",
+  "discussions",
+  "messages",
 ];
 
 export default async function UnsubscribePage({

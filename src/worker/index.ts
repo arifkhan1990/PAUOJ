@@ -23,21 +23,13 @@ import { closeRedis, getRedis } from "@/server/redis";
 import { clearWorkerHeartbeat, recordWorkerHeartbeat } from "@/server/worker-heartbeat";
 import { updateRun } from "@/server/services/runs";
 import { ensureMonthlyContestSeries } from "@/server/services/contest-series";
-import { notifyStartingContests } from "@/server/services/notifications";
 import { finalizeDueContestRatings } from "@/server/services/rating-sweep";
 import {
   acquireRatingSweepLock,
   ratingSweepLockValue,
   releaseRatingSweepLock,
 } from "@/server/services/rating-sweep-lock";
-import { sendReviewDigests } from "@/server/services/review-digest";
-import { notifyOverdueReviews } from "@/server/services/review-sla";
-import { sendWeeklyReviewReport } from "@/server/services/review-sla-report";
-import {
-  SOCIAL_REPORT_DIGEST_INTERVAL_MS,
-  sendSocialReportDigest,
-} from "@/server/services/social-report-digest";
-import { runSocialRetention } from "@/server/services/social-retention";
+import { startNotificationSweeps } from "./notification-sweeps";
 
 async function handleSubmission(job: SubmissionJob): Promise<void> {
   const submission = await claimSubmission(job.submissionId);
@@ -182,28 +174,6 @@ async function main(): Promise<void> {
     });
   }, 30_000);
 
-  let contestNotifyRunning = false;
-  const notifyContests = () => {
-    if (contestNotifyRunning) return;
-    contestNotifyRunning = true;
-    void notifyStartingContests()
-      .then((count) => {
-        if (count > 0) {
-          logger.info("Contest start notifications sent", { count });
-        }
-      })
-      .catch((error) => {
-        logger.warn("Contest start notification check failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        contestNotifyRunning = false;
-      });
-  };
-  notifyContests();
-  const contestNotifier = setInterval(notifyContests, 60_000);
-
   let ratingSweepRunning = false;
   const finalizeRatings = () => {
     if (ratingSweepRunning) return;
@@ -244,112 +214,7 @@ async function main(): Promise<void> {
   };
   finalizeRatings();
   const ratingSweeper = setInterval(finalizeRatings, 60_000);
-
-  let reviewDigestRunning = false;
-  const reviewDigests = () => {
-    if (reviewDigestRunning) return;
-    reviewDigestRunning = true;
-    void sendReviewDigests()
-      .catch((error) => {
-        logger.warn("Review digest sweep failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        reviewDigestRunning = false;
-      });
-  };
-  reviewDigests();
-  const reviewDigestNotifier = setInterval(reviewDigests, 60_000);
-
-  let reviewSlaRunning = false;
-  const reviewSla = () => {
-    if (reviewSlaRunning) return;
-    reviewSlaRunning = true;
-    void notifyOverdueReviews()
-      .then((count) => {
-        if (count > 0) {
-          logger.info("Overdue review nudges sent", { count });
-        }
-      })
-      .catch((error) => {
-        logger.warn("Overdue review sweep failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        reviewSlaRunning = false;
-      });
-  };
-  reviewSla();
-  const reviewSlaNotifier = setInterval(reviewSla, 15 * 60_000);
-
-  let reviewReportRunning = false;
-  const reviewReport = () => {
-    if (reviewReportRunning) return;
-    reviewReportRunning = true;
-    void sendWeeklyReviewReport()
-      .then((count) => {
-        if (count > 0) {
-          logger.info("Weekly review reports sent", { count });
-        }
-      })
-      .catch((error) => {
-        logger.warn("Weekly review report failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        reviewReportRunning = false;
-      });
-  };
-  reviewReport();
-  const reviewReportNotifier = setInterval(reviewReport, 60 * 60_000);
-
-  let socialDigestRunning = false;
-  const socialDigest = () => {
-    if (socialDigestRunning) return;
-    socialDigestRunning = true;
-    void sendSocialReportDigest()
-      .then((sent) => {
-        if (sent > 0) {
-          logger.info("Social report digests sent", { sent });
-        }
-      })
-      .catch((error) => {
-        logger.warn("Social report digest sweep failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        socialDigestRunning = false;
-      });
-  };
-  socialDigest();
-  const socialDigestNotifier = setInterval(socialDigest, SOCIAL_REPORT_DIGEST_INTERVAL_MS);
-
-  let socialRetentionRunning = false;
-  const socialRetention = () => {
-    if (socialRetentionRunning) return;
-    socialRetentionRunning = true;
-    const apply = process.env.SOCIAL_RETENTION_AUTO_APPLY !== "false";
-    void runSocialRetention({ apply })
-      .then((counts) => {
-        logger.info(
-          apply ? "Social retention applied" : "Social retention dry run",
-          { ...counts },
-        );
-      })
-      .catch((error) => {
-        logger.warn("Social retention sweep failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        socialRetentionRunning = false;
-      });
-  };
-  const socialRetentionTimer = setInterval(socialRetention, 24 * 60 * 60_000);
+  const stopNotificationSweeps = startNotificationSweeps();
 
   let contestSeriesRunning = false;
   const ensureContestSeries = () => {
@@ -387,14 +252,9 @@ async function main(): Promise<void> {
   const shutdown = async (signal: string): Promise<void> => {
     logger.info("Judge worker shutting down", { signal });
     clearInterval(heartbeat);
-    clearInterval(contestNotifier);
     clearInterval(ratingSweeper);
-    clearInterval(reviewDigestNotifier);
-    clearInterval(reviewSlaNotifier);
-    clearInterval(reviewReportNotifier);
-    clearInterval(socialDigestNotifier);
-    clearInterval(socialRetentionTimer);
     clearInterval(contestSeriesSweeper);
+    stopNotificationSweeps();
     await clearWorkerHeartbeat().catch(() => undefined);
     await worker.close();
     await closeDb();

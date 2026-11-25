@@ -138,8 +138,11 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   analytics.
 
 ### Platform
-- **Notifications** — in-app verdict, contest, clarification, review and approval notices, with
-  per-category email preferences, token unsubscribe, digests and a weekly admin report.
+- **Notifications** — in-app and email notices for verdicts, contest registration/30-minute
+  reminders/final results+rating, clarifications, reviews, learning enrollment/payments/reminders,
+  badges and solved milestones, announcements, new contests/course modules, direct messages and
+  problem/lesson replies. Per-category preferences, token unsubscribe, review digests, a weekly
+  admin report and an admin announcement composer are included.
 - **Dashboards** — one responsive shell for coder, teacher and admin; coder stats, review panels with
   7/30/all-time filters and 48-hour flags, and a version/changelog footer.
 - **Production plumbing** — migrations, seeds, Docker Compose, worker heartbeats, health checks,
@@ -396,6 +399,15 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 - Team contests are unrated and virtual replay is solo-only. A monthly auto-created
   contest starts with a sealed/empty problem set until staff attach fresh problems.
 - Team invitations are in-app notifications only; there is no invite email yet.
+- Notification emails are best-effort and require a verified address (the welcome mail is the only
+  pre-verification email). There is no web push or grouping yet. Contest-result notices cover
+  participants with a rating change, so group/unrated contests produce none. Milestone and badge
+  notices fire on exact thresholds, and learning inactivity reminders are sent once per module and
+  threshold (7 and 21 days).
+- Admin announcement fan-out is synchronous; very large user bases should move it to the worker.
+  New-module marketing is detected by the worker comparing live modules to the broadcast ledger, so
+  it runs on the next worker start or hourly sweep. Turning off in-app marketing also suppresses its
+  email; turning off `emailMarketing` keeps the in-app notice only.
 - Contest banners are supplied as public https image URLs (or the branded default);
   there is no direct image-upload pipeline yet.
 - Contest watermarks, copy guards and integrity events are deterrents and review

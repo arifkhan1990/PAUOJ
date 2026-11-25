@@ -1,6 +1,9 @@
 export type NotificationType =
   | "VERDICT"
   | "CONTEST_START"
+  | "CONTEST_REGISTRATION"
+  | "CONTEST_REMINDER"
+  | "CONTEST_RESULT"
   | "CLARIFICATION"
   | "CONTRIBUTION"
   | "CONTEST_APPROVAL"
@@ -8,6 +11,15 @@ export type NotificationType =
   | "FOLLOW_REQUEST"
   | "FOLLOW_ACCEPTED"
   | "MESSAGE"
+  | "DISCUSSION"
+  | "WELCOME"
+  | "LEARNING_ENROLLMENT"
+  | "LEARNING_PAYMENT"
+  | "LEARNING_REMINDER"
+  | "ACHIEVEMENT"
+  | "MILESTONE"
+  | "ANNOUNCEMENT"
+  | "MARKETING"
   | "SYSTEM";
 
 export type NotificationItem = {
@@ -27,14 +39,43 @@ export type NotificationPreferences = {
   emailContests: boolean;
   emailClarifications: boolean;
   emailReviews: boolean;
+  emailAccount: boolean;
+  emailLearning: boolean;
+  emailAchievements: boolean;
+  emailAnnouncements: boolean;
+  emailMarketing: boolean;
+  emailDiscussions: boolean;
+  emailMessages: boolean;
   notifyMessages: boolean;
   notifyFollows: boolean;
+  notifyMarketing: boolean;
   reviewEmailFrequency: ReviewEmailFrequency;
 };
 
-export type UnsubscribeScope =
-  | "all"
+export type NotificationEmailCategory =
+  | "account"
   | "verdicts"
   | "contests"
   | "clarifications"
-  | "reviews";
+  | "reviews"
+  | "learning"
+  | "achievements"
+  | "announcements"
+  | "marketing"
+  | "discussions"
+  | "messages"
+  | "social";
+
+export type UnsubscribeScope =
+  | "all"
+  | "account"
+  | "verdicts"
+  | "contests"
+  | "clarifications"
+  | "reviews"
+  | "learning"
+  | "achievements"
+  | "announcements"
+  | "marketing"
+  | "discussions"
+  | "messages";

@@ -14,6 +14,7 @@ import {
 } from "@/lib/contest-invites";
 import type { ContestTeamInviteView, ContestTeamView } from "@/lib/contest-ops";
 import { isContestCrewBlocked } from "./contest-crew";
+import { notifyContestRegistrationSafe } from "./contest-notifications";
 import { loadIncomingTeamInvite } from "./contest-team-invites";
 import {
   LIVE_TEAM_STATUSES,
@@ -158,6 +159,9 @@ export async function createContestTeam(
 
   const view = await loadTeamView(teamId, userId);
   if (!view) throw errors.notFound("Team not found.");
+  // Registration is committed now, so the confirmation cannot be rolled back
+  // by a mail failure.
+  await notifyContestRegistrationSafe(userId, contest);
   return view;
 }
 
@@ -229,6 +233,8 @@ export async function joinContestTeam(
 
   const view = await loadTeamView(teamId, userId);
   if (!view) throw errors.notFound("Team not found.");
+  // Only the newly registered member is notified; others were told before.
+  await notifyContestRegistrationSafe(userId, contest);
   return view;
 }
 

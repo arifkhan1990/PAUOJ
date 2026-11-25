@@ -48,4 +48,36 @@ export const notifications = pgTable(
   ],
 );
 
+/**
+ * One row per outbound broadcast. `sourceKey` makes contest/module marketing
+ * and manual announcements idempotent, `completedAt` records that the fan-out
+ * finished, and the stored title/body give the admin page a real history.
+ */
+export const broadcasts = pgTable(
+  "broadcasts",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    kind: text("kind").notNull(),
+    sourceKey: text("source_key").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    href: text("href"),
+    createdBy: uuid("created_by").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("broadcasts_source_key_unique").on(table.sourceKey),
+    index("broadcasts_created_idx").on(table.createdAt),
+    index("broadcasts_pending_idx")
+      .on(table.createdAt)
+      .where(sql`${table.completedAt} is null`),
+  ],
+);
+
 export type Notification = typeof notifications.$inferSelect;
+export type Broadcast = typeof broadcasts.$inferSelect;

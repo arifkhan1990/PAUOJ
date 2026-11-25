@@ -229,10 +229,18 @@ export default async function SettingsPage() {
                 initial={{
                   notifyMessages: user.notifyMessages,
                   notifyFollows: user.notifyFollows,
+                  notifyMarketing: user.notifyMarketing,
                   emailVerdicts: user.emailVerdicts,
                   emailContests: user.emailContests,
                   emailClarifications: user.emailClarifications,
                   emailReviews: user.emailReviews,
+                  emailAccount: user.emailAccount,
+                  emailLearning: user.emailLearning,
+                  emailAchievements: user.emailAchievements,
+                  emailAnnouncements: user.emailAnnouncements,
+                  emailMarketing: user.emailMarketing,
+                  emailDiscussions: user.emailDiscussions,
+                  emailMessages: user.emailMessages,
                   reviewEmailFrequency: user.reviewEmailFrequency,
                 }}
               />

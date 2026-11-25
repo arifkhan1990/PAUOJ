@@ -9,6 +9,7 @@ import {
 import type { CommentVote, ProblemComment } from "@/lib/types";
 import type { CreateCommentInput } from "@/lib/schemas/discussion";
 import type { SafeUser } from "@/server/auth/session";
+import { notifyLessonCommentReply } from "./discussion-notifications";
 import { assertLessonTopic } from "./lesson-discussions";
 
 export async function createLessonComment(
@@ -28,6 +29,7 @@ export async function createLessonComment(
   assertLessonTopic(moduleSlug, topicSlug);
   const db = getDb();
 
+  let parentAuthorId: string | null = null;
   if (input.parentId) {
     const rows = await db
       .select({
@@ -35,6 +37,7 @@ export async function createLessonComment(
         moduleSlug: lessonComments.moduleSlug,
         topicSlug: lessonComments.topicSlug,
         parentId: lessonComments.parentId,
+        userId: lessonComments.userId,
         deletedAt: lessonComments.deletedAt,
       })
       .from(lessonComments)
@@ -52,6 +55,7 @@ export async function createLessonComment(
     if (parent.parentId) {
       throw errors.validation("Replies can only be one level deep.");
     }
+    parentAuthorId = parent.userId;
   }
 
   const now = new Date();
@@ -74,6 +78,18 @@ export async function createLessonComment(
     });
   const comment = rows[0];
   if (!comment) throw errors.unavailable("Could not save your comment.");
+
+  if (parentAuthorId) {
+    await notifyLessonCommentReply({
+      authorId: user.id,
+      authorName: user.displayName,
+      parentAuthorId,
+      moduleSlug,
+      topicSlug,
+      commentId: comment.id,
+      replyBody: comment.body,
+    });
+  }
 
   return {
     id: comment.id,

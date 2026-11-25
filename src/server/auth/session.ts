@@ -43,8 +43,16 @@ export type SafeUser = {
   emailContests: boolean;
   emailClarifications: boolean;
   emailReviews: boolean;
+  emailAccount: boolean;
+  emailLearning: boolean;
+  emailAchievements: boolean;
+  emailAnnouncements: boolean;
+  emailMarketing: boolean;
+  emailDiscussions: boolean;
+  emailMessages: boolean;
   notifyMessages: boolean;
   notifyFollows: boolean;
+  notifyMarketing: boolean;
   reviewEmailFrequency: "INSTANT" | "HOURLY" | "DAILY";
   isBanned: boolean;
   emailVerifiedAt: Date | null;
@@ -88,8 +96,16 @@ export function toSafeUser(user: {
   emailContests: boolean;
   emailClarifications: boolean;
   emailReviews: boolean;
+  emailAccount: boolean;
+  emailLearning: boolean;
+  emailAchievements: boolean;
+  emailAnnouncements: boolean;
+  emailMarketing: boolean;
+  emailDiscussions: boolean;
+  emailMessages: boolean;
   notifyMessages: boolean;
   notifyFollows: boolean;
+  notifyMarketing: boolean;
   reviewEmailFrequency: "INSTANT" | "HOURLY" | "DAILY";
   isBanned: boolean;
   emailVerifiedAt: Date | null;
@@ -122,8 +138,16 @@ export function toSafeUser(user: {
     emailContests: user.emailContests,
     emailClarifications: user.emailClarifications,
     emailReviews: user.emailReviews,
+    emailAccount: user.emailAccount,
+    emailLearning: user.emailLearning,
+    emailAchievements: user.emailAchievements,
+    emailAnnouncements: user.emailAnnouncements,
+    emailMarketing: user.emailMarketing,
+    emailDiscussions: user.emailDiscussions,
+    emailMessages: user.emailMessages,
     notifyMessages: user.notifyMessages,
     notifyFollows: user.notifyFollows,
+    notifyMarketing: user.notifyMarketing,
     reviewEmailFrequency: user.reviewEmailFrequency,
     isBanned: user.isBanned,
     emailVerifiedAt: user.emailVerifiedAt,
@@ -193,8 +217,16 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,
       emailReviews: users.emailReviews,
+      emailAccount: users.emailAccount,
+      emailLearning: users.emailLearning,
+      emailAchievements: users.emailAchievements,
+      emailAnnouncements: users.emailAnnouncements,
+      emailMarketing: users.emailMarketing,
+      emailDiscussions: users.emailDiscussions,
+      emailMessages: users.emailMessages,
       notifyMessages: users.notifyMessages,
       notifyFollows: users.notifyFollows,
+      notifyMarketing: users.notifyMarketing,
       reviewEmailFrequency: users.reviewEmailFrequency,
       createdAt: users.createdAt,
       isBanned: users.isBanned,

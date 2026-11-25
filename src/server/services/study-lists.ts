@@ -4,6 +4,8 @@ import type { StudyListDetail, StudyListSummary } from "@/lib/study-list-types";
 import { errors } from "@/server/api/errors";
 import { getDb } from "@/server/db";
 import { studyListEnrollments, studyLists } from "@/server/db/schema";
+import { logger } from "@/server/logger";
+import { notifyUser } from "./notifications";
 import {
   buildStudyListSections,
   buildStudyListSummary,
@@ -171,12 +173,12 @@ export async function getStudyList(
 }
 
 /** Public plans plus the owner's private plan; another user's private plan stays hidden. */
-async function findEnrollableListId(
+async function findEnrollableList(
   slug: string,
   userId: string,
-): Promise<string> {
+): Promise<{ id: string; title: string }> {
   const rows = await getDb()
-    .select({ id: studyLists.id })
+    .select({ id: studyLists.id, title: studyLists.title })
     .from(studyLists)
     .where(
       and(
@@ -185,20 +187,47 @@ async function findEnrollableListId(
       ),
     )
     .limit(1);
-  const listId = rows[0]?.id;
-  if (!listId) throw errors.notFound("Study list not found.");
-  return listId;
+  const list = rows[0];
+  if (!list) throw errors.notFound("Study list not found.");
+  return list;
+}
+
+async function notifyEnrollment(
+  userId: string,
+  list: { id: string; title: string },
+  slug: string,
+  startedAt: Date,
+): Promise<void> {
+  try {
+    await notifyUser({
+      userId,
+      type: "LEARNING_ENROLLMENT",
+      title: `You're enrolled: ${list.title}`,
+      body: "Your plan is ready. Open it to see the first unsolved problem.",
+      href: `/lists/${slug}`,
+      dedupeKey: `study-enroll:${list.id}:${startedAt.toISOString()}`,
+    });
+  } catch (error) {
+    logger.warn("Could not send the study list enrollment notification", {
+      userId,
+      listId: list.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 }
 
 export async function enrollStudyList(
   slug: string,
   userId: string,
 ): Promise<{ enrolled: boolean }> {
-  const listId = await findEnrollableListId(slug, userId);
-  await getDb()
+  const list = await findEnrollableList(slug, userId);
+  const [created] = await getDb()
     .insert(studyListEnrollments)
-    .values({ userId, listId })
-    .onConflictDoNothing();
+    .values({ userId, listId: list.id })
+    .onConflictDoNothing()
+    .returning({ startedAt: studyListEnrollments.startedAt });
+  // Only a genuinely new enrollment notifies; re-enrolling a plan says nothing.
+  if (created) await notifyEnrollment(userId, list, slug, created.startedAt);
   return { enrolled: true };
 }
 
@@ -206,13 +235,13 @@ export async function leaveStudyList(
   slug: string,
   userId: string,
 ): Promise<{ enrolled: boolean }> {
-  const listId = await findEnrollableListId(slug, userId);
+  const list = await findEnrollableList(slug, userId);
   await getDb()
     .delete(studyListEnrollments)
     .where(
       and(
         eq(studyListEnrollments.userId, userId),
-        eq(studyListEnrollments.listId, listId),
+        eq(studyListEnrollments.listId, list.id),
       ),
     );
   return { enrolled: false };

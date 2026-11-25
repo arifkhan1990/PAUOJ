@@ -287,16 +287,47 @@ without a new review, and the check constraint holds for every row.
 ## Notifications and email
 
 `notifications` stores in-app messages with an optional `dedupe_key`; the unique
-`(user_id, dedupe_key)` index makes contest starts and submission verdicts
-idempotent across worker retries. Verdicts are created by the judge worker when a
-submission finishes, contest-start notices are swept by the worker every minute,
-and clarification notices are created by the clarification service.
+`(user_id, dedupe_key)` index keeps worker retries and repeated page renders
+idempotent. There are 22 types: verdicts, contest start/registration/30-minute
+reminder/final result, clarification activity, review and contest-approval
+events, follow requests/acceptance, direct messages, problem/lesson discussion
+replies, welcome, learning enrollment/payment/reminder, achievements,
+milestones, announcements, marketing and generic system notices.
 
-Email copies are only sent for verified addresses and enabled categories
-(`email_verdicts`, `email_contests`, `email_clarifications`). Each message links
-to `/unsubscribe?token=…`; the token is a per-user random value stored on the
-user row, and the unsubscribe endpoint disables the requested category without
-requiring a session.
+`src/server/services/notification-email-policy.ts` is the single type → email
+category map. The user row carries the switches: `email_verdicts`,
+`email_contests`, `email_clarifications`, `email_reviews`, `email_account`,
+`email_learning`, `email_achievements`, `email_announcements`,
+`email_marketing`, `email_discussions` and `email_messages`, plus the in-app
+`notify_messages`, `notify_follows` and `notify_marketing`. Every email needs a
+verified address except the welcome mail, which goes to the address the account
+was just created with. Follow notices stay in-app only. Each message links to
+`/unsubscribe?token=…&scope=…`; the token is a per-user random value stored on
+the user row, and the scopes cover all, account, verdicts, contests,
+clarifications, reviews, learning, achievements, announcements, marketing,
+discussions and messages without requiring a session.
+
+Delivery is spread across the worker: contest start and 30-minute reminders,
+review digests/SLA nudges/weekly reports, social report digests and retention,
+learning inactivity (7/21 days) and marketing sweeps run in
+`src/worker/notification-sweeps.ts`; rating finalization sends final rank/rating
+changes and rating achievements after the transaction commits. The judge sends
+verdicts and then exact-threshold solved milestones/badges, while discussion
+creation notifies the parent author. Exact thresholds (`1/100/250/500/700/1000`
+solved, 10/50 solved, 500 submissions, 3 accepted languages, 7-day streak,
+1600/1800/2000 rating crossings) are deliberate: a `>=` check would mail every
+existing user on the first deploy. Inactivity reminders are deduped once per
+module and threshold, and finished modules are skipped.
+
+Announcements and marketing use the `broadcasts` ledger. A manual announcement
+from `/admin/announcements` and the automatic new-contest/new-module notices all
+insert one row with a unique `source_key` before fanning out, so retries only
+fill missing notifications. Migration 0047 backfilled the existing public
+contests and 11 live modules as baseline rows, so the first deploy does not
+re-announce the catalogue; the worker compares live modules against the ledger
+and announces only genuinely new ones. `notify_marketing` off suppresses the
+marketing notice (in-app and email); `email_marketing` off keeps the in-app
+notice but skips its email. Pending fan-outs are retried by the worker.
 
 Transactional mail uses the shared 600px table-based shell in
 `src/server/mail-template.ts` — dark brand header, badge, CTA, fallback-link

@@ -8,6 +8,7 @@ import {
   Code2,
   Flag,
   ListChecks,
+  Megaphone,
   Wallet,
   Plus,
   Trophy,
@@ -85,6 +86,12 @@ const quickActions = [
     label: "Payments & access",
     description: "Approve TrxIDs or grant premium learning access.",
     icon: Wallet,
+  },
+  {
+    href: "/admin/announcements",
+    label: "Send an announcement",
+    description: "Broadcast a notice to every notification center.",
+    icon: Megaphone,
   },
 ];
 

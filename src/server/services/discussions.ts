@@ -30,6 +30,7 @@ import {
   assembleComments,
   type DiscussionViewer,
 } from "./discussion-mapper";
+import { notifyProblemCommentReply } from "./discussion-notifications";
 import { assertProblemNotInLiveContext } from "./problem-access";
 
 export const DISCUSSION_PAGE_SIZE = 10;
@@ -181,12 +182,14 @@ export async function createProblemComment(
   const problem = await loadProblem(slug, user);
   await assertDiscussionOpen(problem.id);
 
+  let parentAuthorId: string | null = null;
   if (input.parentId) {
     const rows = await db
       .select({
         id: problemComments.id,
         problemId: problemComments.problemId,
         parentId: problemComments.parentId,
+        userId: problemComments.userId,
         deletedAt: problemComments.deletedAt,
       })
       .from(problemComments)
@@ -199,6 +202,7 @@ export async function createProblemComment(
     if (parent.parentId) {
       throw errors.validation("Replies can only be one level deep.");
     }
+    parentAuthorId = parent.userId;
   }
 
   const now = new Date();
@@ -220,6 +224,17 @@ export async function createProblemComment(
     });
   const comment = rows[0];
   if (!comment) throw errors.unavailable("Could not save your comment.");
+
+  if (parentAuthorId) {
+    await notifyProblemCommentReply({
+      authorId: user.id,
+      authorName: user.displayName,
+      parentAuthorId,
+      problemSlug: slug,
+      commentId: comment.id,
+      replyBody: comment.body,
+    });
+  }
 
   return {
     id: comment.id,

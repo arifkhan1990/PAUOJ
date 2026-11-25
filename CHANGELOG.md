@@ -6,6 +6,16 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Notification and email expansion: welcome, contest registration/30-minute
+  reminder/final result+rating, study-plan and module enrollment, payment
+  submitted/approved/rejected/revoked, 7/21-day course inactivity, badges and
+  solved milestones (1/100/250/500/700/1000), announcements, new contest/module
+  marketing, direct messages and problem/lesson discussion replies now create
+  in-app notices and opt-out email copies. Adds 8 preference switches, 12
+  notification types, 11 unsubscribe scopes, exact-threshold achievement rules,
+  a `broadcasts` ledger with automatic contest/module marketing and pending
+  retries, and an admin announcement composer at `/admin/announcements`
+  (migration 0047).
 - Profile avatars: every account can upload a PNG/JPG/WebP photo or pick one
   of twelve preset avatars (cat, dog, bird, fish, rabbit, squirrel, turtle,
   panda, ghost, rocket, bot, gamepad) from Settings → Profile picture. The

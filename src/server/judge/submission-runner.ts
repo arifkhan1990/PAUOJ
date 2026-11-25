@@ -11,12 +11,14 @@ import type { Language } from "@/server/db/schema";
 import type { Verdict } from "@/lib/verdicts";
 import { VERDICT_META } from "@/lib/verdicts";
 import { getLanguage } from "@/lib/languages";
+import { afterAcceptedSubmission } from "@/server/services/achievement-notifications";
 import { notifyUser } from "@/server/services/notifications";
 
 export type JudgeSubmission = {
   id: string;
   userId: string;
   problemId: string;
+  problemSlug: string;
   problemTitle: string;
   checkerType: "EXACT" | "TOKEN" | "FLOAT" | "CUSTOM";
   checkerSource: string | null;
@@ -49,6 +51,7 @@ export async function claimSubmission(
       id: submissions.id,
       userId: submissions.userId,
       problemId: submissions.problemId,
+      problemSlug: problems.slug,
       problemTitle: problems.title,
       checkerType: problems.checkerType,
       checkerSource: problems.checkerSource,
@@ -83,6 +86,7 @@ export async function claimSubmission(
     id: row.id,
     userId: row.userId,
     problemId: row.problemId,
+    problemSlug: row.problemSlug,
     problemTitle: row.problemTitle,
     checkerType: row.checkerType,
     checkerSource: row.checkerSource,
@@ -172,6 +176,14 @@ export async function completeSubmission(
     });
   } catch (error) {
     console.error("Could not create verdict notification", error);
+  }
+
+  if (outcome.status === "ACCEPTED") {
+    try {
+      await afterAcceptedSubmission(submission.userId, submission.problemSlug);
+    } catch (error) {
+      console.error("Could not create achievement notifications", error);
+    }
   }
 }
 

@@ -49,7 +49,7 @@ async function notifyOrderUser(
 
     await notifyUser({
       userId: order.userId,
-      type: "SYSTEM",
+      type: "LEARNING_PAYMENT",
       title: titles[decision],
       body:
         decision === "APPROVED"
@@ -59,7 +59,6 @@ async function notifyOrderUser(
             : `Your access to ${label} was revoked.${details}`,
       href: "/learn/pricing",
       dedupeKey: `payment:${orderId}:${decision.toLowerCase()}`,
-      email: true,
     });
   } catch (error) {
     logger.warn("Could not send the payment decision notification", {

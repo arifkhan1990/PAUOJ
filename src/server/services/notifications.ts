@@ -18,6 +18,10 @@ import type { NotificationPreferencesInput } from "@/lib/schemas/notification";
 import { getEnv } from "@/server/env";
 import { logger } from "@/server/logger";
 import { sendNotificationEmail } from "@/server/mail";
+import {
+  emailCategoryForNotification,
+  emailEnabled,
+} from "./notification-email-policy";
 
 export const NOTIFICATIONS_PAGE_SIZE = 20;
 
@@ -30,21 +34,12 @@ type NotifyInput = {
   dedupeKey?: string | null;
   /** Send the email even when this category is not email-enabled by default. */
   email?: boolean;
+  /**
+   * Welcome mail goes to the address the user just registered with, before it
+   * is verified. Every other category keeps the verified-address rule.
+   */
+  allowUnverifiedEmail?: boolean;
 };
-
-function emailEnabled(
-  type: NotificationType,
-  user: {
-    emailVerdicts: boolean;
-    emailContests: boolean;
-    emailClarifications: boolean;
-  },
-): boolean {
-  if (type === "VERDICT") return user.emailVerdicts;
-  if (type === "CONTEST_START") return user.emailContests;
-  if (type === "CLARIFICATION") return user.emailClarifications;
-  return false;
-}
 
 export async function ensureUnsubscribeToken(
   userId: string,
@@ -101,6 +96,13 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,
       emailReviews: users.emailReviews,
+      emailAccount: users.emailAccount,
+      emailLearning: users.emailLearning,
+      emailAchievements: users.emailAchievements,
+      emailAnnouncements: users.emailAnnouncements,
+      emailMarketing: users.emailMarketing,
+      emailDiscussions: users.emailDiscussions,
+      emailMessages: users.emailMessages,
       notifyMessages: users.notifyMessages,
       notifyFollows: users.notifyFollows,
       reviewEmailFrequency: users.reviewEmailFrequency,
@@ -108,7 +110,8 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
     .from(users)
     .where(eq(users.id, input.userId))
     .limit(1);
-  if (!user || !user.emailVerifiedAt) return true;
+  if (!user) return true;
+  if (!user.emailVerifiedAt && !input.allowUnverifiedEmail) return true;
 
   if (isReview) {
     const instant =
@@ -130,9 +133,11 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
   const token = await ensureUnsubscribeToken(input.userId);
   if (!token) return true;
   const appUrl = getEnv().APP_URL.replace(/\/$/, "");
+  const category = emailCategoryForNotification(input.type);
+  const scope = category && category !== "social" ? category : "all";
   const unsubscribeUrl = `${appUrl}/unsubscribe?token=${encodeURIComponent(
     token,
-  )}&scope=all`;
+  )}&scope=${scope}`;
   const href = input.href
     ? input.href.startsWith("http")
       ? input.href
@@ -232,8 +237,16 @@ export async function getNotificationPreferences(
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,
       emailReviews: users.emailReviews,
+      emailAccount: users.emailAccount,
+      emailLearning: users.emailLearning,
+      emailAchievements: users.emailAchievements,
+      emailAnnouncements: users.emailAnnouncements,
+      emailMarketing: users.emailMarketing,
+      emailDiscussions: users.emailDiscussions,
+      emailMessages: users.emailMessages,
       notifyMessages: users.notifyMessages,
       notifyFollows: users.notifyFollows,
+      notifyMarketing: users.notifyMarketing,
       reviewEmailFrequency: users.reviewEmailFrequency,
     })
     .from(users)
@@ -323,14 +336,35 @@ export async function unsubscribeByToken(
           emailContests: false,
           emailClarifications: false,
           emailReviews: false,
+          emailAccount: false,
+          emailLearning: false,
+          emailAchievements: false,
+          emailAnnouncements: false,
+          emailMarketing: false,
+          emailDiscussions: false,
+          emailMessages: false,
         }
-      : scope === "verdicts"
-        ? { emailVerdicts: false }
-        : scope === "contests"
-          ? { emailContests: false }
-          : scope === "reviews"
-            ? { emailReviews: false }
-            : { emailClarifications: false };
+      : scope === "account"
+        ? { emailAccount: false }
+        : scope === "verdicts"
+          ? { emailVerdicts: false }
+          : scope === "contests"
+            ? { emailContests: false }
+            : scope === "reviews"
+              ? { emailReviews: false }
+              : scope === "learning"
+                ? { emailLearning: false }
+                : scope === "achievements"
+                  ? { emailAchievements: false }
+                  : scope === "announcements"
+                    ? { emailAnnouncements: false }
+                    : scope === "marketing"
+                      ? { emailMarketing: false }
+                      : scope === "discussions"
+                        ? { emailDiscussions: false }
+                        : scope === "messages"
+                          ? { emailMessages: false }
+                          : { emailClarifications: false };
   await getDb()
     .update(users)
     .set({ ...values, updatedAt: new Date() })

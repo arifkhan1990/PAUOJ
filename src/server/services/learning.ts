@@ -13,6 +13,8 @@ import {
 } from "@/lib/learning/modules";
 import { requiresPurchase } from "@/lib/learning/payments";
 import type { SafeUser } from "@/server/auth/session";
+import { logger } from "@/server/logger";
+import { notifyLearningBadge } from "./achievement-notifications";
 import { getEntitledModuleSlugs } from "@/server/services/learning-payments";
 import {
   buildLearningCheckpointView,
@@ -168,6 +170,7 @@ async function loadInWindowSolved(
 async function completeAttemptIfSolved(
   attempt: CheckpointAttemptRow,
   checkpoint: LearningCheckpointDefinition,
+  moduleSlug: string,
   solved: Set<string>,
   now: Date,
 ): Promise<CheckpointAttemptRow> {
@@ -184,6 +187,18 @@ async function completeAttemptIfSolved(
       ),
     )
     .returning({ completedAt: learningCheckpointAttempts.completedAt });
+  // The guarded update lands once, so this marks the null -> completed transition.
+  if (updated) {
+    try {
+      await notifyLearningBadge(attempt.userId, moduleSlug);
+    } catch (error) {
+      logger.warn("Learning badge notification failed", {
+        userId: attempt.userId,
+        moduleSlug,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
   return { ...attempt, completedAt: updated?.completedAt ?? now };
 }
 
@@ -191,10 +206,7 @@ async function resolveCheckpointAttempt(
   userId: string | null,
   definition: LearningModuleDefinition,
   now: Date,
-): Promise<{
-  attempt: CheckpointAttemptRow;
-  windowSolved: Set<string>;
-} | null> {
+): Promise<{ attempt: CheckpointAttemptRow; windowSolved: Set<string> } | null> {
   if (!userId || !definition.checkpoint) return null;
   const attempt = await findAttempt(userId, definition.slug);
   if (!attempt) return null;
@@ -205,6 +217,7 @@ async function resolveCheckpointAttempt(
   const resolved = await completeAttemptIfSolved(
     attempt,
     definition.checkpoint,
+    definition.slug,
     windowSolved,
     now,
   );
