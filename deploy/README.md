@@ -344,7 +344,8 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
 ```
 
 `FAILED` outbox rows carry the last SMTP error and are not retried after five
-attempts; inspect them before assuming mail is healthy. Baseline broadcasts
+attempts; inspect them before assuming mail is healthy. Delivered rows are
+pruned after 30 days and failed rows after 90 days. Baseline broadcasts
 (`baseline = true`) are migration history, not deliveries. A rollback to the
 previous app image is safe for the additive schema, but the old worker does not
 drain the outbox.

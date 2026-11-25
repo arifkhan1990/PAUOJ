@@ -5,7 +5,10 @@ import {
   resumePendingBroadcasts,
   runBroadcastSweeps,
 } from "@/server/services/broadcasts";
-import { processEmailOutbox } from "@/server/services/email-outbox";
+import {
+  processEmailOutbox,
+  pruneEmailOutbox,
+} from "@/server/services/email-outbox";
 import { runLearningInactivityReminders } from "@/server/services/learning-reminders";
 import { sendReviewDigests } from "@/server/services/review-digest";
 import { notifyOverdueReviews } from "@/server/services/review-sla";
@@ -44,6 +47,11 @@ const SWEEPS: Sweep[] = [
       const result = await processEmailOutbox();
       return result.sent;
     },
+  },
+  {
+    name: "Email outbox retention",
+    every: 24 * 60 * 60_000,
+    run: pruneEmailOutbox,
   },
   {
     name: "Pending broadcasts",

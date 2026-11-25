@@ -399,9 +399,10 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 - Team contests are unrated and virtual replay is solo-only. A monthly auto-created
   contest starts with a sealed/empty problem set until staff attach fresh problems.
 - Team invitations are in-app notifications only; there is no invite email yet.
-- Notification emails are queued in `email_outbox` and retried with backoff (five attempts) but still
-  require a verified address; the welcome mail is the only pre-verification email. There is no web
-  push or notification grouping yet. Milestone and badge notices fire on exact thresholds, and
+- Notification emails are queued in `email_outbox` and retried with backoff (five attempts, up to 100
+  per 30-second worker tick) but still require a verified address; the welcome mail is the only
+  pre-verification email. Delivered rows are pruned after 30 days and failed rows after 90. There is
+  no web push or notification grouping yet. Milestone and badge notices fire on exact thresholds, and
   learning inactivity reminders are sent once per module and threshold (7 and 21 days).
 - Announcements and marketing are queued and delivered by the worker within about 30 seconds; the
   admin request does not block on audience size. In-app and email marketing are independent

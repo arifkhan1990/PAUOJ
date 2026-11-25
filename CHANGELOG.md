@@ -18,7 +18,7 @@ All notable changes to PAU OJ are documented here. The format follows
   (migrations 0047-0049).
 - Notification email reliability: notification mail now goes through a durable
   `email_outbox` queue with `FOR UPDATE SKIP LOCKED` claiming, five-attempt
-  backoff and terminal `FAILED` rows for operators. Announcements and marketing
+  backoff, terminal `FAILED` rows for operators and 30/90-day retention. Announcements and marketing
   are queued and fanned out by the worker instead of blocking the admin
   request; in-app and email marketing are independent, so in-app-off users can
   still receive email-only marketing. Follow notices gained an `emailFollows`

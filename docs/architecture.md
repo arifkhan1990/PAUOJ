@@ -309,11 +309,12 @@ clarifications, reviews, learning, achievements, announcements, marketing,
 discussions, messages and follows without requiring a session.
 
 Notification emails are written to `email_outbox` rather than sent inline. The
-worker claims due rows with `FOR UPDATE SKIP LOCKED`, sends them through the
-shared mail builder, and retries failures with 2m / 10m / 1h / 6h backoff up to
-five attempts; terminal rows stay `FAILED` with the last error for operators.
-A stale `SENDING` row is reset to `PENDING` after ten minutes, so a crashed
-sender cannot strand mail. `dedupe_key` makes enqueueing idempotent: in-app
+worker claims up to 100 due rows per 30-second tick with `FOR UPDATE SKIP
+LOCKED`, sends them through the shared mail builder, and retries failures with
+2m / 10m / 1h / 6h backoff up to five attempts; terminal rows stay `FAILED`
+with the last error for operators. A stale `SENDING` row is reset to `PENDING`
+after ten minutes, so a crashed sender cannot strand mail. Delivered rows are
+pruned after 30 days and terminal failures after 90 days. `dedupe_key` makes enqueueing idempotent: in-app
 notifications use `notification:<id>`, while email-only marketing/follow
 deliveries use `email-only:<user>:<key>`. Transactional mail (verification,
 password reset, assessment invites, review digests and the weekly report) still

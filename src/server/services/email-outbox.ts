@@ -1,4 +1,4 @@
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, lt, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { emailOutbox } from "@/server/db/schema";
 import { logger } from "@/server/logger";
@@ -6,6 +6,8 @@ import { deliverNotificationEmail } from "@/server/mail";
 
 /** The fifth failed attempt is terminal; operators can inspect FAILED rows. */
 export const EMAIL_OUTBOX_MAX_ATTEMPTS = 5;
+export const EMAIL_OUTBOX_SENT_RETENTION_DAYS = 30;
+export const EMAIL_OUTBOX_FAILED_RETENTION_DAYS = 90;
 
 const SENDING_STALE_MS = 10 * 60_000;
 const RETRY_DELAYS_MS = [2 * 60_000, 10 * 60_000, 60 * 60_000, 6 * 60 * 60_000];
@@ -97,7 +99,7 @@ async function claimNextEmail(now: Date): Promise<ClaimedEmail | null> {
 /** Worker sweep: sends due rows, retries failures with backoff, marks terminal failures. */
 export async function processEmailOutbox(
   now: Date = new Date(),
-  limit: number = 25,
+  limit: number = 100,
 ): Promise<{ sent: number; retried: number; failed: number }> {
   const db = getDb();
   await db
@@ -182,5 +184,31 @@ export async function processEmailOutbox(
       failed,
     });
   }
+  if (failed > 0) {
+    logger.warn("Notification email outbox has terminal failures", { failed });
+  }
   return { sent, retried, failed };
+}
+
+/** Removes delivered and long-terminal rows so the queue cannot grow forever. */
+export async function pruneEmailOutbox(now: Date = new Date()): Promise<number> {
+  const sentCutoff = new Date(
+    now.getTime() - EMAIL_OUTBOX_SENT_RETENTION_DAYS * 24 * 60 * 60_000,
+  );
+  const failedCutoff = new Date(
+    now.getTime() - EMAIL_OUTBOX_FAILED_RETENTION_DAYS * 24 * 60 * 60_000,
+  );
+  const rows = await getDb()
+    .delete(emailOutbox)
+    .where(
+      or(
+        and(eq(emailOutbox.status, "SENT"), lt(emailOutbox.sentAt, sentCutoff)),
+        and(
+          eq(emailOutbox.status, "FAILED"),
+          lt(emailOutbox.updatedAt, failedCutoff),
+        ),
+      ),
+    )
+    .returning({ id: emailOutbox.id });
+  return rows.length;
 }
