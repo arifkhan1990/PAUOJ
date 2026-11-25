@@ -3,6 +3,7 @@ import {
   findMatchingSample,
   normalizeRunText,
   outputsMatch,
+  resolveRunComparison,
   shouldShowNoOutputNotice,
 } from "./run-sample";
 
@@ -61,6 +62,105 @@ describe("findMatchingSample", () => {
   it("can match an empty sample input", () => {
     const match = findMatchingSample([{ input: "", output: "0" }], "\n\n");
     expect(match?.index).toBe(0);
+  });
+});
+
+describe("resolveRunComparison", () => {
+  const samples = [{ input: "1\n7\n", output: "7" }];
+
+  it("lets an official sample win over the server expected output", () => {
+    const comparison = resolveRunComparison({
+      samples,
+      stdin: "1\n7\n",
+      stdout: "7\n",
+      expectedOutput: "999",
+      matchesExpected: false,
+    });
+    expect(comparison).toEqual({ kind: "sample", expected: "7", matches: true });
+  });
+
+  it("still reports a differing sample even when the reference output is missing", () => {
+    const comparison = resolveRunComparison({
+      samples,
+      stdin: "1\n7\n",
+      stdout: "8",
+      expectedOutput: null,
+      matchesExpected: null,
+    });
+    expect(comparison).toEqual({ kind: "sample", expected: "7", matches: false });
+  });
+
+  it("uses the reference output for a non-sample input", () => {
+    const base = {
+      samples,
+      stdin: "3\n1 2 3\n",
+      stdout: "6",
+      expectedOutput: "6",
+    };
+    expect(resolveRunComparison({ ...base, matchesExpected: true })).toEqual({
+      kind: "reference",
+      expected: "6",
+      matches: true,
+    });
+    expect(resolveRunComparison({ ...base, matchesExpected: false })).toEqual({
+      kind: "reference",
+      expected: "6",
+      matches: false,
+    });
+    expect(resolveRunComparison({ ...base, matchesExpected: null })).toEqual({
+      kind: "reference",
+      expected: "6",
+      matches: null,
+    });
+    expect(resolveRunComparison({ ...base, matchesExpected: undefined })).toEqual({
+      kind: "reference",
+      expected: "6",
+      matches: null,
+    });
+  });
+
+  it("treats an empty reference output as present, not missing", () => {
+    const comparison = resolveRunComparison({
+      samples,
+      stdin: "3\n1 2 3\n",
+      stdout: "",
+      expectedOutput: "",
+      matchesExpected: true,
+    });
+    expect(comparison).toEqual({ kind: "reference", expected: "", matches: true });
+  });
+
+  it("returns none when neither a sample nor a reference output exists", () => {
+    expect(
+      resolveRunComparison({
+        samples,
+        stdin: "3\n1 2 3\n",
+        stdout: "6",
+        expectedOutput: null,
+      }),
+    ).toEqual({ kind: "none", expected: null, matches: null });
+    expect(
+      resolveRunComparison({ samples: [], stdin: "", stdout: "6" }),
+    ).toEqual({ kind: "none", expected: null, matches: null });
+  });
+
+  it("marks empty stdout as differing from a non-empty expected output", () => {
+    expect(
+      resolveRunComparison({
+        samples,
+        stdin: "3\n1 2 3\n",
+        stdout: "",
+        expectedOutput: "6",
+        matchesExpected: false,
+      }).matches,
+    ).toBe(false);
+    expect(
+      resolveRunComparison({
+        samples: [{ input: "0\n", output: "6" }],
+        stdin: "0\n",
+        stdout: "",
+      }).matches,
+    ).toBe(false);
   });
 });
 

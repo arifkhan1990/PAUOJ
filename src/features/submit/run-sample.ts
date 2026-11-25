@@ -28,6 +28,54 @@ export function outputsMatch(stdout: string, expected: string): boolean {
   return normalizeRunText(stdout) === normalizeRunText(expected);
 }
 
+export type RunComparisonKind = "sample" | "reference" | "none";
+
+export type RunComparison = {
+  kind: RunComparisonKind;
+  expected: string | null;
+  matches: boolean | null;
+};
+
+export type RunComparisonInput = {
+  samples: RunSample[];
+  stdin: string;
+  stdout: string;
+  expectedOutput?: string | null;
+  matchesExpected?: boolean | null;
+};
+
+/**
+ * Picks the expected output a custom run is compared against. An official
+ * sample keeps priority: when the input equals a sample input, the sample
+ * output is authoritative. Otherwise the reference solution's output is used
+ * when the server provided one. `matches` stays null for a reference output
+ * the server did not compare, so the UI never claims pass/fail.
+ */
+export function resolveRunComparison({
+  samples,
+  stdin,
+  stdout,
+  expectedOutput,
+  matchesExpected,
+}: RunComparisonInput): RunComparison {
+  const sample = findMatchingSample(samples, stdin);
+  if (sample) {
+    return {
+      kind: "sample",
+      expected: sample.sample.output,
+      matches: outputsMatch(stdout, sample.sample.output),
+    };
+  }
+  if (expectedOutput !== undefined && expectedOutput !== null) {
+    return {
+      kind: "reference",
+      expected: expectedOutput,
+      matches: matchesExpected ?? null,
+    };
+  }
+  return { kind: "none", expected: null, matches: null };
+}
+
 export type RunNoticeInput = {
   status: string;
   finished: boolean;

@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { getRedis } from "@/server/redis";
+import type { RunCheckerType } from "./compare-output";
 import type { JudgeLanguage } from "./types";
 
 export const JUDGE_QUEUE = "pauoj-judge";
@@ -19,6 +20,9 @@ export type RunJob = {
   timeLimitMs: number;
   memoryLimitMb: number;
   sqlScript?: boolean;
+  /** Practice problems only: the reference solution used to derive output. */
+  reference?: { language: JudgeLanguage; source: string } | null;
+  checker?: { type: RunCheckerType; floatTolerance: number } | null;
 };
 
 export type JudgeJobData = SubmissionJob | RunJob;

@@ -4,6 +4,7 @@ import { closeDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 import { checkDocker, hasImage } from "@/server/judge/docker";
 import { runJudge } from "@/server/judge/engine";
+import { computeRunExpectation } from "@/server/judge/run-expectation";
 import { runStatusForOutcome } from "@/server/judge/run-status";
 import {
   JUDGE_QUEUE,
@@ -105,6 +106,47 @@ async function handleRun(job: RunJob): Promise<void> {
       mode: "run",
       sqlScript: job.sqlScript,
     });
+
+    let referenceOutcome: JudgeOutcome | null = null;
+    if (job.reference) {
+      try {
+        referenceOutcome = await runJudge({
+          language: job.reference.language,
+          source: job.reference.source,
+          timeLimitMs: job.timeLimitMs,
+          memoryLimitMb: job.memoryLimitMb,
+          tests: [
+            {
+              id: "reference",
+              position: 1,
+              input: job.stdin,
+              expectedOutput: null,
+              isSample: false,
+            },
+          ],
+          checker: { type: "EXACT", source: null, floatTolerance: 0.000001 },
+          mode: "run",
+          sqlScript: false,
+        });
+      } catch (error) {
+        logger.warn("Reference run failed", {
+          runId: job.runId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        referenceOutcome = null;
+      }
+    }
+
+    const expectation = computeRunExpectation({
+      user: { status: outcome.status, stdout: outcome.runStdout },
+      reference: job.reference
+        ? referenceOutcome
+          ? { status: referenceOutcome.status, stdout: referenceOutcome.runStdout }
+          : null
+        : undefined,
+      checker: job.checker ?? null,
+    });
+
     await updateRun(job.userId, job.runId, {
       status: runStatusForOutcome(outcome.status),
       stdout: outcome.runStdout,
@@ -113,6 +155,7 @@ async function handleRun(job: RunJob): Promise<void> {
       runtimeMs: outcome.runtimeMs,
       memoryKb: outcome.memoryKb,
       finished: true,
+      ...expectation,
     });
   } catch (error) {
     const message =

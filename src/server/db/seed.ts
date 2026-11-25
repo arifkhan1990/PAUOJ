@@ -4,6 +4,7 @@ import { hashPassword } from "@/server/auth/password";
 import { getDb, getSql } from "./index";
 import { getEnv } from "../env";
 import {
+  problemReferenceSolutions,
   problemTags,
   problems,
   submissions,
@@ -150,6 +151,32 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
           .values({ problemId, tagId: tag.id })
           .onConflictDoNothing();
       }
+    }
+
+    const referencePython = definition.referencePython.trim();
+    const isSqlProblem =
+      definition.judgeLanguage === "sql" ||
+      definition.judgeLanguage === "sql-script";
+    if (referencePython.length > 0 && !isSqlProblem) {
+      await db
+        .insert(problemReferenceSolutions)
+        .values({
+          problemId,
+          language: "python",
+          source: definition.referencePython,
+        })
+        .onConflictDoUpdate({
+          target: problemReferenceSolutions.problemId,
+          set: {
+            language: "python",
+            source: definition.referencePython,
+            updatedAt: new Date(),
+          },
+        });
+    } else {
+      await db
+        .delete(problemReferenceSolutions)
+        .where(eq(problemReferenceSolutions.problemId, problemId));
     }
 
     const insertedTests = await db

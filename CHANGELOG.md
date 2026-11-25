@@ -24,6 +24,16 @@ All notable changes to PAU OJ are documented here. The format follows
   overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
+- Custom-test expected output: for a practice problem with a stored reference
+  solution, a non-sample custom run now also runs the reference on the same
+  stdin and shows **Your output** beside **Expected output (reference)**.
+  “Matches expected” / “Differs from expected” uses the problem's `EXACT`,
+  `TOKEN` or `FLOAT` checker (`CUSTOM` shows the reference output without a
+  pass/fail claim). Official samples skip the extra run and keep the existing
+  sample comparison; contest/assessment runs, SQL problems and problems without
+  a reference show an explicit unavailable note. Reference sources are never
+  returned to the client. Adds migration 0053
+  (`problem_reference_solutions`) and seeds 471 non-SQL references.
 - Message document sharing and live conversation info: PDF/TXT/CSV/ZIP/DOCX/
   XLSX/PPTX files up to 5 MiB now upload from the composer (magic-byte
   validated, opaque participant-only downloads), render as document bubbles and

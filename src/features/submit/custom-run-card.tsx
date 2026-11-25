@@ -12,43 +12,83 @@ import { ApiClientError, apiPost, apiRequest } from "@/lib/api-client";
 import type { RunResult } from "@/lib/types";
 import { formatMemory, formatRuntime } from "@/lib/utils";
 import {
-  findMatchingSample,
-  outputsMatch,
+  resolveRunComparison,
   shouldShowNoOutputNotice,
+  type RunComparison,
   type RunSample,
 } from "./run-sample";
 
-function RunOutcomeChip({
-  matched,
-  passed,
-}: {
-  matched: boolean;
-  passed: boolean;
-}) {
-  if (!matched) {
-    return (
+function RunOutcomeChip({ comparison }: { comparison: RunComparison }) {
+  if (comparison.kind === "sample") {
+    return comparison.matches === true ? (
       <Badge
-        variant="muted"
-        title="Custom runs show output but are not judged."
+        variant="success"
+        title="Your output matches this sample. Submit for a real verdict."
       >
-        Ran
+        Sample passed
+      </Badge>
+    ) : (
+      <Badge
+        variant="destructive"
+        title="Your output differs from this sample. Custom runs are not judged."
+      >
+        Differs from sample
       </Badge>
     );
   }
-  return passed ? (
-    <Badge
-      variant="success"
-      title="Your output matches this sample. Submit for a real verdict."
-    >
-      Sample passed
+  if (comparison.kind === "reference") {
+    if (comparison.matches === true) {
+      return (
+        <Badge
+          variant="success"
+          title="Your output matches the reference solution. Submit for a real verdict."
+        >
+          Matches expected
+        </Badge>
+      );
+    }
+    if (comparison.matches === false) {
+      return (
+        <Badge
+          variant="destructive"
+          title="Your output differs from the reference solution. Custom runs are not judged."
+        >
+          Differs from expected
+        </Badge>
+      );
+    }
+    return (
+      <Badge
+        variant="muted"
+        title="The reference solution produced this output; your output was not compared."
+      >
+        Reference output
+      </Badge>
+    );
+  }
+  return (
+    <Badge variant="muted" title="Custom runs show output but are not judged.">
+      Ran
     </Badge>
-  ) : (
-    <Badge
-      variant="destructive"
-      title="Your output differs from this sample. Custom runs are not judged."
-    >
-      Differs from sample
-    </Badge>
+  );
+}
+
+function RunOutputBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+        {label}
+      </p>
+      <pre
+        className={
+          value.length > 0
+            ? "max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]"
+            : "max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px] text-muted-foreground"
+        }
+      >
+        {value.length > 0 ? value : "(no output)"}
+      </pre>
+    </div>
   );
 }
 
@@ -57,11 +97,13 @@ export function CustomRunCard({
   language,
   source,
   samples,
+  judgeLanguage,
 }: {
   problemId: string;
   language: string;
   source: string;
   samples: RunSample[];
+  judgeLanguage?: string | null;
 }) {
   const [stdin, setStdin] = useState(samples[0]?.input ?? "");
   const [running, setRunning] = useState(false);
@@ -128,17 +170,29 @@ export function CustomRunCard({
     }
   };
 
-  // Custom runs are not judged against expected output. The backend reports a
-  // clean custom run as EXECUTED (older responses used ACCEPTED); neither is a
-  // real verdict, so the badge is replaced by a sample comparison instead.
+  // Custom runs are not judged. The backend reports a clean custom run as
+  // EXECUTED (older responses used ACCEPTED); neither is a real verdict, so the
+  // badge is replaced by a sample/reference comparison instead.
   const status = result ? (result.status as string) : "";
   const executed = status === "EXECUTED" || status === "ACCEPTED";
   const finished = Boolean(result?.finished);
-  const matched =
-    result && executed && finished
-      ? findMatchingSample(samples, executedStdin)
+  const isSqlProblem =
+    judgeLanguage === "sql" || judgeLanguage === "sql-script";
+  const comparison =
+    result && finished
+      ? resolveRunComparison({
+          samples: isSqlProblem ? [] : samples,
+          stdin: executedStdin,
+          stdout: result.stdout,
+          expectedOutput: result.expectedOutput,
+          matchesExpected: result.matchesExpected,
+        })
       : null;
-  const passed = result ? outputsMatch(result.stdout, matched?.sample.output ?? "") : false;
+  const expectedNote = result?.expectedNote?.trim() || null;
+  const showExpectedNote =
+    Boolean(expectedNote) && finished && comparison?.kind !== "sample";
+  const showUnavailableNote =
+    finished && comparison?.kind === "none" && !expectedNote;
 
   return (
     <Card className="p-4">
@@ -151,6 +205,9 @@ export function CustomRunCard({
           size="sm"
           variant="outline"
           onClick={() => setStdin(samples[0]?.input ?? "")}
+          className={isSqlProblem ? "invisible" : undefined}
+          aria-hidden={isSqlProblem || undefined}
+          tabIndex={isSqlProblem ? -1 : undefined}
         >
           Use sample
         </Button>
@@ -159,7 +216,8 @@ export function CustomRunCard({
         Run against your own input. This does not create a submission.
       </p>
       <p className="mt-0.5 text-[11px] text-muted-foreground">
-        Custom runs are not judged. Submit for a real verdict.
+        Custom runs compare against the reference solution when available. They
+        are not official verdicts.
       </p>
       <Textarea
         value={stdin}
@@ -197,8 +255,8 @@ export function CustomRunCard({
         <div className="mt-3 space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs">
             {executed ? (
-              finished ? (
-                <RunOutcomeChip matched={Boolean(matched)} passed={passed} />
+              finished && comparison ? (
+                <RunOutcomeChip comparison={comparison} />
               ) : null
             ) : (
               <VerdictBadge status={result.status} />
@@ -224,20 +282,7 @@ export function CustomRunCard({
             </div>
           ) : null}
           {executed && finished ? (
-            <div>
-              <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                Your output
-              </p>
-              {result.stdout ? (
-                <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
-                  {result.stdout}
-                </pre>
-              ) : (
-                <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px] text-muted-foreground">
-                  (no output)
-                </pre>
-              )}
-            </div>
+            <RunOutputBlock label="Your output" value={result.stdout} />
           ) : result.stdout ? (
             <div>
               <p className="mb-1 text-[11px] font-medium text-muted-foreground">
@@ -248,15 +293,17 @@ export function CustomRunCard({
               </pre>
             </div>
           ) : null}
-          {matched ? (
-            <div>
-              <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                Sample output
-              </p>
-              <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
-                {matched.sample.output}
-              </pre>
-            </div>
+          {comparison?.kind === "sample" ? (
+            <RunOutputBlock
+              label="Sample output"
+              value={comparison.expected ?? ""}
+            />
+          ) : null}
+          {comparison?.kind === "reference" ? (
+            <RunOutputBlock
+              label="Expected output (reference)"
+              value={comparison.expected ?? ""}
+            />
           ) : null}
           {result.stderr ? (
             <div>
@@ -267,6 +314,14 @@ export function CustomRunCard({
                 {result.stderr}
               </pre>
             </div>
+          ) : null}
+          {showExpectedNote ? (
+            <p className="text-xs text-muted-foreground">{expectedNote}</p>
+          ) : null}
+          {showUnavailableNote ? (
+            <p className="text-xs text-muted-foreground">
+              Expected output isn&apos;t available for this run.
+            </p>
           ) : null}
           {shouldShowNoOutputNotice(result) ? (
             <p className="text-xs text-muted-foreground">

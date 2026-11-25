@@ -68,6 +68,9 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
 
 The admin username is printed; the password is `SEED_ADMIN_PASSWORD` from
 `deploy/.env` (the seed intentionally does not print passwords in production).
+The same seed populates `problem_reference_solutions` for the 471 non-SQL
+problems used by custom-test expected output; without it those runs show the
+expected-output-unavailable note.
 
 Caddy obtains a TLS certificate automatically once DNS points at the server.
 Check:

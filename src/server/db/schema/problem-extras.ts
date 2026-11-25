@@ -42,6 +42,23 @@ export const problemResources = pgTable(
   ],
 );
 
+export const problemReferenceSolutions = pgTable(
+  "problem_reference_solutions",
+  {
+    problemId: uuid("problem_id")
+      .primaryKey()
+      .references(() => problems.id, { onDelete: "cascade" }),
+    language: text("language").notNull(),
+    source: text("source").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+);
+
 export const problemRatings = pgTable(
   "problem_ratings",
   {
@@ -70,4 +87,6 @@ export const problemRatings = pgTable(
 );
 
 export type ProblemResource = typeof problemResources.$inferSelect;
+export type ProblemReferenceSolution =
+  typeof problemReferenceSolutions.$inferSelect;
 export type ProblemRating = typeof problemRatings.$inferSelect;

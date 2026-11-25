@@ -389,6 +389,7 @@ export function SubmitPanel({
             language={language}
             source={source}
             samples={samples}
+            judgeLanguage={judgeLanguage}
           />
         ) : null}
       </div>

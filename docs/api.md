@@ -531,18 +531,30 @@ Returns `{ runId }`. Runs are private to the authenticated user and expire after
 output, so a clean run is reported as `EXECUTED`, never `ACCEPTED`. Compile,
 runtime, time, memory and output failures still return their usual verdict.
 
+For a non-sample input on a practice problem, the worker also runs the
+problem's stored reference solution on the same stdin and returns
+`expectedOutput`. `matchesExpected` compares the two using the problem checker
+(`EXACT`, `TOKEN` or `FLOAT`; `null` for `CUSTOM`). Official sample inputs skip
+this extra run because the client already has the sample answer. Contest and
+assessment runs, SQL problems and problems without a stored reference return
+`expectedOutput: null`; `expectedNote` explains why a reference could not
+produce an answer. The reference source is never returned.
+
 ### GET `/runs/:id`
 
 ```json
 {
   "id": "uuid",
   "status": "EXECUTED",
-  "stdout": "5\n",
+  "stdout": "6",
   "stderr": "",
   "compileOutput": "",
   "runtimeMs": 31,
   "memoryKb": 9200,
-  "finished": true
+  "finished": true,
+  "expectedOutput": "6",
+  "matchesExpected": true,
+  "expectedNote": null
 }
 ```
 

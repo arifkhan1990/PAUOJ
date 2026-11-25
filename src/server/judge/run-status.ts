@@ -21,5 +21,8 @@ export function normalizeStoredRunResult(stored: StoredRunResult): RunResult {
   return {
     ...stored,
     status: stored.status === "ACCEPTED" ? "EXECUTED" : (stored.status as RunStatus),
+    expectedOutput: stored.expectedOutput ?? null,
+    matchesExpected: stored.matchesExpected ?? null,
+    expectedNote: stored.expectedNote ?? null,
   };
 }

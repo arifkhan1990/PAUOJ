@@ -20,6 +20,11 @@ export type CreateRunInput = {
   timeLimitMs: number;
   memoryLimitMb: number;
   sqlScript?: boolean;
+  reference?: { language: JudgeLanguage; source: string } | null;
+  checker?: {
+    type: "EXACT" | "TOKEN" | "FLOAT" | "CUSTOM";
+    floatTolerance: number;
+  } | null;
 };
 
 export async function createRun(input: CreateRunInput): Promise<string> {
@@ -42,6 +47,9 @@ export async function createRun(input: CreateRunInput): Promise<string> {
     runtimeMs: null,
     memoryKb: null,
     finished: false,
+    expectedOutput: null,
+    matchesExpected: null,
+    expectedNote: null,
   };
   await getRedis().set(
     key(input.userId, runId),

@@ -24,7 +24,7 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   Output Limit and System Error, with per-test results.
 - **Output checkers** — `EXACT` (whitespace-normalized), `TOKEN`, `FLOAT` tolerance and `CUSTOM`
   Python checkers, run after submission with no network access.
-- **Live updates & custom tests** — verdicts stream over SSE; run sample input without a submission.
+- **Live updates & custom tests** — verdicts stream over SSE; run custom input and compare against the problem's reference solution when available.
 
 ### Practice & community
 - **Problems** — Markdown statements with a toolbar editor (headings, code, links, images, live
