@@ -151,14 +151,12 @@ export async function getScoreboard(
   let ratedAt: Date | null = contest.ratedAt;
   if (status === "ENDED") {
     await maybeFinalizeRatingSweep();
-    if (!ratedAt) {
-      const [fresh] = await db
-        .select({ ratedAt: contests.ratedAt })
-        .from(contests)
-        .where(eq(contests.id, contest.id))
-        .limit(1);
-      ratedAt = fresh?.ratedAt ?? null;
-    }
+    const [fresh] = await db
+      .select({ ratedAt: contests.ratedAt })
+      .from(contests)
+      .where(eq(contests.id, contest.id))
+      .limit(1);
+    ratedAt = fresh?.ratedAt ?? null;
   }
 
   const problemRows = await db

@@ -210,14 +210,14 @@ export async function getContestBySlug(
   let ratedAt: Date | null = contest.ratedAt;
   if (status === "ENDED") {
     await maybeFinalizeRatingSweep();
-    if (!ratedAt) {
-      const [fresh] = await db
-        .select({ ratedAt: contests.ratedAt })
-        .from(contests)
-        .where(eq(contests.id, contest.id))
-        .limit(1);
-      ratedAt = fresh?.ratedAt ?? null;
-    }
+    // Always refresh: the fallback may have finalised this contest on another
+    // concurrent request even when the first read was already stale.
+    const [fresh] = await db
+      .select({ ratedAt: contests.ratedAt })
+      .from(contests)
+      .where(eq(contests.id, contest.id))
+      .limit(1);
+    ratedAt = fresh?.ratedAt ?? null;
   }
 
   const [registration, participantRow, viewerRow, teamState, crew, sponsors] =

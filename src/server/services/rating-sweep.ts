@@ -163,18 +163,28 @@ export async function finalizeDueContestRatings(
  */
 const FALLBACK_THROTTLE_MS = 30_000;
 let lastFallbackAt = 0;
+let fallbackInFlight: Promise<boolean> | null = null;
 
-export async function maybeFinalizeRatingSweep(): Promise<boolean> {
+export function maybeFinalizeRatingSweep(): Promise<boolean> {
+  // Single-flight: metadata and page renders both call this. Concurrent
+  // callers await the same sweep so their subsequent rated_at re-read sees the
+  // committed finalization instead of racing it.
+  if (fallbackInFlight) return fallbackInFlight;
   const now = Date.now();
-  if (now - lastFallbackAt < FALLBACK_THROTTLE_MS) return false;
+  if (now - lastFallbackAt < FALLBACK_THROTTLE_MS) return Promise.resolve(false);
   lastFallbackAt = now;
-  try {
-    const result = await finalizeDueContestRatings(new Date(now), 1);
-    return result.finalized > 0;
-  } catch (error) {
-    logger.warn("Contest rating fallback sweep failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return false;
-  }
+  fallbackInFlight = (async () => {
+    try {
+      const result = await finalizeDueContestRatings(new Date(now), 1);
+      return result.finalized > 0;
+    } catch (error) {
+      logger.warn("Contest rating fallback sweep failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    } finally {
+      fallbackInFlight = null;
+    }
+  })();
+  return fallbackInFlight;
 }
