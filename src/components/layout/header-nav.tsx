@@ -5,23 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Bell,
   ChevronDown,
   LayoutDashboard,
   LogOut,
   MailWarning,
   Menu,
-  MessageSquare,
   Settings,
   User as UserIcon,
   X,
 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import {
-  MessagesHeaderLink,
-  useUnreadMessageCount,
-} from "@/features/messages/unread-badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import type { HeaderUser } from "@/lib/types";
@@ -49,19 +43,14 @@ function isActive(pathname: string, href: string): boolean {
 
 export function UserMenu({
   user,
-  unreadNotifications,
-  unreadMessages = 0,
 }: {
   user: Pick<
     HeaderUser,
     "username" | "displayName" | "role" | "avatarPreset" | "avatarImageUpdatedAt"
   >;
-  unreadNotifications: number;
-  unreadMessages?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
-  const messageCount = useUnreadMessageCount(unreadMessages);
   const containerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const pathname = usePathname();
@@ -166,22 +155,6 @@ export function UserMenu({
             >
               <LayoutDashboard className="size-4" /> My submissions
             </Link>
-            <Link href="/notifications" role="menuitem" className={menuRowClass}>
-              <Bell className="size-4" /> Notifications
-              {unreadNotifications > 0 ? (
-                <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                  {unreadNotifications}
-                </span>
-              ) : null}
-            </Link>
-            <Link href="/messages" role="menuitem" className={menuRowClass}>
-              <MessageSquare className="size-4" /> Messages
-              {messageCount > 0 ? (
-                <span className="ml-auto rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
-                  {messageCount > 99 ? "99+" : messageCount}
-                </span>
-              ) : null}
-            </Link>
             <Link href="/settings" role="menuitem" className={menuRowClass}>
               <Settings className="size-4" /> Settings
             </Link>
@@ -212,15 +185,7 @@ export function UserMenu({
   );
 }
 
-export function HeaderNav({
-  user,
-  unreadNotifications = 0,
-  unreadMessages = 0,
-}: {
-  user: HeaderUser | null;
-  unreadNotifications?: number;
-  unreadMessages?: number;
-}) {
+export function HeaderNav({ user }: { user: HeaderUser | null }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -273,41 +238,9 @@ export function HeaderNav({
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
-          {user ? (
-            <>
-              <MessagesHeaderLink
-                initialCount={unreadMessages}
-                className={iconTouchTarget}
-              />
-              <Link
-                href="/notifications"
-                aria-label={
-                  unreadNotifications > 0
-                    ? `${unreadNotifications} unread notifications`
-                    : "Notifications"
-                }
-                className={cn(
-                  buttonVariants({ variant: "ghost", size: "icon" }),
-                  "relative",
-                  iconTouchTarget,
-                )}
-              >
-                <Bell className="size-4" />
-                {unreadNotifications > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
-                    {unreadNotifications > 9 ? "9+" : unreadNotifications}
-                  </span>
-                ) : null}
-              </Link>
-            </>
-          ) : null}
           <ThemeToggle />
           {user ? (
-            <UserMenu
-              user={user}
-              unreadNotifications={unreadNotifications}
-              unreadMessages={unreadMessages}
-            />
+            <UserMenu user={user} />
           ) : (
             <div className="hidden items-center gap-1.5 sm:flex">
               <Link

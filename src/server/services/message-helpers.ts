@@ -90,7 +90,7 @@ export function messageDedupeKey(messageId: string): string {
 }
 
 export function conversationHref(conversationId: string): string {
-  return `/messages/${conversationId}`;
+  return `/dashboard/messages/${conversationId}`;
 }
 
 export function messageNotificationTitle(displayName: string): string {

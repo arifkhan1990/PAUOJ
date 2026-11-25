@@ -160,7 +160,7 @@ async function notifyReporterOfResolution(
         status === "RESOLVED"
           ? "Your report was reviewed and resolved."
           : "Your report was reviewed and dismissed.",
-      href: "/notifications",
+      href: "/dashboard/notifications",
       dedupeKey: `social-report-result:${reportId}`,
     });
   } catch (error) {

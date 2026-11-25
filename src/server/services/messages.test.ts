@@ -130,7 +130,7 @@ describe("notification helpers", () => {
   });
 
   it("links notifications to the conversation thread", () => {
-    expect(conversationHref("conv-1")).toBe("/messages/conv-1");
+    expect(conversationHref("conv-1")).toBe("/dashboard/messages/conv-1");
     expect(messageNotificationTitle("Ayesha")).toContain("Ayesha");
   });
 });

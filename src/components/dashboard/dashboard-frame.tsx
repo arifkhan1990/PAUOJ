@@ -10,9 +10,11 @@ import { DashboardFooter } from "@/components/dashboard/dashboard-footer";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import {
+  dashboardBadgeNoun,
   dashboardNav,
   dashboardRoleLabel,
   dashboardWorkspaceMeta,
+  type DashboardBadges,
   type DashboardRole,
 } from "@/lib/dashboard-nav";
 import type { UserRole } from "@/lib/types";
@@ -32,6 +34,7 @@ function isItemActive(
 function pageSuffix(pathname: string): string | null {
   if (pathname.endsWith("/new")) return "New";
   if (pathname.endsWith("/edit")) return "Edit";
+  if (pathname.endsWith("/requests")) return "Requests";
   if (pathname.endsWith("/contributions") && pathname.split("/").length > 3) {
     return "Contributions";
   }
@@ -46,6 +49,9 @@ export function DashboardFrame({
   displayName,
   avatarPreset = null,
   avatarImageUpdatedAt = null,
+  unreadMessages = 0,
+  unreadNotifications = 0,
+  pendingFollowRequests = 0,
   children,
 }: {
   panel: DashboardRole;
@@ -54,11 +60,19 @@ export function DashboardFrame({
   displayName: string;
   avatarPreset?: string | null;
   avatarImageUpdatedAt?: Date | null;
+  unreadMessages?: number;
+  unreadNotifications?: number;
+  pendingFollowRequests?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const sections = dashboardNav(panel, username);
+  const badges: DashboardBadges = {
+    messages: unreadMessages,
+    notifications: unreadNotifications,
+    requests: pendingFollowRequests,
+  };
+  const sections = dashboardNav(panel, username, badges);
   const meta = dashboardWorkspaceMeta(panel);
   const WorkspaceIcon = meta.icon;
   const allItems = sections.flatMap((section) => section.items);
@@ -146,13 +160,14 @@ export function DashboardFrame({
                         item.exact,
                       );
                       const Icon = item.icon;
+                      const badge = item.badge;
                       return (
                         <Link
                           key={item.href}
                           href={item.href}
                           aria-current={active ? "page" : undefined}
                           className={cn(
-                            "relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors",
+                            "relative flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors lg:min-h-9",
                             active
                               ? "bg-primary/10 text-primary"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -165,7 +180,23 @@ export function DashboardFrame({
                             />
                           ) : null}
                           <Icon className="size-4 shrink-0" aria-hidden="true" />
-                          <span className="truncate">{item.label}</span>
+                          <span className="min-w-0 flex-1 truncate">
+                            {item.label}
+                          </span>
+                          {badge && item.badgeKey ? (
+                            <>
+                              <span
+                                aria-hidden="true"
+                                className="grid min-w-5 shrink-0 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 tabular-nums text-primary-foreground"
+                              >
+                                {badge > 99 ? "99+" : badge}
+                              </span>
+                              <span className="sr-only">
+                                {badge} {dashboardBadgeNoun(item.badgeKey)}
+                                {badge === 1 ? "" : "s"}
+                              </span>
+                            </>
+                          ) : null}
                         </Link>
                       );
                     })}
@@ -255,7 +286,6 @@ export function DashboardFrame({
             <ThemeToggle />
             <UserMenu
               user={{ username, displayName, role, avatarPreset, avatarImageUpdatedAt }}
-              unreadNotifications={0}
             />
           </header>
 

@@ -28,6 +28,37 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async redirects() {
+    // Messaging and notifications moved inside the coder dashboard. Temporary
+    // (307) so old bookmarks keep working without being cached forever.
+    return [
+      {
+        source: "/notifications",
+        destination: "/dashboard/notifications",
+        permanent: false,
+      },
+      {
+        source: "/messages",
+        destination: "/dashboard/messages",
+        permanent: false,
+      },
+      {
+        source: "/messages/:id",
+        destination: "/dashboard/messages/:id",
+        permanent: false,
+      },
+      {
+        source: "/connections/requests",
+        destination: "/dashboard/connections/requests",
+        permanent: false,
+      },
+      {
+        source: "/connections",
+        destination: "/dashboard/connections",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

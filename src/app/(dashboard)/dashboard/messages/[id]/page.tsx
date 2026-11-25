@@ -40,7 +40,7 @@ export default async function ConversationPage({
   const { id } = await params;
   if (!isUuid(id)) notFound();
 
-  const user = await requireUser(`/messages/${id}`);
+  const user = await requireUser(`/dashboard/messages/${id}`);
   const limit = await rateLimit(
     `messages:thread:${user.id}`,
     MESSAGES_THREAD_RATE_LIMIT,
@@ -48,13 +48,13 @@ export default async function ConversationPage({
   );
   if (!limit.allowed) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <div className="max-w-3xl space-y-6">
         <h1 className="sr-only">Conversation</h1>
         <RateLimitNotice
           retryAfterSeconds={limit.retryAfterSeconds}
           action={
             <Link
-              href="/messages"
+              href="/dashboard/messages"
               className={cn(buttonVariants({ variant: "outline" }), "min-h-11")}
             >
               Back to messages
@@ -72,11 +72,11 @@ export default async function ConversationPage({
   const { participant } = thread;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+    <div className="max-w-3xl space-y-5">
       <h1 className="sr-only">Conversation with {participant.displayName}</h1>
       <div className="flex flex-wrap items-center gap-3">
         <Link
-          href="/messages"
+          href="/dashboard/messages"
           aria-label="Back to messages"
           className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
@@ -118,7 +118,7 @@ export default async function ConversationPage({
         </div>
       </div>
 
-      <Card className="mt-5 overflow-hidden p-0">
+      <Card className="overflow-hidden p-0">
         <MessageThread
           key={`${thread.id}:${thread.page}`}
           conversationId={thread.id}
@@ -132,7 +132,7 @@ export default async function ConversationPage({
         />
       </Card>
 
-      <div className="mt-4">
+      <div>
         {thread.totalPages > 1 ? (
           <p className="text-center text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
             {thread.page === 1
@@ -141,7 +141,7 @@ export default async function ConversationPage({
           </p>
         ) : null}
         <Pagination
-          pathname={`/messages/${thread.id}`}
+          pathname={`/dashboard/messages/${thread.id}`}
           searchParams={query}
           page={thread.page}
           totalPages={thread.totalPages}

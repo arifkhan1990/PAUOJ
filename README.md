@@ -76,8 +76,8 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   with Everyone/Followers/Nobody visibility. Phone, address and T-shirt size stay
   private between the owner and admins.
 - **Direct messages** — two-person inbox and threads unlocked by an accepted follow in
-  either direction, with unread counts in the header, read receipts, message deletion,
-  per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
+  either direction, with unread counts in the dashboard sidebar, read receipts, message
+  deletion, per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
   and strict participant-only access. Blocked conversations disappear from the inbox
   and their direct links return 404 until unblock.
 - **Social reports** — report a message, conversation, follow request or profile with a

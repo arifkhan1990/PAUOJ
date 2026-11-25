@@ -23,7 +23,7 @@ function ConversationRow({ conversation }: { conversation: ConversationSummary }
   return (
     <li>
       <Link
-        href={`/messages/${conversation.id}`}
+        href={`/dashboard/messages/${conversation.id}`}
         className={cn(
           "flex min-h-11 items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-4",
           showUnreadBadge && "bg-primary/5",

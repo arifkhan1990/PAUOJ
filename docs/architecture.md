@@ -699,10 +699,11 @@ follow edge, while an existing conversation remains replyable after an unfollow.
 zeroes its unread count and suppresses its MESSAGE notices. When either side
 blocks — or the counterpart is banned — the conversation disappears from the
 inbox, unread totals exclude it and the thread returns `404`. Block also marks
-the blocker's pending request and message notices read. The header badge reads a
-15-second Redis cache (`messages:unread:<id>`) that every write path invalidates;
-a Redis outage falls back to the indexed DB count. `/messages` and thread SSR
-requests are rate limited (120/240 per minute per user) and the JSON API rejects
+the blocker's pending request and message notices read. The dashboard sidebar
+badge reads a 15-second Redis cache (`messages:unread:<id>`) that every write
+path invalidates; a Redis outage falls back to the indexed DB count.
+`/dashboard/messages` and thread SSR requests are rate limited (120/240 per
+minute per user) and the JSON API rejects
 bodies over 1 MiB with `413`. Block, follow, open and send take a
 transaction-scoped advisory lock on the user pair so a concurrent block cannot
 slip a follow or message through.

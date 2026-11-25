@@ -1144,8 +1144,8 @@ text, trimmed to 1–2000 characters and escaped on render.
 - `DELETE /messages/:id` — soft-deletes the caller's own message (idempotent,
   `404` for anyone else, 60 per minute).
 - `GET /messages/unread` — `{ "count": n }`, `private, no-store`; drives the
-  header badge. List/thread/unread GETs are rate limited (120/240/120 per
-  minute) to bound polling cost.
+  dashboard sidebar badge. List/thread/unread GETs are rate limited
+  (120/240/120 per minute) to bound polling cost.
 
 ## Social reports
 

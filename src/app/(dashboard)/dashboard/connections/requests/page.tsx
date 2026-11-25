@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-const PATHNAME = "/connections/requests";
+const PATHNAME = "/dashboard/connections/requests";
 
 export default async function FollowRequestsPage({
   searchParams,
@@ -35,9 +35,9 @@ export default async function FollowRequestsPage({
   );
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="max-w-3xl space-y-5">
       <Link
-        href={`/users/${user.username}/connections`}
+        href="/dashboard/connections"
         className="inline-flex min-h-11 items-center gap-1.5 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -45,14 +45,13 @@ export default async function FollowRequestsPage({
       </Link>
 
       <PageHeader
-        className="mt-5"
         eyebrow="Connections"
         title="Follow requests"
         description="People waiting to follow you. Accepting lets them see your activity and start a conversation."
       />
 
       {total > 0 ? (
-        <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           {total.toLocaleString("en-US")} pending
           {total === 1 ? " request" : " requests"}
         </p>
@@ -61,7 +60,6 @@ export default async function FollowRequestsPage({
       {items.length === 0 ? (
         total > 0 ? (
           <EmptyState
-            className="mt-4"
             icon={Inbox}
             title="Nothing on this page"
             description="This page is past the end of the requests list."
@@ -76,7 +74,6 @@ export default async function FollowRequestsPage({
           />
         ) : (
           <EmptyState
-            className="mt-4"
             icon={Inbox}
             title="No pending requests"
             description="When someone asks to follow you, their request will appear here for review."

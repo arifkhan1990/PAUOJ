@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   ListChecks,
   Medal,
+  MessageSquare,
   NotebookPen,
   Settings,
   ShieldCheck,
@@ -21,17 +22,49 @@ import type { UserRole } from "./types";
 
 export type DashboardRole = "ADMIN" | "TEACHER" | "CODER";
 
+export type DashboardBadgeKey = "messages" | "notifications" | "requests";
+
+export type DashboardBadges = Partial<Record<DashboardBadgeKey, number>>;
+
 export type DashboardNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
   exact?: boolean;
+  /** Which unread counter, if any, this item displays. */
+  badgeKey?: DashboardBadgeKey;
+  /** Sanitized unread count attached by `dashboardNav`; absent when zero. */
+  badge?: number;
 };
 
 export type DashboardNavSection = {
   label: string;
   items: DashboardNavItem[];
 };
+
+export function dashboardBadgeNoun(key: DashboardBadgeKey): string {
+  if (key === "messages") return "unread message";
+  if (key === "notifications") return "unread notification";
+  return "pending follow request";
+}
+
+function normalizeBadge(value: number | undefined): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  const count = Math.trunc(value);
+  return count > 0 ? count : undefined;
+}
+
+function attachBadges(
+  items: DashboardNavItem[],
+  badges?: DashboardBadges,
+): DashboardNavItem[] {
+  if (!badges) return items;
+  return items.map((item) => {
+    if (!item.badgeKey) return item;
+    const badge = normalizeBadge(badges[item.badgeKey]);
+    return badge === undefined ? item : { ...item, badge };
+  });
+}
 
 export function dashboardRoleLabel(role: UserRole): string {
   if (role === "ADMIN") return "Administrator";
@@ -42,6 +75,7 @@ export function dashboardRoleLabel(role: UserRole): string {
 export function dashboardNav(
   role: DashboardRole,
   username: string,
+  badges?: DashboardBadges,
 ): DashboardNavSection[] {
   if (role === "ADMIN") {
     return [
@@ -152,7 +186,7 @@ export function dashboardNav(
     ];
   }
 
-  return [
+  const sections: DashboardNavSection[] = [
     {
       label: "My workspace",
       items: [
@@ -193,7 +227,29 @@ export function dashboardNav(
           icon: GitPullRequest,
         },
         { href: "/dashboard/reviews", label: "Reviews", icon: ShieldCheck },
-        { href: "/notifications", label: "Notifications", icon: Bell },
+      ],
+    },
+    {
+      label: "Social",
+      items: [
+        {
+          href: "/dashboard/connections",
+          label: "Connections",
+          icon: Users,
+          badgeKey: "requests",
+        },
+        {
+          href: "/dashboard/messages",
+          label: "Messages",
+          icon: MessageSquare,
+          badgeKey: "messages",
+        },
+        {
+          href: "/dashboard/notifications",
+          label: "Notifications",
+          icon: Bell,
+          badgeKey: "notifications",
+        },
       ],
     },
     {
@@ -208,6 +264,11 @@ export function dashboardNav(
       ],
     },
   ];
+
+  return sections.map((section) => ({
+    ...section,
+    items: attachBadges(section.items, badges),
+  }));
 }
 
 export function dashboardWorkspaceMeta(role: DashboardRole): {

@@ -30,7 +30,7 @@ export default async function MessagesPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const user = await requireUser("/messages");
+  const user = await requireUser("/dashboard/messages");
   const limit = await rateLimit(
     `messages:list:${user.id}`,
     MESSAGES_LIST_RATE_LIMIT,
@@ -38,15 +38,13 @@ export default async function MessagesPage({
   );
   if (!limit.allowed) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="max-w-3xl space-y-6">
         <PageHeader
           eyebrow="Inbox"
           title="Messages"
           description="Private conversations with coders on PAU OJ."
         />
-        <div className="mt-6">
-          <RateLimitNotice retryAfterSeconds={limit.retryAfterSeconds} />
-        </div>
+        <RateLimitNotice retryAfterSeconds={limit.retryAfterSeconds} />
       </div>
     );
   }
@@ -57,7 +55,7 @@ export default async function MessagesPage({
   const pastEnd = result.items.length === 0 && result.total > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="max-w-3xl space-y-6">
       <PageHeader
         eyebrow="Inbox"
         title="Messages"
@@ -68,14 +66,14 @@ export default async function MessagesPage({
         }
       />
 
-      <div className="mt-6">
+      <div>
         {pastEnd ? (
           <EmptyState
             title="Nothing on this page"
             description="This page is past the end of your conversations."
             action={
               <Link
-                href="/messages"
+                href="/dashboard/messages"
                 className={cn(buttonVariants({ variant: "outline" }), "min-h-11")}
               >
                 Back to page 1
@@ -88,7 +86,7 @@ export default async function MessagesPage({
       </div>
 
       <Pagination
-        pathname="/messages"
+        pathname="/dashboard/messages"
         searchParams={query}
         page={result.page}
         totalPages={result.totalPages}

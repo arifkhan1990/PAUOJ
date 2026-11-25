@@ -87,7 +87,7 @@ export default async function NotificationsPage({
 }: {
   searchParams: Promise<SearchParams>;
 }) {
-  const user = await requireUser("/notifications");
+  const user = await requireUser("/dashboard/notifications");
   const query = await searchParams;
   const page = readPage(query);
   const [result, unread] = await Promise.all([
@@ -103,7 +103,7 @@ export default async function NotificationsPage({
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="max-w-4xl space-y-6">
       <PageHeader
         eyebrow="Activity"
         title="Notifications"
@@ -125,7 +125,7 @@ export default async function NotificationsPage({
         }
       />
 
-      <div className="mt-6">
+      <div>
         {result.items.length === 0 ? (
           <EmptyState
             title="No notifications yet"
@@ -195,7 +195,7 @@ export default async function NotificationsPage({
       </div>
 
       <Pagination
-        pathname="/notifications"
+        pathname="/dashboard/notifications"
         searchParams={query}
         page={page}
         totalPages={totalPages}
