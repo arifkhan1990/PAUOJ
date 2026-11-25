@@ -57,4 +57,29 @@ describe("parseChangelog", () => {
       "previous",
     ]);
   });
+
+  it("merges repeated section headings within a release", () => {
+    const releases = parseChangelog(
+      `## [Unreleased]
+
+### Fixed
+- First fix.
+
+### Changed
+- First change.
+
+### Fixed
+- Second fix.
+
+### fixed
+- Third fix.
+`,
+      "0.6.0",
+    );
+
+    expect(releases[0]?.groups).toEqual([
+      { title: "Fixed", items: ["First fix.", "Second fix.", "Third fix."] },
+      { title: "Changed", items: ["First change."] },
+    ]);
+  });
 });

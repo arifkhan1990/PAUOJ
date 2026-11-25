@@ -152,8 +152,15 @@ export function parseChangelog(
     const groupMatch = /^###\s+(.+)$/.exec(line);
     if (groupMatch) {
       flushItem();
-      group = { title: groupMatch[1].trim(), items: [] };
-      release.groups.push(group);
+      const title = groupMatch[1].trim();
+      group =
+        release.groups.find(
+          (entry) => entry.title.toLowerCase() === title.toLowerCase(),
+        ) ?? null;
+      if (!group) {
+        group = { title, items: [] };
+        release.groups.push(group);
+      }
       continue;
     }
 

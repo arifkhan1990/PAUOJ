@@ -120,9 +120,9 @@ function ChangeGroup({ group }: { group: ChangelogGroup }) {
         </span>
       </div>
       <ul className="mt-3 space-y-2">
-        {group.items.map((item) => (
+        {group.items.map((item, index) => (
           <li
-            key={item}
+            key={`${index}-${item}`}
             className="flex gap-2.5 text-[13px] leading-relaxed text-muted-foreground"
           >
             <span
