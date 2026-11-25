@@ -92,6 +92,10 @@ All notable changes to PAU OJ are documented here. The format follows
   remains the manual dry-run/apply entry point.
 
 ### Fixed
+- The dashboard sidebar navigation no longer shows a native scrollbar. It
+  keeps `overflow-y-auto` for short viewports but hides the bar
+  (`scrollbar-width: none` + WebKit rule), so the workspace menu stays clean at
+  every height.
 - Learning badges no longer render locked placeholders. The profile section is
   hidden until at least one module checkpoint is completed, then shows only the
   earned badges with their completion dates.

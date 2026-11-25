@@ -144,7 +144,7 @@ export function DashboardFrame({
 
           <nav
             aria-label="Dashboard"
-            className="flex-1 overflow-y-auto px-3 py-4"
+            className="reference-nav-scroll flex-1 overflow-y-auto overscroll-contain px-3 py-4"
           >
             <div className="space-y-5">
               {sections.map((section) => (
