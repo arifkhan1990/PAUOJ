@@ -6,6 +6,15 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Messages workspace: `/dashboard/messages` and `/dashboard/messages/[id]` now
+  share a three-pane, WhatsApp-style layout with a searchable All/Unread
+  conversation rail, grouped day dividers, a pinned sender header and a contact
+  panel that stays closed until the sender's name is clicked. The panel shows
+  public profile/about/details, action shortcuts, and lazily loaded shared
+  media, document links and external links (participant-only, no-store, with
+  blocked/banned gates). Existing text/image sending, emoji and entity
+  suggestions, read receipts, deletion, muting, reporting, pagination and
+  rate-limit states are unchanged. No migration.
 - Notification and email expansion: welcome, contest registration/30-minute
   reminder/final result+rating, study-plan and module enrollment, payment
   submitted/approved/rejected/revoked, 7/21-day course inactivity, badges and

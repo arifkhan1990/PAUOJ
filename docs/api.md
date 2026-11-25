@@ -1132,11 +1132,26 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
 - `GET /messages/conversations/:id?page=1` — 30 messages per page counted from
   the newest; items are oldest-first within the page. Returns the participant,
   presence, `blocked` and `items` (`id`, `body`, `mine`, `createdAt`, `readAt`,
-  `deleted`, `attachment`). `attachment` is always present and is either
+  `deleted`, `attachment`). `participant.profile` carries the public profile
+  fields used by the info panel (`bio`, institution, country, current status,
+  company, job title, skills, rating, role, member-since, website/GitHub/
+  LinkedIn); private contact, swag and account fields are never selected.
+  `attachment` is always present and is either
   `{ "id", "mime", "width", "height", "url" }` or `null`; `url` is the
   participant-only attachment route below. Deleted messages expose neither body
   nor attachment (blank body, `attachment: null`); malformed or foreign ids are
   `404`.
+- `GET /messages/conversations/:id/info` — lazy conversation-info payload for
+  the sender panel. Participant-only, `private, no-store`, `120` per minute;
+  `404` for malformed ids, non-participants, blocked pairs and banned
+  counterparts. Returns `{ "media": [...], "links": [...] }`: the newest 24
+  non-deleted images (id, attachment URL, MIME, dimensions, createdAt) and up to
+  40 deduped http(s) URLs from the newest 200 non-deleted message bodies. Links
+  ending in a common document extension (`.pdf`, `.doc[x]`, `.xls[x]`,
+  `.ppt[x]`, `.txt`, `.csv`, `.zip`, `.rar`, `.7z`) are tagged `DOCUMENT` and
+  back the panel's Documents section; every other URL is `LINK`. Only
+  http/https is accepted, fragments and display labels are normalised, and
+  `mine`/`createdAt` come from the newest mention.
 - `POST /messages/conversations/:id/messages` with `{ "body": "..." }` — sends a
   message (`201`). `403` blocked, `404` non-participant, `422` empty/overlong,
   `429` after 30 per minute. The first unread message of a burst creates one
@@ -1184,8 +1199,8 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
   image message leaves no stored bytes behind; repeating the delete is
   idempotent (`404` for anyone else, 60 per minute).
 - `GET /messages/unread` — `{ "count": n }`, `private, no-store`; returns the
-  cached unread total. List/thread/unread GETs are rate limited
-  (120/240/120 per minute) to bound polling cost.
+  cached unread total. List, thread, info and unread GETs are rate limited
+  (120/240/120/120 per minute) to bound polling cost.
 
 ### Social counts
 

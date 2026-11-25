@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCheck, Flag, Trash2 } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { ReportDialog } from "@/features/moderation/report-dialog";
@@ -8,7 +8,7 @@ import { ApiClientError } from "@/lib/api-client";
 import type { MessageItem } from "@/lib/message-types";
 import { cn } from "@/lib/utils";
 import { MessageComposer } from "./message-composer";
-import { formatMessageTime } from "./message-format";
+import { formatMessageTime, groupMessagesByDay } from "./message-format";
 import { MessageAttachmentImage } from "./message-attachment";
 import { MessageBody } from "./message-body";
 import { isPendingMessage, useMessageThread } from "./use-message-thread";
@@ -181,6 +181,12 @@ export function MessageThread({
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [reportId, setReportId] = useState<string | null>(null);
+  // Day boundaries are viewer-local, while the server renders in its own
+  // timezone. Start with the flat list (identical on the server and the first
+  // client render), then insert local day dividers after hydration so a
+  // midnight-crossing message cannot cause a hydration mismatch.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const confirmDelete = async (id: string) => {
     if (deletingId) return;
@@ -205,9 +211,21 @@ export function MessageThread({
 
   const lastMine = [...items].reverse().find((item) => item.mine);
   const seenId = lastMine?.readAt ? lastMine.id : null;
+  const groups = mounted
+    ? groupMessagesByDay(items)
+    : items.length > 0
+      ? [{ key: "initial", label: "", items }]
+      : [];
+  const showLabelById = new Map<string, boolean>();
+  items.forEach((item, index) => {
+    showLabelById.set(
+      item.id,
+      index === 0 || items[index - 1]?.mine !== item.mine,
+    );
+  });
 
   return (
-    <div className="flex flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
@@ -217,7 +235,7 @@ export function MessageThread({
         role="region"
         aria-label={`Conversation with ${participant.displayName}`}
         tabIndex={0}
-        className="h-[min(60dvh,560px)] overflow-y-auto overscroll-contain p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="reference-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-5"
       >
         {items.length === 0 ? (
           <div className="flex h-full items-center justify-center px-6 text-center">
@@ -227,25 +245,48 @@ export function MessageThread({
           </div>
         ) : (
           <div className="flex min-h-full flex-col justify-end">
-            <ul className="flex flex-col gap-3">
-              {items.map((item, index) => (
-                <MessageBubble
-                  key={item.id}
-                  item={item}
-                  participantName={participant.displayName}
-                  showLabel={
-                    index === 0 || items[index - 1]?.mine !== item.mine
-                  }
-                  seen={item.id === seenId}
-                  confirming={confirmId === item.id}
-                  deleting={deletingId === item.id}
-                  onRequestDelete={() => setConfirmId(item.id)}
-                  onConfirmDelete={() => void confirmDelete(item.id)}
-                  onCancelDelete={() => setConfirmId(null)}
-                  onReport={() => setReportId(item.id)}
-                />
+            <div className="flex flex-col gap-4">
+              {groups.map((group, groupIndex) => (
+                <div key={`${group.key}-${groupIndex}`}>
+                  {group.label ? (
+                    <div className="mb-3 flex items-center gap-2.5">
+                      <span
+                        className="h-px flex-1 bg-border"
+                        aria-hidden="true"
+                      />
+                      <time
+                        dateTime={group.key}
+                        suppressHydrationWarning
+                        className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground"
+                      >
+                        {group.label}
+                      </time>
+                      <span
+                        className="h-px flex-1 bg-border"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  ) : null}
+                  <ul className="flex flex-col gap-3">
+                    {group.items.map((item) => (
+                      <MessageBubble
+                        key={item.id}
+                        item={item}
+                        participantName={participant.displayName}
+                        showLabel={showLabelById.get(item.id) ?? true}
+                        seen={item.id === seenId}
+                        confirming={confirmId === item.id}
+                        deleting={deletingId === item.id}
+                        onRequestDelete={() => setConfirmId(item.id)}
+                        onConfirmDelete={() => void confirmDelete(item.id)}
+                        onCancelDelete={() => setConfirmId(null)}
+                        onReport={() => setReportId(item.id)}
+                      />
+                    ))}
+                  </ul>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
         )}
       </div>

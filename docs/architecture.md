@@ -791,6 +791,15 @@ and unread counts come from the partial unread index. Read receipts are
 read), and the first unread message of a burst inserts one `MESSAGE` notice
 unless the recipient muted the conversation or disabled `notify_messages`;
 deleting a message replaces the notice preview with "This message was deleted.".
+The dashboard messages routes render one shared three-pane workspace (rail,
+thread, contact panel); the contact panel stays closed until the sender name is
+clicked. Its profile block reads only the public `users` columns already
+rendered on a profile. Media and shared links are lazy: `GET
+/messages/conversations/:id/info` returns the newest 24 non-deleted images and
+up to 40 deduped http(s) URLs parsed from the newest 200 non-deleted bodies,
+with common document extensions tagged as `DOCUMENT`. The same participant,
+block and banned-counterpart gates as the thread return `404`, and the response
+is `private, no-store`.
 All message mutations are same-origin, rate limited and participant-scoped
 (foreign ids return `404`).
 

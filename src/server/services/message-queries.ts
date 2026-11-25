@@ -21,7 +21,6 @@ import {
   userFollows,
   users,
 } from "@/server/db/schema";
-import type { PresenceVisibility } from "./presence";
 import {
   attachmentFields,
   messageFields,
@@ -32,18 +31,14 @@ import {
 const userA = alias(users, "conversation_user_a");
 const userB = alias(users, "conversation_user_b");
 
-export type ConversationUserRow = {
-  id: string;
-  username: string;
-  displayName: string;
-  lastActiveAt: Date | null;
-  presenceVisibility: PresenceVisibility;
-  notifyMessages: boolean;
-  avatarPreset: string | null;
-  avatarImageUpdatedAt: Date | null;
-  /** Banned counterparts are hidden from the inbox and the thread. */
-  isBanned: boolean;
-};
+export type ConversationUserRow = Pick<
+  typeof users.$inferSelect,
+  | "id" | "username" | "displayName" | "lastActiveAt" | "presenceVisibility"
+  | "notifyMessages" | "avatarPreset" | "avatarImageUpdatedAt" | "isBanned"
+  | "bio" | "institution" | "country" | "currentStatus" | "companyName"
+  | "jobTitle" | "skills" | "rating" | "role" | "createdAt" | "website"
+  | "github" | "linkedin"
+>;
 
 export type ConversationPageRow = {
   id: string;
@@ -69,29 +64,41 @@ export type ConversationLastMessageRow = MessageRow & {
   conversationId: string;
 };
 
-const userAParticipantFields = {
-  id: userA.id,
-  username: userA.username,
-  displayName: userA.displayName,
-  lastActiveAt: userA.lastActiveAt,
-  presenceVisibility: userA.presenceVisibility,
-  notifyMessages: userA.notifyMessages,
-  avatarPreset: userA.avatarPreset,
-  avatarImageUpdatedAt: userA.avatarImageUpdatedAt,
-  isBanned: userA.isBanned,
-};
+type ParticipantTable = typeof userA | typeof userB;
 
-const userBParticipantFields = {
-  id: userB.id,
-  username: userB.username,
-  displayName: userB.displayName,
-  lastActiveAt: userB.lastActiveAt,
-  presenceVisibility: userB.presenceVisibility,
-  notifyMessages: userB.notifyMessages,
-  avatarPreset: userB.avatarPreset,
-  avatarImageUpdatedAt: userB.avatarImageUpdatedAt,
-  isBanned: userB.isBanned,
-};
+/**
+ * Selected columns for either participant. Public profile fields only: contact
+ * details, swag sizes and account/email settings never leave the users table.
+ */
+function participantFields<T extends ParticipantTable>(user: T) {
+  return {
+    id: user.id,
+    username: user.username,
+    displayName: user.displayName,
+    lastActiveAt: user.lastActiveAt,
+    presenceVisibility: user.presenceVisibility,
+    notifyMessages: user.notifyMessages,
+    avatarPreset: user.avatarPreset,
+    avatarImageUpdatedAt: user.avatarImageUpdatedAt,
+    isBanned: user.isBanned,
+    bio: user.bio,
+    institution: user.institution,
+    country: user.country,
+    currentStatus: user.currentStatus,
+    companyName: user.companyName,
+    jobTitle: user.jobTitle,
+    skills: user.skills,
+    rating: user.rating,
+    role: user.role,
+    createdAt: user.createdAt,
+    website: user.website,
+    github: user.github,
+    linkedin: user.linkedin,
+  };
+}
+
+const userAParticipantFields = participantFields(userA);
+const userBParticipantFields = participantFields(userB);
 
 const viewerFilter = (viewerId: string) =>
   or(

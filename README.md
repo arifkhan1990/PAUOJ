@@ -78,7 +78,10 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Direct messages** — two-person inbox and threads unlocked by an accepted follow in
   either direction, with unread counts in the dashboard sidebar, read receipts, message
   deletion, per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
-  and strict participant-only access. The composer has a searchable emoji picker
+  and strict participant-only access. The messages workspace uses a three-pane layout;
+  clicking the sender's name opens a contact panel with public profile details,
+  shared images, document links and external links (loaded lazily, participant-only).
+  The composer has a searchable emoji picker
   (120+ curated emoji, matched by name), one image per
   message (PNG/JPEG/WebP up to 5 MB and 4096×4096, optional caption, served only to
   participants; capped at 50 images per day and 250 MiB stored per sender) and

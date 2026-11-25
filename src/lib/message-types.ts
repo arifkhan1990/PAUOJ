@@ -1,6 +1,30 @@
 import type { PresenceInfo } from "./follow-types";
+import type { UserCurrentStatus } from "./profile-fields";
+import type { UserRole } from "./types";
 
 export type MessageImageMime = "image/png" | "image/jpeg" | "image/webp";
+
+/**
+ * Public profile details shown in the conversation info panel. Only fields
+ * that already render on a public profile are included; private contact,
+ * swag and account fields never cross this boundary.
+ */
+export type MessageParticipantProfile = {
+  bio: string | null;
+  institution: string | null;
+  country: string | null;
+  currentStatus: UserCurrentStatus | null;
+  companyName: string | null;
+  jobTitle: string | null;
+  skills: string[];
+  rating: number;
+  role: UserRole;
+  /** ISO timestamp. */
+  memberSince: string;
+  website: string | null;
+  github: string | null;
+  linkedin: string | null;
+};
 
 /** One image attached to a message; bytes stay behind an auth-checked route. */
 export type MessageAttachment = {
@@ -58,6 +82,7 @@ export type ConversationThread = {
     presence: PresenceInfo;
     avatarPreset: string | null;
     avatarImageUpdatedAt: string | null;
+    profile: MessageParticipantProfile;
   };
   items: MessageItem[];
   page: number;
@@ -67,6 +92,37 @@ export type ConversationThread = {
   /** True when either side blocked the other, so sending is disabled. */
   blocked: boolean;
   muted: boolean;
+};
+
+/** One image shared anywhere in the conversation, newest first. */
+export type ConversationSharedMedia = {
+  id: string;
+  /** Same-origin, participant-only attachment URL. */
+  url: string;
+  mime: MessageImageMime;
+  width: number;
+  height: number;
+  createdAt: string;
+};
+
+/**
+ * An http(s) URL found in a message body. `DOCUMENT` links end in a common
+ * document extension and back the info panel's Documents section.
+ */
+export type ConversationSharedLink = {
+  url: string;
+  host: string;
+  /** Human readable host + path, already truncated for display. */
+  label: string;
+  kind: "LINK" | "DOCUMENT";
+  createdAt: string;
+  mine: boolean;
+};
+
+/** Lazy payload for the conversation info panel. */
+export type ConversationSharedContent = {
+  media: ConversationSharedMedia[];
+  links: ConversationSharedLink[];
 };
 
 export type MessageSuggestionKind = "contest" | "problem" | "learn";

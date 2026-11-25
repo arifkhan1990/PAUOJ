@@ -56,7 +56,8 @@ export function formatFileSize(bytes: number): string {
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-function toDate(value: Date | string): Date {
+function toDate(value: Date | string | number): Date {
+  if (typeof value === "number") return new Date(value);
   return typeof value === "string" ? new Date(value) : value;
 }
 
@@ -75,6 +76,65 @@ export function formatMessageTime(
   if (diff < DAY) return `${Math.floor(diff / HOUR)}h ago`;
   if (diff < 7 * DAY) return `${Math.floor(diff / DAY)}d ago`;
   return formatDate(date);
+}
+
+/** Local calendar day ("2026-11-25") shared by the thread's date dividers. */
+export function messageDayKey(value: Date | string | number): string {
+  const date = toDate(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Divider label for a message day: "Today", "Yesterday" or the absolute UTC
+ * date that `formatMessageTime` uses once a message is older than a week. The
+ * day boundary follows the viewer's local calendar so a 01:00 Dhaka message is
+ * not filed under yesterday just because it is still the previous UTC day.
+ */
+export function messageDayLabel(
+  value: Date | string | number,
+  now: Date | number = Date.now(),
+): string {
+  const date = toDate(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const current = toDate(now);
+  const key = messageDayKey(date);
+  if (key === messageDayKey(current)) return "Today";
+  const yesterday = new Date(current);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (key === messageDayKey(yesterday)) return "Yesterday";
+  return formatDate(date);
+}
+
+export type MessageDayGroup = {
+  key: string;
+  label: string;
+  items: MessageItem[];
+};
+
+/** Split an oldest-first thread into consecutive calendar days for dividers. */
+export function groupMessagesByDay(
+  items: readonly MessageItem[],
+  now: Date | number = Date.now(),
+): MessageDayGroup[] {
+  const groups: MessageDayGroup[] = [];
+  for (const item of items) {
+    const key = messageDayKey(item.createdAt) || "unknown";
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) {
+      last.items.push(item);
+      continue;
+    }
+    groups.push({
+      key,
+      label: key === "unknown" ? "" : messageDayLabel(item.createdAt, now),
+      items: [item],
+    });
+  }
+  return groups;
 }
 
 /** Collapse newlines so a message preview stays on one line, then ellipsize. */

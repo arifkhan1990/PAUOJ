@@ -41,6 +41,7 @@ import {
   type ConversationWithParticipants,
 } from "./message-queries";
 import { loadPresenceMap } from "./presence";
+import { toParticipantProfile } from "./message-shared";
 import { isBlockedEitherWay } from "./user-blocks";
 import { isMuted, mutedConversationIds } from "./conversation-mutes";
 import {
@@ -199,6 +200,7 @@ export async function getConversationThread(
       avatarPreset: participant.avatarPreset,
       avatarImageUpdatedAt:
         participant.avatarImageUpdatedAt?.toISOString() ?? null,
+      profile: toParticipantProfile(participant),
     },
     // The query walks from newest to oldest; the UI reads oldest to newest.
     items: [...rows].reverse().map((row) => toMessageItem(row, viewerId)),
