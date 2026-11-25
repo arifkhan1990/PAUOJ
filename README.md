@@ -410,8 +410,9 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
   pre-verification email. A durable row is flushed immediately after enqueue, so normal messages
   deliver in under a second while the worker remains the retry safety net. Delivered rows are pruned
   after 30 days and failed rows after 90. Browser push is per device and needs HTTPS plus a VAPID
-  keypair; without the keys it is disabled. Message/reply push bodies are redacted. Notification
-  groups are computed per 20-row page, so a group never spans pages. Milestone and badge notices fire
+  keypair; without the keys it is disabled. Subscriptions live in the
+  `push_subscriptions` table. Message/reply push bodies are redacted. Notification groups are
+  computed per 20-row page, so a group never spans pages. Milestone and badge notices fire
   on exact thresholds, and learning inactivity reminders are sent once per module and threshold
   (7 and 21 days).
 - Announcements and marketing are queued; the admin request does not block on audience size, and an

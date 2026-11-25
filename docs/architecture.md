@@ -349,9 +349,9 @@ Pending fan-outs are retried by the worker.
 Web Push uses the same notification pipeline. A browser enables push from
 Settings, which registers `public/sw.js`, requests the `PushManager`
 subscription and POSTs `{endpoint, keys}` to `/api/v1/push/subscribe`. The
-backend stores device subscriptions in the AOF-persistent Redis hash
-`push:subs:<userId>` (endpoint → encrypted keys), so no extra database table is
-needed and restarts keep the tokens. `notifyUser` dispatches push immediately
+backend stores device subscriptions in `push_subscriptions` (one row per
+endpoint, unique endpoint, cascade on user delete), so tokens survive restarts
+and Redis flushes. `notifyUser` dispatches push immediately
 after the in-app row is created; `sendPushToUser` only handles a high-signal
 allow-list, uses VAPID (`WEB_PUSH_*`), sends a 1-hour TTL, prunes 404/410
 subscriptions, and never fails the notification. Titles use the event title;
@@ -359,6 +359,11 @@ MESSAGE and DISCUSSION bodies are replaced with a generic “Open PAU OJ to read
 it.” so private text never appears on a lock screen. The service worker only
 handles `push` and `notificationclick` (same-origin URLs, focus or open), with
 no fetch caching.
+
+`notifyUser` writes the in-app row and its outbox row in one database
+transaction, so a crash cannot leave a notification without its mail. The
+immediate flush starts only after that commit. `/health` reports
+`emailOutbox.pending` and `emailOutbox.failed` counts for monitoring.
 
 The notification center groups rows by type and UTC day in the UI. Groups with
 two or more rows render as an accessible `<details>` summary with an unread

@@ -344,16 +344,16 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
 ```
 
 `FAILED` outbox rows carry the last SMTP error and are not retried after five
-attempts; inspect them before assuming mail is healthy. Delivered rows are
+attempts; inspect them before assuming mail is healthy. `/health` also reports
+`emailOutbox.pending` and `emailOutbox.failed`. Delivered rows are
 pruned after 30 days and failed rows after 90 days.
 
 Browser push needs a VAPID keypair and HTTPS. Generate one with
 `npx web-push generate-vapid-keys --json`, then set `WEB_PUSH_PUBLIC_KEY`,
 `WEB_PUSH_PRIVATE_KEY` and `WEB_PUSH_SUBJECT` in `deploy/.env` and recreate
 web/worker. Without both keys the public-key endpoint returns `null` and push
-is disabled. Subscriptions live in the AOF-persistent Redis volume
-(`push:subs:<userId>`), so keep the `redisdata` volume; no push migration is
-needed. `/sw.js` is served with `no-cache`; after a deploy, one reload updates
+is disabled. Migration `0051` adds the `push_subscriptions` table; subscriptions
+are per device and cascade with the user. `/sw.js` is served with `no-cache`; after a deploy, one reload updates
 the service worker. Baseline broadcasts
 (`baseline = true`) are migration history, not deliveries. A rollback to the
 previous app image is safe for the additive schema, but the old worker does not

@@ -1,5 +1,5 @@
 import { and, eq, lt, or, sql } from "drizzle-orm";
-import { getDb } from "@/server/db";
+import { getDb, type Database } from "@/server/db";
 import { emailOutbox } from "@/server/db/schema";
 import { logger } from "@/server/logger";
 import { deliverNotificationEmail } from "@/server/mail";
@@ -62,11 +62,16 @@ export function requestEmailFlush(): void {
     });
 }
 
+type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+type Executor = Database | Transaction;
+
 /** Idempotent insert: the unique `dedupe_key` absorbs retries and races. */
 export async function enqueueNotificationEmail(
   input: EnqueueEmailInput,
+  executor: Executor = getDb(),
+  options: { flush?: boolean } = {},
 ): Promise<boolean> {
-  const [row] = await getDb()
+  const [row] = await executor
     .insert(emailOutbox)
     .values({
       userId: input.userId,
@@ -81,7 +86,7 @@ export async function enqueueNotificationEmail(
     .onConflictDoNothing()
     .returning({ id: emailOutbox.id });
   const created = Boolean(row);
-  if (created) requestEmailFlush();
+  if (created && options.flush !== false) requestEmailFlush();
   return created;
 }
 

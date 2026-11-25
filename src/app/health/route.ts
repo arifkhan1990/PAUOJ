@@ -16,6 +16,23 @@ export async function GET() {
     database = false;
   }
   const migrations = await getMigrationStatus();
+  let emailOutboxCounts = { pending: 0, failed: 0 };
+  if (database) {
+    try {
+      const [row] = await getSql()`
+        select
+          count(*) filter (where status = 'PENDING')::int as pending,
+          count(*) filter (where status = 'FAILED')::int as failed
+        from email_outbox
+      `;
+      emailOutboxCounts = {
+        pending: Number(row?.pending ?? 0),
+        failed: Number(row?.failed ?? 0),
+      };
+    } catch {
+      emailOutboxCounts = { pending: 0, failed: 0 };
+    }
+  }
   const redis = await pingRedis();
   let workers = 0;
   if (redis) {
@@ -32,6 +49,7 @@ export async function GET() {
       database,
       redis,
       migrations,
+      emailOutbox: emailOutboxCounts,
       workers,
       version: APP_VERSION,
       timestamp: new Date().toISOString(),

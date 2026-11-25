@@ -1,7 +1,9 @@
 import { sendNotification, setVapidDetails } from "web-push";
+import { and, eq } from "drizzle-orm";
 import type { NotificationType } from "@/lib/notification-types";
-import { getRedis } from "@/server/redis";
 import type { PushSubscribeInput } from "@/lib/schemas/push";
+import { getDb } from "@/server/db";
+import { pushSubscriptions } from "@/server/db/schema";
 import { logger } from "@/server/logger";
 
 /** Push delivery is opt-out per event class through this allow-list. */
@@ -32,7 +34,6 @@ const MAX_BODY_LENGTH = 140;
 const MAX_TITLE_LENGTH = 120;
 const MAX_USER_AGENT_LENGTH = 300;
 const PUSH_TTL_SECONDS = 3600;
-const PUSH_KEY_PREFIX = "push:subs:";
 const DEFAULT_VAPID_SUBJECT = "mailto:admin@pauoj.local";
 
 export type PushNotificationInput = {
@@ -143,45 +144,6 @@ export function buildPushPayload(
   };
 }
 
-type StoredPushSubscription = {
-  endpoint: string;
-  p256dh: string;
-  auth: string;
-  userAgent: string | null;
-  updatedAt: string;
-};
-
-function pushKey(userId: string): string {
-  return `${PUSH_KEY_PREFIX}${userId}`;
-}
-
-function parseStoredSubscription(
-  raw: string,
-): StoredPushSubscription | null {
-  try {
-    const value = JSON.parse(raw) as Partial<StoredPushSubscription>;
-    if (
-      typeof value.endpoint !== "string" ||
-      typeof value.p256dh !== "string" ||
-      typeof value.auth !== "string"
-    ) {
-      return null;
-    }
-    return {
-      endpoint: value.endpoint,
-      p256dh: value.p256dh,
-      auth: value.auth,
-      userAgent: typeof value.userAgent === "string" ? value.userAgent : null,
-      updatedAt:
-        typeof value.updatedAt === "string"
-          ? value.updatedAt
-          : new Date(0).toISOString(),
-    };
-  } catch {
-    return null;
-  }
-}
-
 export async function savePushSubscription(
   userId: string,
   input: PushSubscribeInput,
@@ -190,22 +152,44 @@ export async function savePushSubscription(
   const now = new Date();
   const trimmedAgent = userAgent?.trim().slice(0, MAX_USER_AGENT_LENGTH) ?? "";
   const agent = trimmedAgent.length > 0 ? trimmedAgent : null;
-  const stored: StoredPushSubscription = {
-    endpoint: input.endpoint,
-    p256dh: input.keys.p256dh,
-    auth: input.keys.auth,
-    userAgent: agent,
-    updatedAt: now.toISOString(),
-  };
-  await getRedis().hset(pushKey(userId), input.endpoint, JSON.stringify(stored));
+
+  await getDb()
+    .insert(pushSubscriptions)
+    .values({
+      userId,
+      endpoint: input.endpoint,
+      p256dh: input.keys.p256dh,
+      auth: input.keys.auth,
+      userAgent: agent,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: {
+        userId,
+        p256dh: input.keys.p256dh,
+        auth: input.keys.auth,
+        userAgent: agent,
+        updatedAt: now,
+      },
+    });
 }
 
 export async function removePushSubscription(
   userId: string,
   endpoint: string,
 ): Promise<boolean> {
-  const removed = await getRedis().hdel(pushKey(userId), endpoint);
-  return removed > 0;
+  const removed = await getDb()
+    .delete(pushSubscriptions)
+    .where(
+      and(
+        eq(pushSubscriptions.userId, userId),
+        eq(pushSubscriptions.endpoint, endpoint),
+      ),
+    )
+    .returning({ id: pushSubscriptions.id });
+  return removed.length > 0;
 }
 
 function pushErrorStatus(error: unknown): number | null {
@@ -226,12 +210,16 @@ export async function sendPushToUser(
     if (!PUSH_TYPE_SET.has(notification.type)) return 0;
     if (!ensureVapidConfig()) return 0;
 
-    const redis = getRedis();
-    const key = pushKey(userId);
-    const stored = await redis.hgetall(key);
-    const subscriptions = Object.values(stored)
-      .map(parseStoredSubscription)
-      .filter((row): row is StoredPushSubscription => row !== null);
+    const db = getDb();
+    const subscriptions = await db
+      .select({
+        id: pushSubscriptions.id,
+        endpoint: pushSubscriptions.endpoint,
+        p256dh: pushSubscriptions.p256dh,
+        auth: pushSubscriptions.auth,
+      })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, userId));
 
     if (subscriptions.length === 0) return 0;
 
@@ -253,7 +241,14 @@ export async function sendPushToUser(
         const statusCode = pushErrorStatus(error);
         if (statusCode === 404 || statusCode === 410) {
           try {
-            await redis.hdel(key, subscription.endpoint);
+            await db
+              .delete(pushSubscriptions)
+              .where(
+                and(
+                  eq(pushSubscriptions.id, subscription.id),
+                  eq(pushSubscriptions.userId, userId),
+                ),
+              );
           } catch (deleteError) {
             logger.warn("Failed to prune expired push subscription", {
               userId,

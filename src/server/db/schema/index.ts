@@ -15,4 +15,5 @@ export * from "./learning";
 export * from "./discussions";
 export * from "./notifications";
 export * from "./email-outbox";
+export * from "./push";
 export * from "./audit";

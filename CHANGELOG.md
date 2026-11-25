@@ -26,8 +26,8 @@ All notable changes to PAU OJ are documented here. The format follows
   with a fallback final-standings notice for GROUP/unrated contests.
 - Browser push and notification grouping: users can enable standards-based
   VAPID Web Push per device from Settings (service worker, same-origin clicks,
-  privacy-redacted message/reply bodies, 404/410 pruning, Redis AOF
-  subscription storage). The notification center groups rows by type and UTC
+  privacy-redacted message/reply bodies, 404/410 pruning, DB-backed
+  subscription storage in `push_subscriptions`). The notification center groups rows by type and UTC
   day with expandable counts. Notification emails now start an immediate outbox
   flush after enqueue, so normal messages deliver in under a second while the
   worker retry sweep remains the safety net. Broadcast publishing also starts

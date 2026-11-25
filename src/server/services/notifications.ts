@@ -16,7 +16,10 @@ import type {
 import type { NotificationPreferencesInput } from "@/lib/schemas/notification";
 import { getEnv } from "@/server/env";
 import { logger } from "@/server/logger";
-import { enqueueNotificationEmail } from "./email-outbox";
+import {
+  enqueueNotificationEmail,
+  requestEmailFlush,
+} from "./email-outbox";
 import { sendPushToUser } from "./web-push";
 import {
   emailCategoryForNotification,
@@ -101,22 +104,122 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
   if (!user) return false;
 
   const inApp = input.inApp !== false;
-  let notificationId: string | null = null;
-  if (inApp) {
-    const [created] = await db
-      .insert(notifications)
-      .values({
-        userId: input.userId,
-        type: input.type,
-        title: input.title,
+  const isReview =
+    input.type === "CONTRIBUTION" || input.type === "CONTEST_APPROVAL";
+  const verified = Boolean(user.emailVerifiedAt) || Boolean(input.allowUnverifiedEmail);
+
+  let wantsEmail = false;
+  if (verified) {
+    if (isReview) {
+      wantsEmail =
+        user.emailReviews && user.reviewEmailFrequency === "INSTANT";
+    } else if (input.email) {
+      wantsEmail = true;
+    } else {
+      wantsEmail = emailEnabled(input.type, user);
+    }
+  }
+
+  type EmailPayload = {
+    toEmail: string;
+    displayName: string;
+    subject: string;
+    body: string;
+    href: string | null;
+    unsubscribeUrl: string;
+  };
+  let emailPayload: EmailPayload | null = null;
+  let emailDedupeKey: string | null = null;
+
+  if (wantsEmail) {
+    const token = await ensureUnsubscribeToken(input.userId);
+    if (token) {
+      const appUrl = getEnv().APP_URL.replace(/\/$/, "");
+      const category = emailCategoryForNotification(input.type);
+      const scope = category ?? "all";
+      const href = input.href
+        ? input.href.startsWith("http")
+          ? input.href
+          : `${appUrl}${input.href}`
+        : null;
+      emailPayload = {
+        toEmail: user.email,
+        displayName: user.displayName,
+        subject: input.title,
         body: input.body,
-        href: input.href ?? null,
-        dedupeKey: input.dedupeKey ?? null,
-      })
-      .onConflictDoNothing()
-      .returning({ id: notifications.id });
-    if (!created) return false;
-    notificationId = created.id;
+        href,
+        unsubscribeUrl: `${appUrl}/unsubscribe?token=${encodeURIComponent(
+          token,
+        )}&scope=${scope}`,
+      };
+      if (!inApp) {
+        emailDedupeKey = `email-only:${input.userId}:${
+          input.emailDedupeKey ?? input.dedupeKey ?? randomUUID()
+        }`;
+      }
+    }
+  }
+
+  const notificationId = inApp ? randomUUID() : null;
+  let createdNotification = false;
+  let queuedEmail = false;
+  const emailForTransaction = emailPayload;
+
+  await db.transaction(async (tx) => {
+    if (inApp) {
+      const [created] = await tx
+        .insert(notifications)
+        .values({
+          id: notificationId!,
+          userId: input.userId,
+          type: input.type,
+          title: input.title,
+          body: input.body,
+          href: input.href ?? null,
+          dedupeKey: input.dedupeKey ?? null,
+        })
+        .onConflictDoNothing()
+        .returning({ id: notifications.id });
+      if (!created) return;
+      createdNotification = true;
+
+      const markEmailed = Boolean(emailForTransaction) &&
+        (input.email || (isReview && user.reviewEmailFrequency === "INSTANT"));
+      if (markEmailed) {
+        await tx
+          .update(notifications)
+          .set({ emailedAt: new Date(), updatedAt: new Date() })
+          .where(eq(notifications.id, created.id));
+      }
+      if (emailForTransaction) {
+        queuedEmail = await enqueueNotificationEmail(
+          {
+            userId: input.userId,
+            ...emailForTransaction,
+            dedupeKey: `notification:${created.id}`,
+          },
+          tx,
+          { flush: false },
+        );
+      }
+      return;
+    }
+
+    if (emailForTransaction && emailDedupeKey) {
+      queuedEmail = await enqueueNotificationEmail(
+        {
+          userId: input.userId,
+          ...emailForTransaction,
+          dedupeKey: emailDedupeKey,
+        },
+        tx,
+        { flush: false },
+      );
+    }
+  });
+
+  if (inApp && !createdNotification) return false;
+  if (createdNotification) {
     void sendPushToUser(input.userId, {
       type: input.type,
       title: input.title,
@@ -129,68 +232,8 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
       });
     });
   }
-
-  if (!user.emailVerifiedAt && !input.allowUnverifiedEmail) return inApp;
-
-  const isReview =
-    input.type === "CONTRIBUTION" || input.type === "CONTEST_APPROVAL";
-  const markEmailed = async (): Promise<void> => {
-    if (!notificationId) return;
-    await db
-      .update(notifications)
-      .set({ emailedAt: new Date(), updatedAt: new Date() })
-      .where(eq(notifications.id, notificationId));
-  };
-
-  if (isReview) {
-    const instant =
-      user.emailReviews && user.reviewEmailFrequency === "INSTANT";
-    if (!instant) return inApp;
-    await markEmailed();
-  } else if (input.email) {
-    await markEmailed();
-  } else if (!emailEnabled(input.type, user)) {
-    return inApp;
-  }
-
-  const token = await ensureUnsubscribeToken(input.userId);
-  if (!token) return inApp;
-  const appUrl = getEnv().APP_URL.replace(/\/$/, "");
-  const category = emailCategoryForNotification(input.type);
-  const scope = category ?? "all";
-  const unsubscribeUrl = `${appUrl}/unsubscribe?token=${encodeURIComponent(
-    token,
-  )}&scope=${scope}`;
-  const href = input.href
-    ? input.href.startsWith("http")
-      ? input.href
-      : `${appUrl}${input.href}`
-    : null;
-  const dedupeKey = notificationId
-    ? `notification:${notificationId}`
-    : `email-only:${input.userId}:${
-        input.emailDedupeKey ?? input.dedupeKey ?? randomUUID()
-      }`;
-
-  let queued = false;
-  try {
-    queued = await enqueueNotificationEmail({
-      userId: input.userId,
-      toEmail: user.email,
-      displayName: user.displayName,
-      subject: input.title,
-      body: input.body,
-      href,
-      unsubscribeUrl,
-      dedupeKey,
-    });
-  } catch (error) {
-    logger.warn("Notification email enqueue failed", {
-      userId: input.userId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-  return inApp || queued;
+  if (queuedEmail) requestEmailFlush();
+  return inApp ? createdNotification : queuedEmail;
 }
 
 export async function listNotifications(
