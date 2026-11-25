@@ -180,9 +180,7 @@ export function MessagesWorkspace({
           {infoOpen ? (
             <ConversationInfoPanel
               panelId={panelId}
-              conversationId={thread.id}
               participant={thread.participant}
-              muted={thread.muted}
               shared={shared}
               onRetryShared={shared.retry}
               onClose={closeInfo}

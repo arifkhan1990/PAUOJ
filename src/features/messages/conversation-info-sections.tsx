@@ -1,4 +1,6 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { useId, useState, type ReactNode } from "react";
 import {
   Download,
   ExternalLink,
@@ -8,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TabBar, tabId } from "@/components/ui/tab-bar";
 import type {
   ConversationSharedContent,
   ConversationSharedDocument,
@@ -49,16 +52,16 @@ export function DetailRow({
   children: ReactNode;
 }) {
   return (
-    <li className="flex items-start gap-3 px-3 py-2.5">
+    <li className="flex items-center gap-3 px-3 py-2.5">
       <Icon
-        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        className="size-4 shrink-0 text-muted-foreground"
         aria-hidden="true"
       />
-      <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {label}
-        </p>
-        <div className="mt-0.5 break-words text-sm">{children}</div>
+      <span className="shrink-0 text-[11px] font-medium text-muted-foreground">
+        {label}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-1 text-right text-sm break-words">
+        {children}
       </div>
     </li>
   );
@@ -113,29 +116,11 @@ function SharedSubheading({
   );
 }
 
-function SharedLinkList({
-  items,
-  empty,
-  label,
-}: {
-  items: ConversationSharedLink[];
-  empty: string;
-  label: string;
-}) {
+function SharedEmptyState({ children }: { children: ReactNode }) {
   return (
-    <div>
-      <div className="flex items-baseline justify-between gap-2">
-        <SectionTitle>{label}</SectionTitle>
-        <span className="text-[10px] tabular-nums text-muted-foreground">
-          {items.length}
-        </span>
-      </div>
-      {items.length === 0 ? (
-        <p className="mt-1.5 text-xs text-muted-foreground">{empty}</p>
-      ) : (
-        <SharedLinkRows items={items} />
-      )}
-    </div>
+    <p className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center text-xs text-muted-foreground">
+      {children}
+    </p>
   );
 }
 
@@ -182,6 +167,85 @@ function SharedFileList({ items }: { items: ConversationSharedDocument[] }) {
   );
 }
 
+type SharedTab = "media" | "documents" | "links";
+
+function SharedMediaTab({
+  media,
+  participantName,
+}: {
+  media: ConversationSharedContent["media"];
+  participantName: string;
+}) {
+  if (media.length === 0) {
+    return <SharedEmptyState>No media shared yet.</SharedEmptyState>;
+  }
+  return (
+    <ul className="grid grid-cols-3 gap-1.5">
+      {media.map((image) => (
+        <li key={image.id}>
+          <a
+            href={image.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open image shared by ${participantName} in a new tab`}
+            className="group block aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {/* Auth-checked same-origin bytes; the optimizer would only add a hop. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={image.url}
+              alt=""
+              width={image.width}
+              height={image.height}
+              loading="lazy"
+              decoding="async"
+              className="size-full object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none motion-reduce:transition-none"
+            />
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SharedDocumentsTab({
+  files,
+  documentLinks,
+}: {
+  files: ConversationSharedDocument[];
+  documentLinks: ConversationSharedLink[];
+}) {
+  if (files.length === 0 && documentLinks.length === 0) {
+    return <SharedEmptyState>No documents shared yet.</SharedEmptyState>;
+  }
+  return (
+    <div className="space-y-4">
+      {files.length > 0 ? (
+        <div>
+          <SharedSubheading label="Files" count={files.length} />
+          <SharedFileList items={files} />
+        </div>
+      ) : null}
+      {documentLinks.length > 0 ? (
+        <div>
+          <SharedSubheading
+            label="Document links"
+            count={documentLinks.length}
+          />
+          <SharedLinkRows items={documentLinks} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SharedLinksTab({ links }: { links: ConversationSharedLink[] }) {
+  if (links.length === 0) {
+    return <SharedEmptyState>No links shared yet.</SharedEmptyState>;
+  }
+  return <SharedLinkRows items={links} />;
+}
+
 function SharedSections({
   data,
   participantName,
@@ -189,85 +253,48 @@ function SharedSections({
   data: ConversationSharedContent;
   participantName: string;
 }) {
+  const idPrefix = useId();
+  const panelId = `${idPrefix}-shared-panel`;
+  const [tab, setTab] = useState<SharedTab>("media");
   const media = sharedMediaThumbnails(data.media);
   const { documents: documentLinks, links } = splitSharedLinks(data.links);
   const files = data.documents;
 
   return (
-    <div className="mt-3 space-y-5">
-      <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <SectionTitle>Media</SectionTitle>
-          <span className="text-[10px] tabular-nums text-muted-foreground">
-            {media.length}
-          </span>
-        </div>
-        {media.length === 0 ? (
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            No images shared yet.
-          </p>
+    <div className="mt-2">
+      <TabBar
+        idPrefix={idPrefix}
+        items={[
+          { value: "media", label: "Media", count: media.length },
+          {
+            value: "documents",
+            label: "Documents",
+            count: sharedDocumentTotal(files, documentLinks),
+          },
+          { value: "links", label: "Links", count: links.length },
+        ]}
+        value={tab}
+        onChange={(value) => setTab(value as SharedTab)}
+        ariaLabel="Shared content"
+        panelId={panelId}
+      />
+      <div
+        id={panelId}
+        role="tabpanel"
+        aria-labelledby={tabId(idPrefix, tab)}
+        className="mt-3"
+      >
+        {tab === "media" ? (
+          <SharedMediaTab media={media} participantName={participantName} />
+        ) : tab === "documents" ? (
+          <SharedDocumentsTab
+            files={files}
+            documentLinks={documentLinks}
+          />
         ) : (
-          <ul className="mt-2 grid grid-cols-3 gap-1.5">
-            {media.map((image) => (
-              <li key={image.id}>
-                <a
-                  href={image.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={`Open image shared by ${participantName} in a new tab`}
-                  className="group block aspect-square overflow-hidden rounded-lg border border-border/70 bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {/* Auth-checked same-origin bytes; the optimizer would only add a hop. */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image.url}
-                    alt=""
-                    width={image.width}
-                    height={image.height}
-                    loading="lazy"
-                    decoding="async"
-                    className="size-full object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transform-none motion-reduce:transition-none"
-                  />
-                </a>
-              </li>
-            ))}
-          </ul>
+          <SharedLinksTab links={links} />
         )}
       </div>
-
-      <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <SectionTitle>Documents</SectionTitle>
-          <span className="text-[10px] tabular-nums text-muted-foreground">
-            {sharedDocumentTotal(files, documentLinks)}
-          </span>
-        </div>
-        <div className="mt-2 space-y-3">
-          <div>
-            <SharedSubheading label="Files" count={files.length} />
-            <SharedFileList items={files} />
-          </div>
-          <div>
-            <SharedSubheading
-              label="Document links"
-              count={documentLinks.length}
-            />
-            {documentLinks.length === 0 ? (
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                No document links shared yet.
-              </p>
-            ) : (
-              <SharedLinkRows items={documentLinks} />
-            )}
-          </div>
-        </div>
-      </div>
-
-      <SharedLinkList
-        items={links}
-        label="Links"
-        empty="No links shared yet."
-      />
     </div>
   );
 }

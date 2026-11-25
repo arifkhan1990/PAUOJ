@@ -6,7 +6,6 @@ import {
   Briefcase,
   Building2,
   CalendarDays,
-  ChevronRight,
   GraduationCap,
   MapPin,
   Star,
@@ -16,17 +15,14 @@ import {
 import { SkillChips } from "@/components/profile/profile-details";
 import { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { UserAvatar } from "@/components/shared/user-avatar";
-import { ReportButton } from "@/features/moderation/report-dialog";
 import type { ConversationThread } from "@/lib/message-types";
 import { USER_STATUS_LABELS } from "@/lib/profile-fields";
 import { cn, formatDate } from "@/lib/utils";
-import { ConversationMuteButton } from "./conversation-mute-button";
 import {
   DetailRow,
   SectionTitle,
   SharedContentStateView,
 } from "./conversation-info-sections";
-import { muteToggleState } from "./message-format";
 import { PresenceLabel } from "./presence-dot";
 import type { SharedContentState } from "./use-conversation-shared-content";
 import { useMediaQuery } from "./use-media-query";
@@ -41,17 +37,13 @@ const FOCUSABLE =
  */
 export function ConversationInfoPanel({
   panelId,
-  conversationId,
   participant,
-  muted,
   shared,
   onRetryShared,
   onClose,
 }: {
   panelId: string;
-  conversationId: string;
   participant: ConversationThread["participant"];
-  muted: boolean;
   shared: SharedContentState;
   onRetryShared: () => void;
   onClose: () => void;
@@ -63,7 +55,6 @@ export function ConversationInfoPanel({
   const [entered, setEntered] = useState(false);
   const titleId = `${panelId}-title`;
   const { profile } = participant;
-  const muteLabel = muteToggleState(muted).label;
 
   useEffect(() => {
     if (!drawer) {
@@ -181,22 +172,20 @@ export function ConversationInfoPanel({
               avatarPreset={participant.avatarPreset}
               avatarImageAt={participant.avatarImageUpdatedAt}
             />
-            <h3 className="mt-3 max-w-full break-words text-base font-semibold">
-              {participant.displayName}
+            <h3 className="mt-3 max-w-full text-base font-semibold">
+              <Link
+                href={`/users/${participant.username}`}
+                className="break-words transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card"
+              >
+                {participant.displayName}{" "}
+                <span className="font-mono text-xs font-normal text-muted-foreground">
+                  (@{participant.username})
+                </span>
+              </Link>
             </h3>
-            <p className="mt-0.5 max-w-full truncate font-mono text-xs text-muted-foreground">
-              @{participant.username}
-            </p>
             <div className="mt-1.5 flex justify-center">
               <PresenceLabel presence={participant.presence} />
             </div>
-            <Link
-              href={`/users/${participant.username}`}
-              className="mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <User className="size-3.5" aria-hidden="true" />
-              View profile
-            </Link>
           </div>
 
           <section aria-labelledby={`${panelId}-about`} className="mt-5">
@@ -256,54 +245,11 @@ export function ConversationInfoPanel({
             </ul>
           </section>
 
-          <section aria-labelledby={`${panelId}-actions`} className="mt-5">
-            <SectionTitle id={`${panelId}-actions`}>Actions</SectionTitle>
-            <div className="mt-2 space-y-1.5">
-              <Link
-                href={`/users/${participant.username}`}
-                className="flex min-h-11 items-center gap-2.5 rounded-lg border border-border/70 px-3 text-sm font-medium transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <User
-                  className="size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="flex-1">View profile</span>
-                <ChevronRight
-                  className="size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-              </Link>
-              <div className="flex min-h-11 items-center gap-2.5 rounded-lg border border-border/70 px-3">
-                <span className="flex-1 text-sm font-medium">{muteLabel}</span>
-                <ConversationMuteButton
-                  conversationId={conversationId}
-                  muted={muted}
-                  className="-mr-2"
-                />
-              </div>
-              <div className="flex min-h-11 items-center gap-2.5 rounded-lg border border-border/70 pl-3">
-                <span className="flex-1 text-sm font-medium">
-                  Report conversation
-                </span>
-                <ReportButton
-                  kind="CONVERSATION"
-                  username={participant.username}
-                  conversationId={conversationId}
-                  ariaLabel="Report conversation"
-                  iconOnly
-                  className="mr-1"
-                />
-              </div>
-            </div>
-          </section>
-
           <section
             aria-labelledby={`${panelId}-shared`}
             className="mt-5 border-t border-border pt-4"
           >
-            <SectionTitle id={`${panelId}-shared`}>
-              Media, links and docs
-            </SectionTitle>
+            <SectionTitle id={`${panelId}-shared`}>Shared</SectionTitle>
             <SharedContentStateView
               state={shared}
               onRetry={onRetryShared}
