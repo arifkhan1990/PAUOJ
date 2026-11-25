@@ -12,6 +12,7 @@ export const notificationPreferencesSchema = z.object({
   emailMarketing: z.boolean(),
   emailDiscussions: z.boolean(),
   emailMessages: z.boolean(),
+  emailFollows: z.boolean(),
   notifyMessages: z.boolean(),
   notifyFollows: z.boolean(),
   notifyMarketing: z.boolean(),
@@ -33,6 +34,7 @@ export const unsubscribeSchema = z.object({
     "marketing",
     "discussions",
     "messages",
+    "follows",
   ]),
 });
 

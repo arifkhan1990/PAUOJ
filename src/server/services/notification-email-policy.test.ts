@@ -18,6 +18,7 @@ const ALL_ON: NotificationEmailSettings = {
   emailMarketing: true,
   emailDiscussions: true,
   emailMessages: true,
+  emailFollows: true,
 };
 
 const ALL_OFF: NotificationEmailSettings = Object.fromEntries(
@@ -45,9 +46,9 @@ describe("notification email categories", () => {
       ["MARKETING", "marketing"],
       ["DISCUSSION", "discussions"],
       ["MESSAGE", "messages"],
-      ["FOLLOW", "social"],
-      ["FOLLOW_REQUEST", "social"],
-      ["FOLLOW_ACCEPTED", "social"],
+      ["FOLLOW", "follows"],
+      ["FOLLOW_REQUEST", "follows"],
+      ["FOLLOW_ACCEPTED", "follows"],
       ["SYSTEM", null],
     ];
     for (const [type, category] of cases) {
@@ -65,9 +66,10 @@ describe("notification email categories", () => {
     expect(emailEnabled("DISCUSSION", ALL_OFF)).toBe(false);
   });
 
-  it("keeps follow notices in-app only and SYSTEM opt-in only", () => {
-    expect(emailEnabled("FOLLOW", ALL_ON)).toBe(false);
-    expect(emailEnabled("FOLLOW_REQUEST", ALL_ON)).toBe(false);
+  it("sends follow email only when the follows category is on", () => {
+    expect(emailEnabled("FOLLOW", ALL_ON)).toBe(true);
+    expect(emailEnabled("FOLLOW_REQUEST", ALL_OFF)).toBe(false);
+    expect(emailEnabled("FOLLOW_ACCEPTED", ALL_ON)).toBe(true);
     expect(emailEnabled("SYSTEM", ALL_ON)).toBe(false);
   });
 });

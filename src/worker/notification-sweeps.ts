@@ -1,7 +1,11 @@
 import { logger } from "@/server/logger";
 import { notifyStartingContests } from "@/server/services/notifications";
 import { notifyContestReminders30 } from "@/server/services/contest-notifications";
-import { runBroadcastSweeps } from "@/server/services/broadcasts";
+import {
+  resumePendingBroadcasts,
+  runBroadcastSweeps,
+} from "@/server/services/broadcasts";
+import { processEmailOutbox } from "@/server/services/email-outbox";
 import { runLearningInactivityReminders } from "@/server/services/learning-reminders";
 import { sendReviewDigests } from "@/server/services/review-digest";
 import { notifyOverdueReviews } from "@/server/services/review-sla";
@@ -19,7 +23,7 @@ type Sweep = {
 };
 
 function logCount(name: string, count: number | null): void {
-  if (count && count > 0) logger.info(`${name} sent`, { count });
+  if (count && count > 0) logger.info(`${name} processed`, { count });
 }
 
 const SWEEPS: Sweep[] = [
@@ -32,6 +36,19 @@ const SWEEPS: Sweep[] = [
     name: "Contest 30-minute reminders",
     every: 60_000,
     run: notifyContestReminders30,
+  },
+  {
+    name: "Notification email outbox",
+    every: 30_000,
+    run: async () => {
+      const result = await processEmailOutbox();
+      return result.sent;
+    },
+  },
+  {
+    name: "Pending broadcasts",
+    every: 30_000,
+    run: resumePendingBroadcasts,
   },
   {
     name: "Review digests",

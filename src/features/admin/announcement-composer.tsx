@@ -18,7 +18,7 @@ const BODY_MIN = 10;
 const BODY_MAX = 2000;
 const HREF_MAX = 300;
 
-type PublishResult = { created: boolean; recipients: number };
+type PublishResult = { created: boolean; queued: boolean };
 
 type Field = "title" | "body" | "href";
 
@@ -95,13 +95,10 @@ export function AnnouncementComposer() {
         },
       );
       toast({
-        title: "Announcement sent",
-        description:
-          result.recipients === 0
-            ? "Saved, but no eligible recipients were found."
-            : `${result.recipients} ${
-                result.recipients === 1 ? "person received" : "people received"
-              } it in the app.`,
+        title: result.queued ? "Announcement queued" : "Announcement already sent",
+        description: result.queued
+          ? "The worker will deliver it to eligible users within about 30 seconds."
+          : "This announcement was already created earlier.",
         variant: "success",
       });
       setTitle("");
@@ -227,7 +224,7 @@ export function AnnouncementComposer() {
 
         <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] text-muted-foreground">
-            Sending is immediate and cannot be undone.
+            Delivery starts within about 30 seconds and cannot be undone.
           </p>
           <Button
             type="submit"

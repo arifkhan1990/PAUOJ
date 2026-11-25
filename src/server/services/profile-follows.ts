@@ -26,7 +26,7 @@ import {
   decideFollowAction,
   deriveFollowFlags,
   findFollowTarget,
-  followAcceptedDedupeKey,
+  followNoticeInput,
   followRequestDedupeKey,
   listedMemberWhere,
   readBlockState,
@@ -180,14 +180,9 @@ export async function followUser(
     });
 
     if (shouldNotifyFollow(target)) {
-      await safeNotify({
-        userId: target.id,
-        type: "FOLLOW_ACCEPTED",
-        title: "Follow request accepted",
-        body: `${viewer.displayName} (@${viewer.username}) accepted your follow request.`,
-        href: `/users/${viewer.username}`,
-        dedupeKey: followAcceptedDedupeKey(viewer.id),
-      });
+      await safeNotify(
+        followNoticeInput({ target, viewer, accepted: true }),
+      );
     }
   } else if (action === "request") {
     const created = await db.transaction(async (tx) => {
@@ -222,14 +217,9 @@ export async function followUser(
     });
 
     if (created && shouldNotifyFollow(target)) {
-      await safeNotify({
-        userId: target.id,
-        type: "FOLLOW_REQUEST",
-        title: "New follow request",
-        body: `${viewer.displayName} (@${viewer.username}) wants to follow you.`,
-        href: `/users/${viewer.username}`,
-        dedupeKey: followRequestDedupeKey(viewer.id),
-      });
+      await safeNotify(
+        followNoticeInput({ target, viewer, accepted: false }),
+      );
     }
   }
 

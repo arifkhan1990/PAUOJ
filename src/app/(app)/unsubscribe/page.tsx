@@ -26,6 +26,7 @@ const SCOPES: UnsubscribeScope[] = [
   "marketing",
   "discussions",
   "messages",
+  "follows",
 ];
 
 export default async function UnsubscribePage({

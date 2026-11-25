@@ -1,5 +1,56 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+type FakeRow = Record<string, unknown>;
+
+const dbState = vi.hoisted(() => ({
+  contests: [] as FakeRow[],
+  changes: [] as FakeRow[],
+  participants: [] as FakeRow[],
+  notified: [] as FakeRow[],
+  notifyThrows: false,
+  warn: vi.fn(),
+}));
+
+vi.mock("@/server/db", async () => {
+  const schema = await import("@/server/db/schema");
+  const rowsFor = (table: unknown): FakeRow[] => {
+    if (table === schema.contests) return dbState.contests;
+    if (table === schema.contestRatingChanges) return dbState.changes;
+    if (table === schema.contestRegistrations) return dbState.participants;
+    return [];
+  };
+  const select = () => {
+    let rows: FakeRow[] = [];
+    const query = {
+      from: (table: unknown) => {
+        rows = rowsFor(table);
+        return query;
+      },
+      innerJoin: () => query,
+      where: () =>
+        Object.assign(Promise.resolve(rows), {
+          limit: async (count: number) => rows.slice(0, count),
+        }),
+    };
+    return query;
+  };
+  return { getDb: () => ({ select }) };
+});
+
+vi.mock("@/server/logger", () => ({
+  logger: { warn: dbState.warn },
+}));
+
+vi.mock("./notifications", () => ({
+  notifyUser: async (input: FakeRow) => {
+    if (dbState.notifyThrows) throw new Error("outbox unavailable");
+    dbState.notified.push(input);
+    return true;
+  },
+}));
+
 import {
+  contestFallbackResultMessage,
   contestRegistrationDedupeKey,
   contestRegistrationMessage,
   contestReminderDedupeKey,
@@ -8,6 +59,7 @@ import {
   contestResultDedupeKey,
   contestResultMessage,
   formatRatingDelta,
+  notifyContestResults,
 } from "./contest-notifications";
 
 const contest = {
@@ -91,5 +143,89 @@ describe("contest messages", () => {
       delta: -8,
     });
     expect(message.body).toContain("(-8)");
+  });
+
+  it("points rated-out participants at the final standings", () => {
+    const message = contestFallbackResultMessage(contest.title);
+    expect(message.title).toBe("Final standings: Monthly Round 12");
+    expect(message.body).toBe(
+      "The contest is complete. Open the final standings to see the results.",
+    );
+  });
+});
+
+describe("notifyContestResults", () => {
+  beforeEach(() => {
+    dbState.contests = [];
+    dbState.changes = [];
+    dbState.participants = [];
+    dbState.notified = [];
+    dbState.notifyThrows = false;
+    dbState.warn.mockReset();
+  });
+
+  function stage(options: {
+    changes?: FakeRow[];
+    participants?: FakeRow[];
+  }): void {
+    dbState.contests = [{ slug: contest.slug, title: contest.title }];
+    dbState.changes = options.changes ?? [];
+    dbState.participants = options.participants ?? [];
+  }
+
+  it("uses the detailed message for rated participants and a fallback for the rest", async () => {
+    stage({
+      changes: [
+        {
+          userId: "u-rated",
+          rank: 3,
+          oldRating: 1500,
+          newRating: 1512,
+          delta: 12,
+        },
+      ],
+      participants: [
+        { userId: "u-rated" },
+        { userId: "u-unrated" },
+        { userId: "u-unrated" },
+      ],
+    });
+
+    const sent = await notifyContestResults(contest.id);
+
+    expect(sent).toBe(2);
+    expect(dbState.notified).toHaveLength(2);
+    const rated = dbState.notified.find((row) => row.userId === "u-rated");
+    expect(rated).toMatchObject({
+      type: "CONTEST_RESULT",
+      title: "Final results: Monthly Round 12",
+      href: `/contests/${contest.slug}`,
+      dedupeKey: `contest-result:${contest.id}`,
+    });
+    const unrated = dbState.notified.filter((row) => row.userId === "u-unrated");
+    expect(unrated).toHaveLength(1);
+    expect(unrated[0]).toMatchObject({
+      type: "CONTEST_RESULT",
+      title: "Final standings: Monthly Round 12",
+      body: "The contest is complete. Open the final standings to see the results.",
+      href: `/contests/${contest.slug}`,
+      dedupeKey: contestResultDedupeKey(contest.id),
+    });
+  });
+
+  it("returns 0 when the contest does not exist", async () => {
+    expect(await notifyContestResults(contest.id)).toBe(0);
+    expect(dbState.notified).toHaveLength(0);
+  });
+
+  it("swallows delivery failures so finalization is never broken", async () => {
+    stage({ participants: [{ userId: "u-unrated" }] });
+    dbState.notifyThrows = true;
+
+    await expect(notifyContestResults(contest.id)).resolves.toBe(0);
+    expect(dbState.warn).toHaveBeenCalledWith(
+      "Contest result notification failed",
+      expect.objectContaining({ contestId: contest.id }),
+    );
   });
 });

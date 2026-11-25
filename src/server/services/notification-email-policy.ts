@@ -44,7 +44,7 @@ export function emailCategoryForNotification(
     case "FOLLOW":
     case "FOLLOW_REQUEST":
     case "FOLLOW_ACCEPTED":
-      return "social";
+      return "follows";
     case "SYSTEM":
       return null;
   }
@@ -62,6 +62,7 @@ export type NotificationEmailSettings = {
   emailMarketing: boolean;
   emailDiscussions: boolean;
   emailMessages: boolean;
+  emailFollows: boolean;
 };
 
 export function emailEnabled(
@@ -93,8 +94,7 @@ export function emailEnabled(
       return user.emailDiscussions;
     case "messages":
       return user.emailMessages;
-    case "social":
-      // Follow notices stay in-app only.
-      return false;
+    case "follows":
+      return user.emailFollows;
   }
 }

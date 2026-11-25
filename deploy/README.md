@@ -323,6 +323,32 @@ checkpoint start with a non-admin account. Confirm an unknown track returns
 Migration `0026` is additive; a rollback to the previous app image keeps the new
 table and seeded problems harmless.
 
+### Notification delivery release
+
+Migrations `0047`-`0049` add the notification preference columns, the
+`broadcasts` ledger and the `email_outbox` queue. They are additive. Publishing
+an announcement or marketing event only writes a broadcast row; the worker fans
+it out within about 30 seconds and queues the emails. Keep the worker running
+after the deploy, otherwise in-app announcements stay `Pending` and emails stay
+`PENDING` in the outbox.
+
+Check delivery after the restart:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  exec -T db psql -U "${POSTGRES_USER:-pauoj}" -d "${POSTGRES_DB:-pauoj}" \
+  -c "select status, count(*) from email_outbox group by status order by status;"
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  exec -T db psql -U "${POSTGRES_USER:-pauoj}" -d "${POSTGRES_DB:-pauoj}" \
+  -c "select kind, completed_at is null as pending from broadcasts order by created_at desc limit 5;"
+```
+
+`FAILED` outbox rows carry the last SMTP error and are not retried after five
+attempts; inspect them before assuming mail is healthy. Baseline broadcasts
+(`baseline = true`) are migration history, not deliveries. A rollback to the
+previous app image is safe for the additive schema, but the old worker does not
+drain the outbox.
+
 ### Study plans release
 
 Migrations `0032` and `0033` add sections, enrollment, plan metadata (`level`,

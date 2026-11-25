@@ -50,6 +50,7 @@ export type SafeUser = {
   emailMarketing: boolean;
   emailDiscussions: boolean;
   emailMessages: boolean;
+  emailFollows: boolean;
   notifyMessages: boolean;
   notifyFollows: boolean;
   notifyMarketing: boolean;
@@ -103,6 +104,7 @@ export function toSafeUser(user: {
   emailMarketing: boolean;
   emailDiscussions: boolean;
   emailMessages: boolean;
+  emailFollows: boolean;
   notifyMessages: boolean;
   notifyFollows: boolean;
   notifyMarketing: boolean;
@@ -145,6 +147,7 @@ export function toSafeUser(user: {
     emailMarketing: user.emailMarketing,
     emailDiscussions: user.emailDiscussions,
     emailMessages: user.emailMessages,
+    emailFollows: user.emailFollows,
     notifyMessages: user.notifyMessages,
     notifyFollows: user.notifyFollows,
     notifyMarketing: user.notifyMarketing,
@@ -224,6 +227,7 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
       emailMarketing: users.emailMarketing,
       emailDiscussions: users.emailDiscussions,
       emailMessages: users.emailMessages,
+      emailFollows: users.emailFollows,
       notifyMessages: users.notifyMessages,
       notifyFollows: users.notifyFollows,
       notifyMarketing: users.notifyMarketing,

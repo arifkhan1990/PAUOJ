@@ -34,6 +34,7 @@ export type FollowTarget = {
   lastActiveAt: Date | null;
   presenceVisibility: PresenceVisibility;
   notifyFollows: boolean;
+  emailFollows: boolean;
 };
 
 export type FollowEdgeStatus = "PENDING" | "ACCEPTED" | null;
@@ -64,6 +65,7 @@ export async function findFollowTarget(
       lastActiveAt: users.lastActiveAt,
       presenceVisibility: users.presenceVisibility,
       notifyFollows: users.notifyFollows,
+      emailFollows: users.emailFollows,
       isBanned: users.isBanned,
     })
     .from(users)
@@ -75,18 +77,20 @@ export async function findFollowTarget(
     lastActiveAt: target.lastActiveAt,
     presenceVisibility: target.presenceVisibility,
     notifyFollows: target.notifyFollows,
+    emailFollows: target.emailFollows,
   };
 }
 
 /**
- * Follow notices are in-app only, and a target who turned them off still gets
- * the edge: the notice is simply skipped. Used by follow, mutual accept, and
- * request acceptance.
+ * Follow notices have independent switches: `notifyFollows` for the in-app row
+ * and `emailFollows` for the mail. Delivery is still skipped when both are off,
+ * while the follow edge itself always succeeds.
  */
 export function shouldNotifyFollow(target: {
   notifyFollows: boolean;
+  emailFollows: boolean;
 }): boolean {
-  return target.notifyFollows;
+  return target.notifyFollows || target.emailFollows;
 }
 
 export function clampFollowPage(page: number): number {
@@ -99,6 +103,32 @@ export function followRequestDedupeKey(viewerId: string): string {
 
 export function followAcceptedDedupeKey(viewerId: string): string {
   return `follow-accepted:${viewerId}`;
+}
+
+/**
+ * One notice shape for request, mutual accept, and request acceptance.
+ * `inApp` mirrors `notifyFollows`; `notifyUser` adds the email only when
+ * `emailFollows` is on, which gives in-app, email, both, or neither.
+ */
+export function followNoticeInput(input: {
+  target: FollowTarget;
+  viewer: FollowViewer;
+  accepted: boolean;
+}): Parameters<typeof notifyUser>[0] {
+  const request = !input.accepted;
+  return {
+    userId: input.target.id,
+    type: request ? "FOLLOW_REQUEST" : "FOLLOW_ACCEPTED",
+    title: request ? "New follow request" : "Follow request accepted",
+    body: request
+      ? `${input.viewer.displayName} (@${input.viewer.username}) wants to follow you.`
+      : `${input.viewer.displayName} (@${input.viewer.username}) accepted your follow request.`,
+    href: `/users/${input.viewer.username}`,
+    dedupeKey: request
+      ? followRequestDedupeKey(input.viewer.id)
+      : followAcceptedDedupeKey(input.viewer.id),
+    inApp: input.target.notifyFollows,
+  };
 }
 
 /**

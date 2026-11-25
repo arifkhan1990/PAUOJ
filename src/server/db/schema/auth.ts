@@ -100,6 +100,7 @@ export const users = pgTable(
     emailMarketing: boolean("email_marketing").notNull().default(true),
     emailDiscussions: boolean("email_discussions").notNull().default(true),
     emailMessages: boolean("email_messages").notNull().default(true),
+    emailFollows: boolean("email_follows").notNull().default(true),
     notifyMessages: boolean("notify_messages").notNull().default(true),
     notifyFollows: boolean("notify_follows").notNull().default(true),
     notifyMarketing: boolean("notify_marketing").notNull().default(true),

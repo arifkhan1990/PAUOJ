@@ -12,10 +12,18 @@ All notable changes to PAU OJ are documented here. The format follows
   solved milestones (1/100/250/500/700/1000), announcements, new contest/module
   marketing, direct messages and problem/lesson discussion replies now create
   in-app notices and opt-out email copies. Adds 8 preference switches, 12
-  notification types, 11 unsubscribe scopes, exact-threshold achievement rules,
+  notification types, 12 unsubscribe scopes, exact-threshold achievement rules,
   a `broadcasts` ledger with automatic contest/module marketing and pending
   retries, and an admin announcement composer at `/admin/announcements`
-  (migration 0047).
+  (migrations 0047-0049).
+- Notification email reliability: notification mail now goes through a durable
+  `email_outbox` queue with `FOR UPDATE SKIP LOCKED` claiming, five-attempt
+  backoff and terminal `FAILED` rows for operators. Announcements and marketing
+  are queued and fanned out by the worker instead of blocking the admin
+  request; in-app and email marketing are independent, so in-app-off users can
+  still receive email-only marketing. Follow notices gained an `emailFollows`
+  switch, and contest results now reach every registered non-banned participant
+  with a fallback final-standings notice for GROUP/unrated contests.
 - Profile avatars: every account can upload a PNG/JPG/WebP photo or pick one
   of twelve preset avatars (cat, dog, bird, fish, rabbit, squirrel, turtle,
   panda, ghost, rocket, bot, gamepad) from Settings → Profile picture. The

@@ -8,9 +8,12 @@ import {
   decideFollowAction,
   deriveFollowFlags,
   followAcceptedDedupeKey,
+  followNoticeInput,
   followRequestDedupeKey,
   listedMemberWhere,
   shouldNotifyFollow,
+  type FollowTarget,
+  type FollowViewer,
 } from "./profile-follow-shared";
 
 const viewerId = "11111111-1111-1111-1111-111111111111";
@@ -146,13 +149,72 @@ describe("notification dedupe keys", () => {
   });
 });
 
+const target: FollowTarget = {
+  id: targetId,
+  lastActiveAt: null,
+  presenceVisibility: "EVERYONE",
+  notifyFollows: true,
+  emailFollows: true,
+};
+
+const viewer: FollowViewer = {
+  id: viewerId,
+  username: "viewer",
+  displayName: "Viewer",
+};
+
 describe("shouldNotifyFollow", () => {
-  it("sends follow notices when the target kept them on", () => {
-    expect(shouldNotifyFollow({ notifyFollows: true })).toBe(true);
+  it("notifies when at least one follow channel is on", () => {
+    const cases: [boolean, boolean, boolean][] = [
+      [true, true, true],
+      [true, false, true],
+      [false, true, true],
+      [false, false, false],
+    ];
+    for (const [notifyFollows, emailFollows, expected] of cases) {
+      expect(
+        shouldNotifyFollow({ notifyFollows, emailFollows }),
+        `notify=${notifyFollows} email=${emailFollows}`,
+      ).toBe(expected);
+    }
+  });
+});
+
+describe("followNoticeInput", () => {
+  it("mirrors notifyFollows into the in-app switch", () => {
+    const inAppOn = followNoticeInput({
+      target: { ...target, notifyFollows: true },
+      viewer,
+      accepted: true,
+    });
+    const inAppOff = followNoticeInput({
+      target: { ...target, notifyFollows: false },
+      viewer,
+      accepted: true,
+    });
+    expect(inAppOn.inApp).toBe(true);
+    expect(inAppOff.inApp).toBe(false);
   });
 
-  it("skips both request and acceptance notices when they are off", () => {
-    expect(shouldNotifyFollow({ notifyFollows: false })).toBe(false);
+  it("scopes the accepted notice by actor", () => {
+    const notice = followNoticeInput({ target, viewer, accepted: true });
+    expect(notice).toMatchObject({
+      userId: targetId,
+      type: "FOLLOW_ACCEPTED",
+      title: "Follow request accepted",
+      href: "/users/viewer",
+      dedupeKey: followAcceptedDedupeKey(viewerId),
+    });
+  });
+
+  it("scopes the request notice by actor", () => {
+    const notice = followNoticeInput({ target, viewer, accepted: false });
+    expect(notice).toMatchObject({
+      userId: targetId,
+      type: "FOLLOW_REQUEST",
+      title: "New follow request",
+      dedupeKey: followRequestDedupeKey(viewerId),
+    });
   });
 });
 

@@ -96,6 +96,11 @@ const EMAIL_OPTIONS: PreferenceOption[] = [
     label: "Message copies",
     description: "Email a copy of each new direct message.",
   },
+  {
+    key: "emailFollows",
+    label: "Follow activity",
+    description: "Email follow requests and acceptances.",
+  },
 ];
 
 const DEFAULT_PREFERENCES: NotificationPreferences = {
@@ -110,6 +115,7 @@ const DEFAULT_PREFERENCES: NotificationPreferences = {
   emailMarketing: true,
   emailDiscussions: true,
   emailMessages: true,
+  emailFollows: true,
   notifyMessages: true,
   notifyFollows: true,
   notifyMarketing: true,

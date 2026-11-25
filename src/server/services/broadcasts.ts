@@ -1,5 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { and, asc, count, desc, eq, isNull, like, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  isNull,
+  like,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { getDb } from "@/server/db";
 import { broadcasts, contests, notifications, users } from "@/server/db/schema";
 import { LEARNING_MODULES } from "@/lib/learning/modules";
@@ -23,10 +34,25 @@ export type BroadcastView = {
   title: string;
   body: string;
   href: string | null;
-  /** Notifications actually created; 0 marks a migration baseline row. */
+  /** Migration-seeded history marker, not a real delivery. */
+  baseline: boolean;
+  /**
+   * In-app notifications actually created. Email-only marketing deliveries
+   * have no notification row, so they are not counted here.
+   */
   recipients: number;
   completedAt: string | null;
   createdAt: string;
+};
+
+export type BroadcastPublishResult = {
+  /** A new broadcast row was inserted; duplicates return false. */
+  created: boolean;
+  /**
+   * Delivery was handed to the pending-broadcast worker. Publishing never fans
+   * out synchronously, so a newly created row is always queued.
+   */
+  queued: boolean;
 };
 
 function kindForSource(source: BroadcastInput["source"]): BroadcastKind {
@@ -34,13 +60,14 @@ function kindForSource(source: BroadcastInput["source"]): BroadcastKind {
 }
 
 /**
- * Creates one broadcast row (unique `sourceKey`) and fans it out to every
- * eligible user. Retrying a failed fan-out is safe: `notifyUser` dedupes on
+ * Creates one broadcast row (unique `sourceKey`). Delivery is asynchronous:
+ * `resumePendingBroadcasts` picks the row up within 30 seconds and fans it out.
+ * Retrying a failed fan-out is safe: `notifyUser` dedupes on
  * `broadcast:<id>` per user, so only missing rows are created.
  */
 export async function publishBroadcast(
   input: BroadcastInput,
-): Promise<{ created: boolean; recipients: number }> {
+): Promise<BroadcastPublishResult> {
   const db = getDb();
   const [row] = await db
     .insert(broadcasts)
@@ -54,21 +81,13 @@ export async function publishBroadcast(
     })
     .onConflictDoNothing()
     .returning({ id: broadcasts.id });
-  if (!row) return { created: false, recipients: 0 };
+  if (!row) return { created: false, queued: false };
 
-  const sent = await fanOutBroadcast({
-    id: row.id,
-    kind: kindForSource(input.source),
-    title: input.title,
-    body: input.body,
-    href: input.href ?? null,
-  });
-  logger.info("Broadcast published", {
+  logger.info("Broadcast queued", {
     broadcastId: row.id,
     source: input.source,
-    recipients: sent,
   });
-  return { created: true, recipients: sent };
+  return { created: true, queued: true };
 }
 
 type FanOutRow = {
@@ -79,32 +98,99 @@ type FanOutRow = {
   href: string | null;
 };
 
+/** In-app is controlled by `notifyMarketing`; email by `emailMarketing`. */
+export type MarketingChannel = "in-app" | "email-only" | "skip";
+
 /**
- * Delivers one stored broadcast. Re-running is safe and only fills missing
- * notifications, which also covers a process that died mid-fan-out.
+ * Marketing splits into two independent channels. Choosing `in-app` keeps the
+ * notification row and lets `notifyUser` add the email when the mail switch is
+ * on; `email-only` suppresses the row so the mail still goes out.
  */
-async function fanOutBroadcast(row: FanOutRow): Promise<number> {
+export function marketingChannel(prefs: {
+  notifyMarketing: boolean;
+  emailMarketing: boolean;
+}): MarketingChannel {
+  if (prefs.notifyMarketing) return "in-app";
+  if (prefs.emailMarketing) return "email-only";
+  return "skip";
+}
+
+/** Non-banned users who left at least one marketing channel on. */
+export function marketingAudienceWhere(): SQL | undefined {
+  return and(
+    eq(users.isBanned, false),
+    or(eq(users.notifyMarketing, true), eq(users.emailMarketing, true)),
+  );
+}
+
+async function deliverMarketing(row: FanOutRow): Promise<number> {
   const db = getDb();
-  const type = row.kind === "ANNOUNCEMENT" ? "ANNOUNCEMENT" : "MARKETING";
   const recipients = await db
+    .select({
+      id: users.id,
+      notifyMarketing: users.notifyMarketing,
+      emailMarketing: users.emailMarketing,
+    })
+    .from(users)
+    .where(marketingAudienceWhere());
+
+  let sent = 0;
+  for (const recipient of recipients) {
+    const channel = marketingChannel(recipient);
+    if (channel === "skip") continue;
+    try {
+      const created = await notifyUser(
+        channel === "in-app"
+          ? {
+              userId: recipient.id,
+              type: "MARKETING",
+              title: row.title,
+              body: row.body,
+              href: row.href,
+              dedupeKey: `broadcast:${row.id}`,
+              inApp: true,
+            }
+          : {
+              userId: recipient.id,
+              type: "MARKETING",
+              title: row.title,
+              body: row.body,
+              href: row.href,
+              inApp: false,
+              emailDedupeKey: `broadcast:${row.id}`,
+            },
+      );
+      if (created) sent += 1;
+    } catch (error) {
+      logger.warn("Broadcast notification failed", {
+        broadcastId: row.id,
+        userId: recipient.id,
+        channel,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+  return sent;
+}
+
+/** Announcements keep an in-app row for everyone; `emailAnnouncements` mails. */
+async function deliverAnnouncement(row: FanOutRow): Promise<number> {
+  const recipients = await getDb()
     .select({ id: users.id })
     .from(users)
-    .where(
-      type === "MARKETING"
-        ? and(eq(users.isBanned, false), eq(users.notifyMarketing, true))
-        : eq(users.isBanned, false),
-    );
+    .where(eq(users.isBanned, false));
 
   let sent = 0;
   for (const recipient of recipients) {
     try {
       const created = await notifyUser({
         userId: recipient.id,
-        type,
+        type: "ANNOUNCEMENT",
         title: row.title,
         body: row.body,
         href: row.href,
         dedupeKey: `broadcast:${row.id}`,
+        inApp: true,
       });
       if (created) sent += 1;
     } catch (error) {
@@ -115,8 +201,20 @@ async function fanOutBroadcast(row: FanOutRow): Promise<number> {
       });
     }
   }
+  return sent;
+}
 
-  await db
+/**
+ * Delivers one stored broadcast. Re-running is safe and only fills missing
+ * notifications, which also covers a process that died mid-fan-out.
+ */
+async function fanOutBroadcast(row: FanOutRow): Promise<number> {
+  const sent =
+    row.kind === "ANNOUNCEMENT"
+      ? await deliverAnnouncement(row)
+      : await deliverMarketing(row);
+
+  await getDb()
     .update(broadcasts)
     .set({ completedAt: new Date() })
     .where(eq(broadcasts.id, row.id));
@@ -155,7 +253,7 @@ export async function resumePendingBroadcasts(): Promise<number> {
 export async function publishManualAnnouncement(
   adminId: string,
   input: { title: string; body: string; href?: string | null },
-): Promise<{ created: boolean; recipients: number }> {
+): Promise<BroadcastPublishResult> {
   return publishBroadcast({
     source: "MANUAL",
     sourceKey: `manual:${randomUUID()}`,
@@ -174,6 +272,7 @@ export async function listBroadcasts(limit = 20): Promise<BroadcastView[]> {
       title: broadcasts.title,
       body: broadcasts.body,
       href: broadcasts.href,
+      baseline: broadcasts.baseline,
       completedAt: broadcasts.completedAt,
       createdAt: broadcasts.createdAt,
       recipients: count(notifications.id),
@@ -189,6 +288,7 @@ export async function listBroadcasts(limit = 20): Promise<BroadcastView[]> {
       broadcasts.title,
       broadcasts.body,
       broadcasts.href,
+      broadcasts.baseline,
       broadcasts.completedAt,
       broadcasts.createdAt,
     )
@@ -201,6 +301,7 @@ export async function listBroadcasts(limit = 20): Promise<BroadcastView[]> {
     title: row.title,
     body: row.body,
     href: row.href,
+    baseline: row.baseline,
     recipients: Number(row.recipients ?? 0),
     completedAt: row.completedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
@@ -272,19 +373,17 @@ export async function announceNewModules(): Promise<number> {
   return announced;
 }
 
+/**
+ * Hourly detector for marketing rows that do not exist yet. Delivery belongs
+ * to `resumePendingBroadcasts` (a separate 30-second worker sweep), so this
+ * function never fans out.
+ */
 export async function runBroadcastSweeps(): Promise<{
   contests: number;
   modules: number;
 }> {
   let contestCount = 0;
   let moduleCount = 0;
-  try {
-    await resumePendingBroadcasts();
-  } catch (error) {
-    logger.warn("Pending broadcast resume failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
   try {
     contestCount = await announceNewContests();
   } catch (error) {

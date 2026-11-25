@@ -11,7 +11,7 @@ import {
   OFFLINE_PRESENCE,
   clampFollowPage,
   findFollowTarget,
-  followAcceptedDedupeKey,
+  followNoticeInput,
   followRequestDedupeKey,
   listedMemberWhere,
   readFollowState,
@@ -65,14 +65,7 @@ export async function acceptFollowRequest(
     );
 
   if (shouldNotifyFollow(target)) {
-    await safeNotify({
-      userId: target.id,
-      type: "FOLLOW_ACCEPTED",
-      title: "Follow request accepted",
-      body: `${viewer.displayName} (@${viewer.username}) accepted your follow request.`,
-      href: `/users/${viewer.username}`,
-      dedupeKey: followAcceptedDedupeKey(viewer.id),
-    });
+    await safeNotify(followNoticeInput({ target, viewer, accepted: true }));
   }
 
   return readFollowState(target.id, viewer.id);

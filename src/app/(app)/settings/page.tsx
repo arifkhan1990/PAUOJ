@@ -241,6 +241,7 @@ export default async function SettingsPage() {
                   emailMarketing: user.emailMarketing,
                   emailDiscussions: user.emailDiscussions,
                   emailMessages: user.emailMessages,
+                  emailFollows: user.emailFollows,
                   reviewEmailFrequency: user.reviewEmailFrequency,
                 }}
               />

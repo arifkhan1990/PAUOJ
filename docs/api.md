@@ -1216,23 +1216,27 @@ capped at 1 MiB (`413 PAYLOAD_TOO_LARGE`).
   first, with `type`, `title`, `body`, `href`, `readAt` and `createdAt`.
 - `PATCH /notifications/read` marks every unread notification as read.
 - `PATCH /users/me/notifications` replaces the full preference object:
-  `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": true, "emailReviews": true, "emailAccount": true, "emailLearning": true, "emailAchievements": true, "emailAnnouncements": true, "emailMarketing": true, "emailDiscussions": true, "emailMessages": true, "notifyMessages": true, "notifyFollows": true, "notifyMarketing": true, "reviewEmailFrequency": "INSTANT" }`.
+  `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": true, "emailReviews": true, "emailAccount": true, "emailLearning": true, "emailAchievements": true, "emailAnnouncements": true, "emailMarketing": true, "emailDiscussions": true, "emailMessages": true, "emailFollows": true, "notifyMessages": true, "notifyFollows": true, "notifyMarketing": true, "reviewEmailFrequency": "INSTANT" }`.
   `notifyMessages`/`notifyFollows` control in-app MESSAGE and FOLLOW_* notices;
-  `notifyMarketing` controls in-app new-contest/new-module notices (off also
-  suppresses their email), while the `email*` switches control inbox copies.
-  Unread badges and security/account notices are unaffected.
-  `reviewEmailFrequency` is `INSTANT`, `HOURLY` or `DAILY`.
+  `notifyMarketing` controls in-app new-contest/new-module notices, while the
+  `email*` switches (including `emailFollows`) control inbox copies.
+  In-app and email marketing are independent: in-app off with email on sends
+  the mail without a notification row. Unread badges and security/account
+  notices are unaffected. `reviewEmailFrequency` is `INSTANT`, `HOURLY` or
+  `DAILY`.
 - `POST /notifications/unsubscribe` with `{ "token": "...", "scope": "all" }`
   disables email categories from a one-click email link. Scopes: `all`,
   `account`, `verdicts`, `contests`, `clarifications`, `reviews`, `learning`,
-  `achievements`, `announcements`, `marketing`, `discussions`, `messages`.
-- `POST /admin/announcements` (ADMIN) creates a manual announcement and fans it
-  out immediately. Body: `{ "title": "...", "body": "...", "href": "/problems" }`
-  where title is 4–120 characters, body 10–2000 and `href` is an optional
-  in-app path. Returns `{ "created": true, "recipients": n }`; all non-banned
-  users get the in-app notice and verified users get an email subject to
+  `achievements`, `announcements`, `marketing`, `discussions`, `messages`,
+  `follows`.
+- `POST /admin/announcements` (ADMIN) queues a manual announcement. Body:
+  `{ "title": "...", "body": "...", "href": "/problems" }` where title is
+  4–120 characters, body 10–2000 and `href` is an optional in-app path. Returns
+  `{ "created": true, "queued": true }`; the 30-second worker sweep fans it out
+  to every non-banned user, and verified users get an email subject to
   `emailAnnouncements`. Recent broadcasts (manual and automatic marketing) are
-  listed at `/admin/announcements` with delivery counts and baseline markers.
+  listed at `/admin/announcements` with in-app delivery counts and baseline
+  markers.
 
 In-app notifications are created for finished verdicts, contest
 registration/start/30-minute reminder/final result, clarification activity,
@@ -1241,8 +1245,11 @@ discussion replies, learning enrollment/payment/reminders, exact milestones and
 badges, announcements, new-contest/new-module marketing, problem contribution
 proposals/reviews, contest problem approval requests/decisions and problem
 publication review events (submit, hold, respond, resolve, reopen and publish).
-Email copies follow the user's preferences and require a verified email address,
-except the welcome mail sent to the just-registered address. Review emails
+Email copies follow the user's preferences, require a verified email address
+(except the welcome mail sent to the just-registered address) and are queued in
+`email_outbox` with worker retries. Contest results reach every registered,
+non-banned participant; participants without a rating change get a generic
+final-standings notice. Review emails
 cover contribution and contest-approval events, have their own `emailReviews`
 toggle, and follow the `reviewEmailFrequency` setting: `INSTANT` sends each
 event immediately, while `HOURLY` and `DAILY` group them into one digest per

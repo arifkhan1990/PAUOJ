@@ -387,14 +387,23 @@ Manage email preferences or unsubscribe: ${input.unsubscribeUrl}`);
   return { subject: input.subject, text, html };
 }
 
-export async function sendNotificationEmail(input: {
+export type NotificationEmailDelivery = NotificationEmailInput & {
   to: string;
-  displayName: string;
-  subject: string;
-  message: string;
-  href?: string | null;
-  unsubscribeUrl: string;
-}): Promise<boolean> {
+};
+
+/**
+ * Builds and sends one notification email. The outbox worker is the normal
+ * caller; direct use is limited to explicit health/test probes.
+ */
+export async function deliverNotificationEmail(
+  input: NotificationEmailDelivery,
+): Promise<boolean> {
   const { subject, text, html } = buildNotificationEmail(input);
   return sendMail({ to: input.to, subject, text, html });
+}
+
+export async function sendNotificationEmail(
+  input: NotificationEmailDelivery,
+): Promise<boolean> {
+  return deliverNotificationEmail(input);
 }

@@ -46,6 +46,7 @@ export type NotificationPreferences = {
   emailMarketing: boolean;
   emailDiscussions: boolean;
   emailMessages: boolean;
+  emailFollows: boolean;
   notifyMessages: boolean;
   notifyFollows: boolean;
   notifyMarketing: boolean;
@@ -64,7 +65,7 @@ export type NotificationEmailCategory =
   | "marketing"
   | "discussions"
   | "messages"
-  | "social";
+  | "follows";
 
 export type UnsubscribeScope =
   | "all"
@@ -78,4 +79,5 @@ export type UnsubscribeScope =
   | "announcements"
   | "marketing"
   | "discussions"
-  | "messages";
+  | "messages"
+  | "follows";

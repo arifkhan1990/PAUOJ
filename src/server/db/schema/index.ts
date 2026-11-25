@@ -14,4 +14,5 @@ export * from "./submissions";
 export * from "./learning";
 export * from "./discussions";
 export * from "./notifications";
+export * from "./email-outbox";
 export * from "./audit";

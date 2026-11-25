@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { and, count, desc, eq, gt, gte, isNull, lte } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
@@ -12,12 +12,11 @@ import type {
   NotificationItem,
   NotificationPreferences,
   NotificationType,
-  UnsubscribeScope,
 } from "@/lib/notification-types";
 import type { NotificationPreferencesInput } from "@/lib/schemas/notification";
 import { getEnv } from "@/server/env";
 import { logger } from "@/server/logger";
-import { sendNotificationEmail } from "@/server/mail";
+import { enqueueNotificationEmail } from "./email-outbox";
 import {
   emailCategoryForNotification,
   emailEnabled,
@@ -39,6 +38,10 @@ type NotifyInput = {
    * is verified. Every other category keeps the verified-address rule.
    */
   allowUnverifiedEmail?: boolean;
+  /** Email-only delivery: no in-app row, used when in-app marketing is off. */
+  inApp?: boolean;
+  /** Stable dedupe for an email that has no notification row. */
+  emailDedupeKey?: string;
 };
 
 export async function ensureUnsubscribeToken(
@@ -70,23 +73,6 @@ export async function ensureUnsubscribeToken(
 
 export async function notifyUser(input: NotifyInput): Promise<boolean> {
   const db = getDb();
-  const [created] = await db
-    .insert(notifications)
-    .values({
-      userId: input.userId,
-      type: input.type,
-      title: input.title,
-      body: input.body,
-      href: input.href ?? null,
-      dedupeKey: input.dedupeKey ?? null,
-    })
-    .onConflictDoNothing()
-    .returning({ id: notifications.id });
-  if (!created) return false;
-
-  const isReview =
-    input.type === "CONTRIBUTION" || input.type === "CONTEST_APPROVAL";
-
   const [user] = await db
     .select({
       email: users.email,
@@ -103,6 +89,7 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
       emailMarketing: users.emailMarketing,
       emailDiscussions: users.emailDiscussions,
       emailMessages: users.emailMessages,
+      emailFollows: users.emailFollows,
       notifyMessages: users.notifyMessages,
       notifyFollows: users.notifyFollows,
       reviewEmailFrequency: users.reviewEmailFrequency,
@@ -110,31 +97,55 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
     .from(users)
     .where(eq(users.id, input.userId))
     .limit(1);
-  if (!user) return true;
-  if (!user.emailVerifiedAt && !input.allowUnverifiedEmail) return true;
+  if (!user) return false;
+
+  const inApp = input.inApp !== false;
+  let notificationId: string | null = null;
+  if (inApp) {
+    const [created] = await db
+      .insert(notifications)
+      .values({
+        userId: input.userId,
+        type: input.type,
+        title: input.title,
+        body: input.body,
+        href: input.href ?? null,
+        dedupeKey: input.dedupeKey ?? null,
+      })
+      .onConflictDoNothing()
+      .returning({ id: notifications.id });
+    if (!created) return false;
+    notificationId = created.id;
+  }
+
+  if (!user.emailVerifiedAt && !input.allowUnverifiedEmail) return inApp;
+
+  const isReview =
+    input.type === "CONTRIBUTION" || input.type === "CONTEST_APPROVAL";
+  const markEmailed = async (): Promise<void> => {
+    if (!notificationId) return;
+    await db
+      .update(notifications)
+      .set({ emailedAt: new Date(), updatedAt: new Date() })
+      .where(eq(notifications.id, notificationId));
+  };
 
   if (isReview) {
     const instant =
       user.emailReviews && user.reviewEmailFrequency === "INSTANT";
-    if (!instant) return true;
-    await db
-      .update(notifications)
-      .set({ emailedAt: new Date(), updatedAt: new Date() })
-      .where(eq(notifications.id, created.id));
+    if (!instant) return inApp;
+    await markEmailed();
   } else if (input.email) {
-    await db
-      .update(notifications)
-      .set({ emailedAt: new Date(), updatedAt: new Date() })
-      .where(eq(notifications.id, created.id));
+    await markEmailed();
   } else if (!emailEnabled(input.type, user)) {
-    return true;
+    return inApp;
   }
 
   const token = await ensureUnsubscribeToken(input.userId);
-  if (!token) return true;
+  if (!token) return inApp;
   const appUrl = getEnv().APP_URL.replace(/\/$/, "");
   const category = emailCategoryForNotification(input.type);
-  const scope = category && category !== "social" ? category : "all";
+  const scope = category ?? "all";
   const unsubscribeUrl = `${appUrl}/unsubscribe?token=${encodeURIComponent(
     token,
   )}&scope=${scope}`;
@@ -143,21 +154,31 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
       ? input.href
       : `${appUrl}${input.href}`
     : null;
+  const dedupeKey = notificationId
+    ? `notification:${notificationId}`
+    : `email-only:${input.userId}:${
+        input.emailDedupeKey ?? input.dedupeKey ?? randomUUID()
+      }`;
 
-  void sendNotificationEmail({
-    to: user.email,
-    displayName: user.displayName,
-    subject: input.title,
-    message: input.body,
-    href,
-    unsubscribeUrl,
-  }).catch((error) => {
-    logger.warn("Notification email failed", {
+  let queued = false;
+  try {
+    queued = await enqueueNotificationEmail({
+      userId: input.userId,
+      toEmail: user.email,
+      displayName: user.displayName,
+      subject: input.title,
+      body: input.body,
+      href,
+      unsubscribeUrl,
+      dedupeKey,
+    });
+  } catch (error) {
+    logger.warn("Notification email enqueue failed", {
       userId: input.userId,
       error: error instanceof Error ? error.message : String(error),
     });
-  });
-  return true;
+  }
+  return inApp || queued;
 }
 
 export async function listNotifications(
@@ -244,6 +265,7 @@ export async function getNotificationPreferences(
       emailMarketing: users.emailMarketing,
       emailDiscussions: users.emailDiscussions,
       emailMessages: users.emailMessages,
+      emailFollows: users.emailFollows,
       notifyMessages: users.notifyMessages,
       notifyFollows: users.notifyFollows,
       notifyMarketing: users.notifyMarketing,
@@ -307,71 +329,4 @@ export async function notifyStartingContests(): Promise<number> {
   return sent;
 }
 
-export async function getUnsubscribeTarget(
-  token: string,
-): Promise<{ displayName: string } | null> {
-  const [row] = await getDb()
-    .select({ displayName: users.displayName })
-    .from(users)
-    .where(eq(users.unsubscribeToken, token))
-    .limit(1);
-  return row ?? null;
-}
-
-export async function unsubscribeByToken(
-  token: string,
-  scope: UnsubscribeScope,
-): Promise<boolean> {
-  const [user] = await getDb()
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.unsubscribeToken, token))
-    .limit(1);
-  if (!user) return false;
-
-  const values =
-    scope === "all"
-      ? {
-          emailVerdicts: false,
-          emailContests: false,
-          emailClarifications: false,
-          emailReviews: false,
-          emailAccount: false,
-          emailLearning: false,
-          emailAchievements: false,
-          emailAnnouncements: false,
-          emailMarketing: false,
-          emailDiscussions: false,
-          emailMessages: false,
-        }
-      : scope === "account"
-        ? { emailAccount: false }
-        : scope === "verdicts"
-          ? { emailVerdicts: false }
-          : scope === "contests"
-            ? { emailContests: false }
-            : scope === "reviews"
-              ? { emailReviews: false }
-              : scope === "learning"
-                ? { emailLearning: false }
-                : scope === "achievements"
-                  ? { emailAchievements: false }
-                  : scope === "announcements"
-                    ? { emailAnnouncements: false }
-                    : scope === "marketing"
-                      ? { emailMarketing: false }
-                      : scope === "discussions"
-                        ? { emailDiscussions: false }
-                        : scope === "messages"
-                          ? { emailMessages: false }
-                          : { emailClarifications: false };
-  await getDb()
-    .update(users)
-    .set({ ...values, updatedAt: new Date() })
-    .where(eq(users.id, user.id));
-  logger.info("Email notifications unsubscribed", {
-    userId: user.id,
-    scope,
-  });
-  return true;
-}
+export { getUnsubscribeTarget, unsubscribeByToken } from "./notification-unsubscribe";

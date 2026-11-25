@@ -298,20 +298,34 @@ milestones, announcements, marketing and generic system notices.
 category map. The user row carries the switches: `email_verdicts`,
 `email_contests`, `email_clarifications`, `email_reviews`, `email_account`,
 `email_learning`, `email_achievements`, `email_announcements`,
-`email_marketing`, `email_discussions` and `email_messages`, plus the in-app
-`notify_messages`, `notify_follows` and `notify_marketing`. Every email needs a
-verified address except the welcome mail, which goes to the address the account
-was just created with. Follow notices stay in-app only. Each message links to
+`email_marketing`, `email_discussions`, `email_messages` and `email_follows`,
+plus the in-app `notify_messages`, `notify_follows` and `notify_marketing`.
+Every email needs a verified address except the welcome mail, which goes to the
+address the account was just created with. Follow notices honour the in-app and
+email switches independently. Each message links to
 `/unsubscribe?token=…&scope=…`; the token is a per-user random value stored on
 the user row, and the scopes cover all, account, verdicts, contests,
 clarifications, reviews, learning, achievements, announcements, marketing,
-discussions and messages without requiring a session.
+discussions, messages and follows without requiring a session.
+
+Notification emails are written to `email_outbox` rather than sent inline. The
+worker claims due rows with `FOR UPDATE SKIP LOCKED`, sends them through the
+shared mail builder, and retries failures with 2m / 10m / 1h / 6h backoff up to
+five attempts; terminal rows stay `FAILED` with the last error for operators.
+A stale `SENDING` row is reset to `PENDING` after ten minutes, so a crashed
+sender cannot strand mail. `dedupe_key` makes enqueueing idempotent: in-app
+notifications use `notification:<id>`, while email-only marketing/follow
+deliveries use `email-only:<user>:<key>`. Transactional mail (verification,
+password reset, assessment invites, review digests and the weekly report) still
+sends directly because it carries one-time links or is already grouped.
 
 Delivery is spread across the worker: contest start and 30-minute reminders,
 review digests/SLA nudges/weekly reports, social report digests and retention,
 learning inactivity (7/21 days) and marketing sweeps run in
-`src/worker/notification-sweeps.ts`; rating finalization sends final rank/rating
-changes and rating achievements after the transaction commits. The judge sends
+`src/worker/notification-sweeps.ts`; rating finalization sends rank/rating notices to every registered, non-banned
+participant (a generic final-standings message when there is no rating change,
+covering GROUP and unrated contests) and rating achievements after the
+transaction commits. The judge sends
 verdicts and then exact-threshold solved milestones/badges, while discussion
 creation notifies the parent author. Exact thresholds (`1/100/250/500/700/1000`
 solved, 10/50 solved, 500 submissions, 3 accepted languages, 7-day streak,
@@ -321,13 +335,15 @@ module and threshold, and finished modules are skipped.
 
 Announcements and marketing use the `broadcasts` ledger. A manual announcement
 from `/admin/announcements` and the automatic new-contest/new-module notices all
-insert one row with a unique `source_key` before fanning out, so retries only
-fill missing notifications. Migration 0047 backfilled the existing public
-contests and 11 live modules as baseline rows, so the first deploy does not
-re-announce the catalogue; the worker compares live modules against the ledger
-and announces only genuinely new ones. `notify_marketing` off suppresses the
-marketing notice (in-app and email); `email_marketing` off keeps the in-app
-notice but skips its email. Pending fan-outs are retried by the worker.
+insert one row with a unique `source_key` and return immediately; a 30-second
+worker sweep fans the row out, so an admin request never blocks on audience
+size. Migration 0047 backfilled the existing public contests and 11 live modules
+as baseline rows (`baseline = true`, migration 0049), so the first deploy does
+not re-announce the catalogue; the worker compares live modules against the
+ledger and announces only genuinely new ones. In-app and email marketing are
+independent: `notify_marketing` controls the row and `email_marketing` controls
+the mail. Email-only marketing writes an outbox row without a notification row.
+Pending fan-outs are retried by the worker.
 
 Transactional mail uses the shared 600px table-based shell in
 `src/server/mail-template.ts` — dark brand header, badge, CTA, fallback-link

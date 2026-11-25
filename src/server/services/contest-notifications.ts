@@ -4,6 +4,7 @@ import {
   contestRatingChanges,
   contestRegistrations,
   contests,
+  users,
 } from "@/server/db/schema";
 import { formatDhakaDateTime } from "@/lib/utils";
 import { logger } from "@/server/logger";
@@ -89,6 +90,16 @@ export function contestResultMessage(input: {
     body: `You finished at rank #${input.rank}. Rating: ${input.oldRating} → ${
       input.newRating
     } (${formatRatingDelta(input.delta)}).`,
+  };
+}
+
+/** Standings message for participants with no rating change to report. */
+export function contestFallbackResultMessage(
+  contestTitle: string,
+): NotificationMessage {
+  return {
+    title: `Final standings: ${contestTitle}`,
+    body: "The contest is complete. Open the final standings to see the results.",
   };
 }
 
@@ -181,13 +192,27 @@ export async function notifyContestReminders30(
 }
 
 /**
- * Final standings plus rating movement for every participant with a rating
- * change. Called after the rating transaction commits, so a notification
- * failure can never roll the finalization back.
+ * Final standings for every registered, non-banned participant. Participants
+ * with a rating change get rank and movement; the rest (GROUP contests, unrated
+ * contests, no rated field entry) get the generic standings message. Called
+ * after the rating transaction commits, so a notification failure can never
+ * roll the finalization back.
  */
 export async function notifyContestResults(
   contestId: string,
 ): Promise<number> {
+  try {
+    return await sendContestResults(contestId);
+  } catch (error) {
+    logger.warn("Contest result notification failed", {
+      contestId,
+      error: errorMessage(error),
+    });
+    return 0;
+  }
+}
+
+async function sendContestResults(contestId: string): Promise<number> {
   const db = getDb();
   const [contest] = await db
     .select({
@@ -199,33 +224,59 @@ export async function notifyContestResults(
     .limit(1);
   if (!contest) return 0;
 
-  const changes = await db
-    .select({
-      userId: contestRatingChanges.userId,
-      rank: contestRatingChanges.rank,
-      oldRating: contestRatingChanges.oldRating,
-      newRating: contestRatingChanges.newRating,
-      delta: contestRatingChanges.delta,
-    })
-    .from(contestRatingChanges)
-    .where(eq(contestRatingChanges.contestId, contestId));
+  const [changes, participants] = await Promise.all([
+    db
+      .select({
+        userId: contestRatingChanges.userId,
+        rank: contestRatingChanges.rank,
+        oldRating: contestRatingChanges.oldRating,
+        newRating: contestRatingChanges.newRating,
+        delta: contestRatingChanges.delta,
+      })
+      .from(contestRatingChanges)
+      .where(eq(contestRatingChanges.contestId, contestId)),
+    db
+      .select({ userId: contestRegistrations.userId })
+      .from(contestRegistrations)
+      .innerJoin(users, eq(users.id, contestRegistrations.userId))
+      .where(
+        and(
+          eq(contestRegistrations.contestId, contestId),
+          eq(users.isBanned, false),
+        ),
+      ),
+  ]);
 
+  const changesByUser = new Map(
+    changes.map((change) => [change.userId, change]),
+  );
+  const href = `/contests/${contest.slug}`;
+  const dedupeKey = contestResultDedupeKey(contestId);
+  const notified = new Set<string>();
   let sent = 0;
-  for (const change of changes) {
-    const message = contestResultMessage({
-      contestTitle: contest.title,
-      rank: change.rank,
-      oldRating: change.oldRating,
-      newRating: change.newRating,
-      delta: change.delta,
-    });
+
+  for (const participant of participants) {
+    if (notified.has(participant.userId)) continue;
+    notified.add(participant.userId);
+
+    const change = changesByUser.get(participant.userId);
+    const message = change
+      ? contestResultMessage({
+          contestTitle: contest.title,
+          rank: change.rank,
+          oldRating: change.oldRating,
+          newRating: change.newRating,
+          delta: change.delta,
+        })
+      : contestFallbackResultMessage(contest.title);
+
     const created = await notifyUser({
-      userId: change.userId,
+      userId: participant.userId,
       type: "CONTEST_RESULT",
       title: message.title,
       body: message.body,
-      href: `/contests/${contest.slug}`,
-      dedupeKey: contestResultDedupeKey(contestId),
+      href,
+      dedupeKey,
     });
     if (created) sent += 1;
   }

@@ -76,16 +76,16 @@ export default async function AdminAnnouncementsPage() {
                       variant={
                         !broadcast.completedAt
                           ? "warning"
-                          : broadcast.recipients > 0
-                            ? "success"
-                            : "secondary"
+                          : broadcast.baseline
+                            ? "secondary"
+                            : "success"
                       }
                     >
                       {!broadcast.completedAt
                         ? "Pending"
-                        : broadcast.recipients > 0
-                          ? `Sent to ${broadcast.recipients}`
-                          : "Baseline"}
+                        : broadcast.baseline
+                          ? "Baseline"
+                          : `Sent · ${broadcast.recipients} in-app`}
                     </Badge>
                     <time
                       dateTime={broadcast.createdAt}
