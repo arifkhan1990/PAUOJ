@@ -346,6 +346,26 @@ independent: `notify_marketing` controls the row and `email_marketing` controls
 the mail. Email-only marketing writes an outbox row without a notification row.
 Pending fan-outs are retried by the worker.
 
+Web Push uses the same notification pipeline. A browser enables push from
+Settings, which registers `public/sw.js`, requests the `PushManager`
+subscription and POSTs `{endpoint, keys}` to `/api/v1/push/subscribe`. The
+backend stores device subscriptions in the AOF-persistent Redis hash
+`push:subs:<userId>` (endpoint → encrypted keys), so no extra database table is
+needed and restarts keep the tokens. `notifyUser` dispatches push immediately
+after the in-app row is created; `sendPushToUser` only handles a high-signal
+allow-list, uses VAPID (`WEB_PUSH_*`), sends a 1-hour TTL, prunes 404/410
+subscriptions, and never fails the notification. Titles use the event title;
+MESSAGE and DISCUSSION bodies are replaced with a generic “Open PAU OJ to read
+it.” so private text never appears on a lock screen. The service worker only
+handles `push` and `notificationclick` (same-origin URLs, focus or open), with
+no fetch caching.
+
+The notification center groups rows by type and UTC day in the UI. Groups with
+two or more rows render as an accessible `<details>` summary with an unread
+count and the latest relative time, expanding to the individual notifications;
+single rows keep the original layout. Pagination still counts rows, so a group
+never hides data outside the current page.
+
 Transactional mail uses the shared 600px table-based shell in
 `src/server/mail-template.ts` — dark brand header, badge, CTA, fallback-link
 box, hidden preheader, mobile media query and a refined footer. Verification,
@@ -742,7 +762,10 @@ in either direction and neither side blocked the other.
 
 `conversations` stores exactly one row per unordered pair (`user_a_id <
 user_b_id` check plus a unique pair index) and `messages` stores plain-text
-bodies constrained to 1–2000 characters. Sending requires participation and no
+bodies constrained to 0–2000 characters. The lower bound dropped from 1 so an
+image-only message can store an empty caption; the text send path still trims
+and enforces 1–2000 before the row is written. Sending requires participation
+and no
 block in either direction; a new conversation additionally needs an accepted
 follow edge, while an existing conversation remains replyable after an unfollow.
 `conversation_mutes` is a per-user toggle that keeps the conversation listed but
@@ -765,6 +788,23 @@ unless the recipient muted the conversation or disabled `notify_messages`;
 deleting a message replaces the notice preview with "This message was deleted.".
 All message mutations are same-origin, rate limited and participant-scoped
 (foreign ids return `404`).
+
+Each message carries at most one image in `message_attachments` (migration
+`0050_big_wallow`, `UNIQUE(message_id)`): the type is detected from the magic
+bytes rather than the client MIME, capped at 5 MiB and 4096×4096, and stored as
+`bytea` beside the message so the row and its bytes commit in one transaction.
+The bytes are never inlined in thread payloads — `MessageItem` carries only
+`attachment: { id, mime, width, height, url } | null` — and
+`GET /messages/attachments/:id` streams them after the same participant, block,
+ban and `deleted_at` checks as the thread, so a deleted message or a blocked
+pair exposes neither body nor bytes. Composer reference tokens
+(`@[Label](/contests/slug)` and the `/problems/`, `/learn/` equivalents) are
+plain text in the body; rendering is allow-listed to those three internal
+prefixes, so a typed link can never leave the site. The suggestion drawer that
+produces them (`GET /messages/suggestions`) is read-only: contests are public,
+problems reuse the normal visibility/entitlement rules, and learn reads the
+static LIVE curriculum. Thread and last-message attachment joins run in the same
+batched queries as the message rows, so inbox lists stay free of N+1 lookups.
 
 The dashboard sidebar refreshes its three social badges (messages, unread
 notifications, pending follow requests) from `GET /api/v1/social/counts` every

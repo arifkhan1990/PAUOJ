@@ -24,6 +24,14 @@ All notable changes to PAU OJ are documented here. The format follows
   still receive email-only marketing. Follow notices gained an `emailFollows`
   switch, and contest results now reach every registered non-banned participant
   with a fallback final-standings notice for GROUP/unrated contests.
+- Browser push and notification grouping: users can enable standards-based
+  VAPID Web Push per device from Settings (service worker, same-origin clicks,
+  privacy-redacted message/reply bodies, 404/410 pruning, Redis AOF
+  subscription storage). The notification center groups rows by type and UTC
+  day with expandable counts. Notification emails now start an immediate outbox
+  flush after enqueue, so normal messages deliver in under a second while the
+  worker retry sweep remains the safety net. Broadcast publishing also starts
+  an immediate fan-out; the 30-second sweep retries anything left.
 - Profile avatars: every account can upload a PNG/JPG/WebP photo or pick one
   of twelve preset avatars (cat, dog, bird, fish, rabbit, squirrel, turtle,
   panda, ghost, rocket, bot, gamepad) from Settings → Profile picture. The

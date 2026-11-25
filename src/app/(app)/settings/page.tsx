@@ -12,6 +12,7 @@ import {
 import { AvatarForm } from "@/components/profile/avatar-form";
 import { ResendVerificationButton } from "@/components/profile/resend-verification-button";
 import { NotificationPreferencesForm } from "@/features/notifications/notification-preferences-form";
+import { PushToggle } from "@/features/notifications/push-toggle";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/page-header";
 import { PasswordForm } from "@/components/profile/password-form";
@@ -224,7 +225,7 @@ export default async function SettingsPage() {
             <p className="mt-1 text-xs text-muted-foreground">
               Choose which activity reaches you in the app and in your inbox.
             </p>
-            <div className="mt-4">
+            <div className="mt-4 space-y-5">
               <NotificationPreferencesForm
                 initial={{
                   notifyMessages: user.notifyMessages,
@@ -245,6 +246,7 @@ export default async function SettingsPage() {
                   reviewEmailFrequency: user.reviewEmailFrequency,
                 }}
               />
+              <PushToggle />
             </div>
           </Card>
         </div>

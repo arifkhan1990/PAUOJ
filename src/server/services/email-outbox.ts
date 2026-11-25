@@ -32,6 +32,36 @@ export type EnqueueEmailInput = {
   dedupeKey: string;
 };
 
+let flushInFlight: Promise<void> | null = null;
+let flushDirty = false;
+
+/**
+ * Immediate-dispatch fast path. The row is already durable, so this only
+ * reduces latency: the worker's 30-second sweep remains the safety net.
+ * Enqueues during a pass set `flushDirty` and trigger another pass.
+ */
+export function requestEmailFlush(): void {
+  if (flushInFlight) {
+    flushDirty = true;
+    return;
+  }
+  flushInFlight = (async () => {
+    do {
+      flushDirty = false;
+      await processEmailOutbox();
+    } while (flushDirty);
+  })()
+    .catch((error) => {
+      logger.warn("Immediate email flush failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    })
+    .finally(() => {
+      flushInFlight = null;
+      if (flushDirty) requestEmailFlush();
+    });
+}
+
 /** Idempotent insert: the unique `dedupe_key` absorbs retries and races. */
 export async function enqueueNotificationEmail(
   input: EnqueueEmailInput,
@@ -50,7 +80,9 @@ export async function enqueueNotificationEmail(
     })
     .onConflictDoNothing()
     .returning({ id: emailOutbox.id });
-  return Boolean(row);
+  const created = Boolean(row);
+  if (created) requestEmailFlush();
+  return created;
 }
 
 type ClaimedEmail = {

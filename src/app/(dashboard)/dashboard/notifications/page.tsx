@@ -25,11 +25,11 @@ import {
   UserRoundPlus,
 } from "lucide-react";
 import { MarkAllReadButton } from "@/features/notifications/mark-all-read";
+import { NotificationGroupList } from "@/features/notifications/notification-group-list";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { Pagination } from "@/components/shared/pagination";
 import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { requireUser } from "@/server/auth/guards";
 import {
   NOTIFICATIONS_PAGE_SIZE,
@@ -38,7 +38,6 @@ import {
 } from "@/server/services/notifications";
 import type { NotificationType } from "@/lib/notification-types";
 import { readPage, type SearchParams } from "@/lib/pagination";
-import { cn, formatRelative } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Notifications",
@@ -198,59 +197,7 @@ export default async function NotificationsPage({
             }
           />
         ) : (
-          <Card className="overflow-hidden p-1">
-            <ul className="divide-y divide-border">
-              {result.items.map((item) => {
-                const meta = TYPE_META[item.type];
-                const Icon = meta.icon;
-                const content = (
-                  <div
-                    className={cn(
-                      "flex gap-3 rounded-md px-3 py-3.5 transition-colors",
-                      item.readAt ? "hover:bg-muted/50" : "bg-primary/5",
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "mt-0.5 grid size-9 shrink-0 place-items-center rounded-full",
-                        meta.className,
-                      )}
-                    >
-                      <Icon className="size-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-3">
-                        <p className="text-sm font-medium">{item.title}</p>
-                        {!item.readAt ? (
-                          <span
-                            className="mt-1.5 size-2 shrink-0 rounded-full bg-primary"
-                            aria-label="Unread"
-                          />
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-                        {item.body}
-                      </p>
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {formatRelative(item.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-                );
-                return (
-                  <li key={item.id}>
-                    {item.href ? (
-                      <Link href={item.href} className="block">
-                        {content}
-                      </Link>
-                    ) : (
-                      content
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </Card>
+          <NotificationGroupList items={result.items} typeMeta={TYPE_META} />
         )}
       </div>
 

@@ -41,6 +41,14 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
       {
+        // A stale service worker must not pin an old push handler.
+        source: "/sw.js",
+        headers: [
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Service-Worker-Allowed", value: "/" },
+        ],
+      },
+      {
         // Invite links carry a bearer token in the path. This rule must come
         // after the global policy so it overrides the Referrer-Policy value.
         source: "/assessments/:slug/invite/:token",

@@ -78,7 +78,10 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Direct messages** — two-person inbox and threads unlocked by an accepted follow in
   either direction, with unread counts in the dashboard sidebar, read receipts, message
   deletion, per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
-  and strict participant-only access. Blocked conversations disappear from the inbox
+  and strict participant-only access. The composer has an emoji picker, one image per
+  message (PNG/JPEG/WebP up to 5 MB and 4096×4096, optional caption, served only to
+  participants) and `@contest`/`@problem`/`@learn` suggestions that insert shareable
+  reference links. Blocked conversations disappear from the inbox
   and their direct links return 404 until unblock.
 - **Social reports** — report a message, conversation, follow request or profile with a
   reason and optional details. Duplicate submissions are rejected atomically, admins
@@ -138,11 +141,12 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   analytics.
 
 ### Platform
-- **Notifications** — in-app and email notices for verdicts, contest registration/30-minute
-  reminders/final results+rating, clarifications, reviews, learning enrollment/payments/reminders,
-  badges and solved milestones, announcements, new contests/course modules, direct messages and
-  problem/lesson replies. Per-category preferences, token unsubscribe, review digests, a weekly
-  admin report and an admin announcement composer are included.
+- **Notifications** — in-app, email and browser push notices for verdicts, contest
+  registration/30-minute reminders/final results+rating, clarifications, reviews, learning
+  enrollment/payments/reminders, badges and solved milestones, announcements, new contests/course
+  modules, direct messages and problem/lesson replies. Per-category preferences, token unsubscribe,
+  a durable retrying email outbox with immediate dispatch, grouped notifications, review digests, a
+  weekly admin report and an admin announcement composer are included.
 - **Dashboards** — one responsive shell for coder, teacher and admin; coder stats, review panels with
   7/30/all-time filters and 48-hour flags, and a version/changelog footer.
 - **Production plumbing** — migrations, seeds, Docker Compose, worker heartbeats, health checks,
@@ -308,6 +312,8 @@ and transactions) are SQLite-only.
 | `SEED_DEMO_DATA` | Create demo users/submissions (`true` for local only) |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE` | SMTP server for verification/reset email |
 | `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | SMTP credentials and sender |
+| `WEB_PUSH_PUBLIC_KEY`, `WEB_PUSH_PRIVATE_KEY` | VAPID keypair for browser push; leave empty to disable |
+| `WEB_PUSH_SUBJECT` | VAPID contact, e.g. `mailto:admin@example.com` |
 | `MAILPIT_UI_PORT`, `MAILPIT_SMTP_PORT` | Dev Mailpit host ports (defaults 8025/1025) |
 
 Never commit `.env`. Set `SEED_ADMIN_PASSWORD` before the first seed; changing it later does not
@@ -401,14 +407,19 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
 - Team invitations are in-app notifications only; there is no invite email yet.
 - Notification emails are queued in `email_outbox` and retried with backoff (five attempts, up to 100
   per 30-second worker tick) but still require a verified address; the welcome mail is the only
-  pre-verification email. Delivered rows are pruned after 30 days and failed rows after 90. There is
-  no web push or notification grouping yet. Milestone and badge notices fire on exact thresholds, and
-  learning inactivity reminders are sent once per module and threshold (7 and 21 days).
-- Announcements and marketing are queued and delivered by the worker within about 30 seconds; the
-  admin request does not block on audience size. In-app and email marketing are independent
-  switches. New-module marketing is detected by the worker comparing live modules to the broadcast
-  ledger, so it runs on the next worker start or hourly sweep. Contest results reach every registered
-  participant, with a generic final-standings notice when there is no rating change.
+  pre-verification email. A durable row is flushed immediately after enqueue, so normal messages
+  deliver in under a second while the worker remains the retry safety net. Delivered rows are pruned
+  after 30 days and failed rows after 90. Browser push is per device and needs HTTPS plus a VAPID
+  keypair; without the keys it is disabled. Message/reply push bodies are redacted. Notification
+  groups are computed per 20-row page, so a group never spans pages. Milestone and badge notices fire
+  on exact thresholds, and learning inactivity reminders are sent once per module and threshold
+  (7 and 21 days).
+- Announcements and marketing are queued; the admin request does not block on audience size, and an
+  immediate flush starts the fan-out right away (the 30-second worker sweep retries anything left).
+  In-app and email marketing are independent switches. New-module marketing is detected by the worker
+  comparing live modules to the broadcast ledger, so it runs on the next worker start or hourly
+  sweep. Contest results reach every registered participant, with a generic final-standings notice
+  when there is no rating change.
 - Contest banners are supplied as public https image URLs (or the branded default);
   there is no direct image-upload pipeline yet.
 - Contest watermarks, copy guards and integrity events are deterrents and review

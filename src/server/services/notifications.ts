@@ -17,6 +17,7 @@ import type { NotificationPreferencesInput } from "@/lib/schemas/notification";
 import { getEnv } from "@/server/env";
 import { logger } from "@/server/logger";
 import { enqueueNotificationEmail } from "./email-outbox";
+import { sendPushToUser } from "./web-push";
 import {
   emailCategoryForNotification,
   emailEnabled,
@@ -116,6 +117,17 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
       .returning({ id: notifications.id });
     if (!created) return false;
     notificationId = created.id;
+    void sendPushToUser(input.userId, {
+      type: input.type,
+      title: input.title,
+      body: input.body,
+      href: input.href,
+    }).catch((error) => {
+      logger.warn("Push notification dispatch failed", {
+        userId: input.userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
   }
 
   if (!user.emailVerifiedAt && !input.allowUnverifiedEmail) return inApp;

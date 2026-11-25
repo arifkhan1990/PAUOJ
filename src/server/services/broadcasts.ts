@@ -59,6 +59,35 @@ function kindForSource(source: BroadcastInput["source"]): BroadcastKind {
   return source === "MANUAL" ? "ANNOUNCEMENT" : "MARKETING";
 }
 
+let flushInFlight: Promise<void> | null = null;
+let flushDirty = false;
+
+/**
+ * Immediate fan-out fast path after a broadcast insert. Durable rows and the
+ * worker's 30-second sweep remain the fallback if this process exits.
+ */
+export function requestBroadcastFlush(): void {
+  if (flushInFlight) {
+    flushDirty = true;
+    return;
+  }
+  flushInFlight = (async () => {
+    do {
+      flushDirty = false;
+      await resumePendingBroadcasts();
+    } while (flushDirty);
+  })()
+    .catch((error) => {
+      logger.warn("Immediate broadcast flush failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    })
+    .finally(() => {
+      flushInFlight = null;
+      if (flushDirty) requestBroadcastFlush();
+    });
+}
+
 /**
  * Creates one broadcast row (unique `sourceKey`). Delivery is asynchronous:
  * `resumePendingBroadcasts` picks the row up within 30 seconds and fans it out.
@@ -87,6 +116,7 @@ export async function publishBroadcast(
     broadcastId: row.id,
     source: input.source,
   });
+  requestBroadcastFlush();
   return { created: true, queued: true };
 }
 

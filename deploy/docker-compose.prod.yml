@@ -10,6 +10,9 @@ x-app-environment: &app-environment
   JUDGE_SWIFT_IMAGE: ${JUDGE_SWIFT_IMAGE:-pauoj/judge-swift:latest}
   JUDGE_WORK_DIR: /var/lib/pauoj/judge
   JUDGE_CONCURRENCY: ${JUDGE_CONCURRENCY:-2}
+  WEB_PUSH_PUBLIC_KEY: ${WEB_PUSH_PUBLIC_KEY:-}
+  WEB_PUSH_PRIVATE_KEY: ${WEB_PUSH_PRIVATE_KEY:-}
+  WEB_PUSH_SUBJECT: ${WEB_PUSH_SUBJECT:-mailto:admin@pauoj.local}
   SMTP_HOST: ${SMTP_HOST:-}
   SMTP_PORT: ${SMTP_PORT:-587}
   SMTP_SECURE: ${SMTP_SECURE:-false}

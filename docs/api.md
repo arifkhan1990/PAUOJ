@@ -1117,11 +1117,13 @@ Existing conversations stay readable and replyable after an unfollow. When
 either side blocks the other, the conversation disappears from both inboxes,
 stops contributing to unread counts and direct links return `404` until the
 block is lifted. Message bodies are plain
-text, trimmed to 1–2000 characters and escaped on render.
+text, escaped on render: a text send is trimmed to 1–2000 characters, while the
+stored body check is 0–2000 so an image-only message may carry an empty caption.
 
 - `GET /messages/conversations?page=1` — 20 per page, newest activity first, with
   the other participant, presence, `muted`, unread count, last-message preview
-  (including "Message deleted") and `unreadTotal`. Muted conversations stay
+  (including "Message deleted", plus `hasAttachment` — an image-only last
+  message previews as "📷 Photo") and `unreadTotal`. Muted conversations stay
   listed but contribute zero unread and send no notices.
 - `POST /messages/conversations` with `{ "username": "nusrat" }` — opens (or
   returns) the pair conversation; `201 { "id": "..." }`. `403` without an
@@ -1130,12 +1132,42 @@ text, trimmed to 1–2000 characters and escaped on render.
 - `GET /messages/conversations/:id?page=1` — 30 messages per page counted from
   the newest; items are oldest-first within the page. Returns the participant,
   presence, `blocked` and `items` (`id`, `body`, `mine`, `createdAt`, `readAt`,
-  `deleted`). Deleted bodies are blank; malformed or foreign ids are `404`.
+  `deleted`, `attachment`). `attachment` is always present and is either
+  `{ "id", "mime", "width", "height", "url" }` or `null`; `url` is the
+  participant-only attachment route below. Deleted messages expose neither body
+  nor attachment (blank body, `attachment: null`); malformed or foreign ids are
+  `404`.
 - `POST /messages/conversations/:id/messages` with `{ "body": "..." }` — sends a
   message (`201`). `403` blocked, `404` non-participant, `422` empty/overlong,
   `429` after 30 per minute. The first unread message of a burst creates one
   in-app `MESSAGE` notification; deleting it replaces the notification preview
   with "This message was deleted.".
+- `POST /messages/conversations/:id/images` — multipart form with `file` and an
+  optional `caption` (empty allowed, trimmed, max 2000 characters); returns
+  `201` with the usual `MessageItem` (`body` is the caption, `attachment` is
+  set). One image per message; PNG, JPEG or WebP detected from the magic bytes,
+  never from the client MIME or filename; max 5 MiB and 4096×4096. `422` for an
+  empty file, an unsupported or oversized image, or an overlong caption; `403`
+  blocked, `404` non-participant/banned, `429` after 10 per minute. Same-origin,
+  session-cookie auth like the other message writes.
+- `GET /messages/attachments/:id` — streams the stored bytes so a browser `<img>`
+  works with the session cookie. Participant-only: `404` for a malformed id, a
+  foreign conversation, a deleted message, or a blocked/banned pair, so the
+  bytes never leak. `200` with the stored MIME, `Content-Disposition: inline`,
+  `Cache-Control: private, max-age=31536000, immutable` and
+  `X-Content-Type-Options: nosniff`; 240 per minute.
+- `GET /messages/suggestions?kind=contest|problem|learn&q=…` — authenticated,
+  `q` trimmed and max 80 characters, at most 8 rows, 120 per minute; returns
+  `{ "items": [...] }` with `kind`, `id`, `label`, `meta` and `href` (always an
+  internal path). Contests are public and live/upcoming first, problems reuse
+  the normal problem visibility and entitlement rules, learn reads the static
+  LIVE curriculum modules and topics. Selecting a row inserts a plain-text
+  reference token into the body: `@[Label](/contests/slug)`,
+  `@[Label](/problems/slug)` or `@[Label](/learn/module[/topic])`. Rendering is
+  allow-listed to those three internal prefixes, so a token can never become an
+  off-site link; anything else stays literal text. Inbox previews and
+  notification bodies show tokens as `@Label`, and an image-only message
+  previews as "📷 Photo" in the inbox and "Sent a photo" in notifications.
 - `POST`/`DELETE /messages/conversations/:id/mute` — toggles the caller's mute
   (`{ "muted": true|false }`), participant-only, idempotent, 60 per minute.
 - `POST /messages/conversations/:id/read` — marks the other participant's
@@ -1257,6 +1289,23 @@ user. Admins with review emails enabled also receive one weekly backlog report
 (pending proposals, overdue items, oldest age and pending contest requests) as
 an in-app SYSTEM notification and an email; the ISO week key prevents
 duplicates.
+
+## Web Push
+
+- `GET /push/public-key` returns `{ "publicKey": "…" }` or `{ "publicKey": null }`
+  when VAPID is not configured. The private key is never returned.
+- `POST /push/subscribe` (session, same-origin, 20/min per user) stores a
+  browser subscription: `{ "endpoint": "https://…", "keys": { "p256dh": "…", "auth": "…" } }`.
+  Endpoints must be HTTPS (max 2048); keys are base64/base64url (20–200 and
+  8–100 characters). Returns `201 { "ok": true }`.
+- `DELETE /push/subscribe` (session, same-origin, 20/min) removes the current
+  user's subscription by `{ "endpoint": "…" }` and is idempotent (200).
+  Push is per device; there is no account-wide push preference because the
+  browser permission and Settings toggle control it. Push only covers
+  high-signal events (messages, follow requests/acceptance, contest
+  registration/reminder/result, achievements, milestones, announcements,
+  learning reminders/payments and discussion replies). Message/reply bodies are
+  privacy-redacted in the push payload.
 
 ## Health
 
