@@ -79,7 +79,13 @@ export default async function AdminUserDetailPage({
 
       <header className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-4">
-          <UserAvatar name={user.displayName} username={user.username} size="xl" />
+          <UserAvatar
+            name={user.displayName}
+            username={user.username}
+            size="xl"
+            avatarPreset={user.avatarPreset}
+            avatarImageAt={user.avatarImageUpdatedAt}
+          />
           <div className="min-w-0 pt-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight">

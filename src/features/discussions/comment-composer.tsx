@@ -23,7 +23,12 @@ export function CommentComposer({
 }: {
   slug: string;
   parentId?: string | null;
-  viewer: { displayName: string; username: string };
+  viewer: {
+    displayName: string;
+    username: string;
+    avatarPreset?: string | null;
+    avatarImageUpdatedAt?: Date | string | null;
+  };
   onPosted?: () => void;
   onCancel?: () => void;
   autoFocus?: boolean;
@@ -67,6 +72,8 @@ export function CommentComposer({
         name={viewer.displayName}
         username={viewer.username}
         size={compact ? "sm" : "md"}
+        avatarPreset={viewer.avatarPreset}
+        avatarImageAt={viewer.avatarImageUpdatedAt}
       />
       <div className="min-w-0 flex-1">
         <Textarea

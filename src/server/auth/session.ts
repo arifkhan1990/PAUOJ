@@ -5,6 +5,7 @@ import { getDb } from "@/server/db";
 import { sessions, users } from "@/server/db/schema";
 import { getEnv } from "@/server/env";
 import { SESSION_COOKIE } from "@/lib/auth-cookie";
+import { touchPresence } from "@/server/services/presence";
 
 export { SESSION_COOKIE };
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
@@ -35,10 +36,15 @@ export type SafeUser = {
   jobTitle: string | null;
   skills: string[];
   tshirtSize: "XS" | "S" | "M" | "L" | "XL" | "XXL" | "XXXL" | null;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: Date | null;
+  presenceVisibility: "EVERYONE" | "FOLLOWERS" | "NOBODY";
   emailVerdicts: boolean;
   emailContests: boolean;
   emailClarifications: boolean;
   emailReviews: boolean;
+  notifyMessages: boolean;
+  notifyFollows: boolean;
   reviewEmailFrequency: "INSTANT" | "HOURLY" | "DAILY";
   isBanned: boolean;
   emailVerifiedAt: Date | null;
@@ -75,10 +81,15 @@ export function toSafeUser(user: {
   jobTitle: string | null;
   skills: string[] | null;
   tshirtSize: "XS" | "S" | "M" | "L" | "XL" | "XXL" | "XXXL" | null;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: Date | null;
+  presenceVisibility: "EVERYONE" | "FOLLOWERS" | "NOBODY";
   emailVerdicts: boolean;
   emailContests: boolean;
   emailClarifications: boolean;
   emailReviews: boolean;
+  notifyMessages: boolean;
+  notifyFollows: boolean;
   reviewEmailFrequency: "INSTANT" | "HOURLY" | "DAILY";
   isBanned: boolean;
   emailVerifiedAt: Date | null;
@@ -104,10 +115,15 @@ export function toSafeUser(user: {
     jobTitle: user.jobTitle,
     skills: user.skills ?? [],
     tshirtSize: user.tshirtSize,
+    avatarPreset: user.avatarPreset,
+    avatarImageUpdatedAt: user.avatarImageUpdatedAt,
+    presenceVisibility: user.presenceVisibility,
     emailVerdicts: user.emailVerdicts,
     emailContests: user.emailContests,
     emailClarifications: user.emailClarifications,
     emailReviews: user.emailReviews,
+    notifyMessages: user.notifyMessages,
+    notifyFollows: user.notifyFollows,
     reviewEmailFrequency: user.reviewEmailFrequency,
     isBanned: user.isBanned,
     emailVerifiedAt: user.emailVerifiedAt,
@@ -139,6 +155,8 @@ export async function createSession(
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
+
+  await touchPresence(userId);
 }
 
 export async function getCurrentUser(): Promise<SafeUser | null> {
@@ -168,10 +186,15 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
       jobTitle: users.jobTitle,
       skills: users.skills,
       tshirtSize: users.tshirtSize,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
+      presenceVisibility: users.presenceVisibility,
       emailVerdicts: users.emailVerdicts,
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,
       emailReviews: users.emailReviews,
+      notifyMessages: users.notifyMessages,
+      notifyFollows: users.notifyFollows,
       reviewEmailFrequency: users.reviewEmailFrequency,
       createdAt: users.createdAt,
       isBanned: users.isBanned,
@@ -191,6 +214,9 @@ export async function getCurrentUser(): Promise<SafeUser | null> {
   const row = rows[0];
   if (!row || row.isBanned) return null;
 
+  // Activity is written at most once a minute (Redis-throttled) and never
+  // blocks rendering; presence failures are logged, not surfaced.
+  await touchPresence(row.id);
   return toSafeUser(row);
 }
 

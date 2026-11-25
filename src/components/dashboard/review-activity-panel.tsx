@@ -187,6 +187,8 @@ export function ReviewActivityPanel({
                   name={contributor.displayName}
                   username={contributor.username}
                   size="sm"
+                  avatarPreset={contributor.avatarPreset}
+                  avatarImageAt={contributor.avatarImageUpdatedAt}
                 />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-medium">

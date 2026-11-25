@@ -91,6 +91,8 @@ export function ProblemRankboard({
                         name={solver.displayName}
                         username={solver.username}
                         size="sm"
+                        avatarPreset={solver.avatarPreset}
+                        avatarImageAt={solver.avatarImageUpdatedAt}
                       />
                       <div className="min-w-0">
                         <Link

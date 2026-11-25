@@ -87,6 +87,8 @@ export function ProblemSidebar({
               name={problem.author.displayName}
               username={problem.author.username}
               size="sm"
+              avatarPreset={problem.author.avatarPreset}
+              avatarImageAt={problem.author.avatarImageUpdatedAt}
             />
             <span className="min-w-0">
               <span className="block truncate text-sm font-medium">

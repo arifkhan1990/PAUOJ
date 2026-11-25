@@ -13,6 +13,8 @@ export type ProblemComment = {
     username: string;
     displayName: string;
     role: "USER" | "TEACHER" | "ADMIN";
+    avatarPreset: string | null;
+    avatarImageUpdatedAt: string | null;
   };
   replies: ProblemComment[];
 };

@@ -4,11 +4,14 @@ import { notFound } from "next/navigation";
 import { CheckpointCard } from "@/components/learning/checkpoint-card";
 import { ContentInProduction } from "@/components/learning/content-in-production";
 import { CourseOverview } from "@/components/learning/course-overview";
+import { HashScroll } from "@/components/learning/hash-scroll";
 import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSteps } from "@/components/learning/learning-steps";
+import { TrackPager } from "@/components/learning/lesson-pager";
 import { ModuleHeader } from "@/components/learning/module-header";
 import { ModuleDiagram } from "@/components/learning/module-diagram";
 import { PremiumPaywall } from "@/components/learning/premium-paywall";
+import { SqlProjectLink } from "@/components/learning/sql-project/sql-project-link";
 import { TopicCard } from "@/components/learning/topic-card";
 import { LessonVisual } from "@/components/learning/visuals/lesson-visual";
 import { SectionHeading } from "@/components/shared/section-heading";
@@ -147,6 +150,7 @@ export default async function LearningModulePage({
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <HashScroll />
       <ModuleHeader module={track} />
 
       <CourseOverview
@@ -237,6 +241,16 @@ export default async function LearningModulePage({
           className="mt-10"
         />
       ) : null}
+
+      {isLive && definition.track === "sql" ? (
+        <SqlProjectLink
+          variant="handover"
+          moduleSlug={track.slug}
+          className="mt-6"
+        />
+      ) : null}
+
+      <TrackPager moduleSlug={track.slug} className="mt-10" />
     </div>
   );
 }

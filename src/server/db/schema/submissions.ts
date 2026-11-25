@@ -128,7 +128,25 @@ export const submissionResults = pgTable(
   ],
 );
 
+/** Private note kept by the submission owner; one note per submission. */
+export const submissionNotes = pgTable("submission_notes", {
+  submissionId: uuid("submission_id")
+    .primaryKey()
+    .references(() => submissions.id, { onDelete: "cascade" }),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export type Submission = typeof submissions.$inferSelect;
 export type SubmissionResult = typeof submissionResults.$inferSelect;
+export type SubmissionNote = typeof submissionNotes.$inferSelect;
 export type SubmissionStatus = Submission["status"];
 export type Language = Submission["language"];

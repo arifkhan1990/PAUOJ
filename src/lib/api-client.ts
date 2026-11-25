@@ -23,7 +23,11 @@ export async function apiRequest<T>(
   init: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body && !headers.has("content-type")) {
+  if (
+    init.body &&
+    !(init.body instanceof FormData) &&
+    !headers.has("content-type")
+  ) {
     headers.set("content-type", "application/json");
   }
 
@@ -65,6 +69,10 @@ export function apiPost<T>(path: string, body: unknown): Promise<T> {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function apiPostForm<T>(path: string, body: FormData): Promise<T> {
+  return apiRequest<T>(path, { method: "POST", body });
 }
 
 export function apiPatch<T>(path: string, body: unknown): Promise<T> {

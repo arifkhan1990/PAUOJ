@@ -5,6 +5,9 @@ export type NotificationType =
   | "CONTRIBUTION"
   | "CONTEST_APPROVAL"
   | "FOLLOW"
+  | "FOLLOW_REQUEST"
+  | "FOLLOW_ACCEPTED"
+  | "MESSAGE"
   | "SYSTEM";
 
 export type NotificationItem = {
@@ -24,6 +27,8 @@ export type NotificationPreferences = {
   emailContests: boolean;
   emailClarifications: boolean;
   emailReviews: boolean;
+  notifyMessages: boolean;
+  notifyFollows: boolean;
   reviewEmailFrequency: ReviewEmailFrequency;
 };
 

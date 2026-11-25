@@ -24,9 +24,20 @@ import { clearWorkerHeartbeat, recordWorkerHeartbeat } from "@/server/worker-hea
 import { updateRun } from "@/server/services/runs";
 import { ensureMonthlyContestSeries } from "@/server/services/contest-series";
 import { notifyStartingContests } from "@/server/services/notifications";
+import { finalizeDueContestRatings } from "@/server/services/rating-sweep";
+import {
+  acquireRatingSweepLock,
+  ratingSweepLockValue,
+  releaseRatingSweepLock,
+} from "@/server/services/rating-sweep-lock";
 import { sendReviewDigests } from "@/server/services/review-digest";
 import { notifyOverdueReviews } from "@/server/services/review-sla";
 import { sendWeeklyReviewReport } from "@/server/services/review-sla-report";
+import {
+  SOCIAL_REPORT_DIGEST_INTERVAL_MS,
+  sendSocialReportDigest,
+} from "@/server/services/social-report-digest";
+import { runSocialRetention } from "@/server/services/social-retention";
 
 async function handleSubmission(job: SubmissionJob): Promise<void> {
   const submission = await claimSubmission(job.submissionId);
@@ -193,6 +204,47 @@ async function main(): Promise<void> {
   notifyContests();
   const contestNotifier = setInterval(notifyContests, 60_000);
 
+  let ratingSweepRunning = false;
+  const finalizeRatings = () => {
+    if (ratingSweepRunning) return;
+    ratingSweepRunning = true;
+    void (async () => {
+      const lockValue = ratingSweepLockValue();
+      let acquired = false;
+      try {
+        acquired = await acquireRatingSweepLock(lockValue);
+        if (!acquired) {
+          logger.info(
+            "Contest rating sweep skipped; lock held by another worker",
+          );
+          return;
+        }
+        const { finalized, failed } = await finalizeDueContestRatings();
+        if (finalized > 0) {
+          logger.info("Contest ratings finalized", { finalized });
+        }
+        if (failed > 0) {
+          logger.warn("Contest rating finalization errors", { failed });
+        }
+      } catch (error) {
+        logger.warn("Contest rating sweep failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      } finally {
+        if (acquired) {
+          await releaseRatingSweepLock(lockValue).catch((error) => {
+            logger.warn("Contest rating sweep lock release failed", {
+              error: error instanceof Error ? error.message : String(error),
+            });
+          });
+        }
+        ratingSweepRunning = false;
+      }
+    })();
+  };
+  finalizeRatings();
+  const ratingSweeper = setInterval(finalizeRatings, 60_000);
+
   let reviewDigestRunning = false;
   const reviewDigests = () => {
     if (reviewDigestRunning) return;
@@ -254,6 +306,51 @@ async function main(): Promise<void> {
   reviewReport();
   const reviewReportNotifier = setInterval(reviewReport, 60 * 60_000);
 
+  let socialDigestRunning = false;
+  const socialDigest = () => {
+    if (socialDigestRunning) return;
+    socialDigestRunning = true;
+    void sendSocialReportDigest()
+      .then((sent) => {
+        if (sent > 0) {
+          logger.info("Social report digests sent", { sent });
+        }
+      })
+      .catch((error) => {
+        logger.warn("Social report digest sweep failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        socialDigestRunning = false;
+      });
+  };
+  socialDigest();
+  const socialDigestNotifier = setInterval(socialDigest, SOCIAL_REPORT_DIGEST_INTERVAL_MS);
+
+  let socialRetentionRunning = false;
+  const socialRetention = () => {
+    if (socialRetentionRunning) return;
+    socialRetentionRunning = true;
+    const apply = process.env.SOCIAL_RETENTION_AUTO_APPLY !== "false";
+    void runSocialRetention({ apply })
+      .then((counts) => {
+        logger.info(
+          apply ? "Social retention applied" : "Social retention dry run",
+          { ...counts },
+        );
+      })
+      .catch((error) => {
+        logger.warn("Social retention sweep failed", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        socialRetentionRunning = false;
+      });
+  };
+  const socialRetentionTimer = setInterval(socialRetention, 24 * 60 * 60_000);
+
   let contestSeriesRunning = false;
   const ensureContestSeries = () => {
     if (contestSeriesRunning) return;
@@ -291,9 +388,12 @@ async function main(): Promise<void> {
     logger.info("Judge worker shutting down", { signal });
     clearInterval(heartbeat);
     clearInterval(contestNotifier);
+    clearInterval(ratingSweeper);
     clearInterval(reviewDigestNotifier);
     clearInterval(reviewSlaNotifier);
     clearInterval(reviewReportNotifier);
+    clearInterval(socialDigestNotifier);
+    clearInterval(socialRetentionTimer);
     clearInterval(contestSeriesSweeper);
     await clearWorkerHeartbeat().catch(() => undefined);
     await worker.close();

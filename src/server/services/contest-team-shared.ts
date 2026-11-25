@@ -84,6 +84,8 @@ export async function loadTeamView(
       displayName: users.displayName,
       role: contestTeamMembers.role,
       joinedAt: contestTeamMembers.joinedAt,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     })
     .from(contestTeamMembers)
     .innerJoin(users, eq(users.id, contestTeamMembers.userId))
@@ -96,6 +98,9 @@ export async function loadTeamView(
     displayName: row.displayName,
     role: row.role === "CAPTAIN" ? "CAPTAIN" : "MEMBER",
     joinedAt: row.joinedAt.toISOString(),
+    avatarPreset: row.avatarPreset,
+    avatarImageUpdatedAt:
+      row.avatarImageUpdatedAt?.toISOString() ?? null,
   }));
   const pendingInvites = await loadTeamInvites(teamId, viewerId);
   return teamView(team, members, pendingInvites, viewerId);

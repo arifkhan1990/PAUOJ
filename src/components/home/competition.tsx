@@ -157,6 +157,8 @@ function PodiumCard({ row }: { row: RankRow }) {
         name={row.displayName}
         username={row.username}
         size={first ? "lg" : "md"}
+        avatarPreset={row.avatarPreset}
+        avatarImageAt={row.avatarImageUpdatedAt}
       />
       <p className="mt-2 w-full truncate text-sm font-semibold transition-colors group-hover:text-primary">
         {row.displayName}
@@ -192,6 +194,8 @@ function RankLine({ row }: { row: RankRow }) {
         name={row.displayName}
         username={row.username}
         size="sm"
+        avatarPreset={row.avatarPreset}
+        avatarImageAt={row.avatarImageUpdatedAt}
       />
       <span className="min-w-0 flex-1 truncate text-sm font-medium transition-colors group-hover:text-primary">
         {row.displayName}

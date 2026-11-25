@@ -40,6 +40,11 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Reviewer leaderboard** — a public `/reviewers` board ranks reviewers by completed
   contribution decisions, with 7/30/all-time filters, approval rate, turnaround time, a top-3
   podium and a mobile-safe table.
+- **Two leaderboards** — `/rank` switches between a practice-points board and a
+  contest-rating board. The rating board only includes coders with finalized rated solo
+  contests, showing current and peak rating, contest count and last change, with tier filters,
+  rating/peak/contests sorting and Codeforces-style tier-coloured handles. Both boards support
+  search, institution/country filters, page sizes and global ranks that filters never renumber.
 - **Learning tracks** — a nine-track curriculum at `/learn` (seven algorithm tracks plus two
   project-driven SQL labs) with Bangla concept notes, professional concept-map diagrams, guided
   problems, tiered practice, extra self-try problems and timed checkpoint badges. Algorithm
@@ -55,12 +60,32 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   category/subcategory/company filters.
 - **Discussions** — one-level threads with votes, moderation and auto-lock during live contests or
   assessments.
+- **Submission analysis** — an accepted run shows how its runtime and memory rank against
+  accepted runs on the same problem (same language, widening to all languages for small samples),
+  a runtime-distribution histogram with the run marked, a collapsible source panel, related
+  practice pills and a private note for the author. Analysis stays hidden for assessments and
+  live contests.
 - **Editor** — self-hosted Monaco with language-aware drafts saved in the browser.
 - **Profiles** — points/rank/streak, rating graph, language/verdict analytics, solved lists,
   institution/country, badges and editorial credits, website/GitHub/LinkedIn links, current
-  status/company/job title/skills, a public followers/following graph with in-app follow
-  notices, and one-click profile sharing with canonical/Open Graph metadata. Phone, address
-  and T-shirt size stay private between the owner and admins.
+  status/company/job title/skills, a profile photo or one of twelve preset avatars,
+  an approval-based follower/following graph with
+  follow-request notifications and blocking, and one-click profile sharing with
+  canonical/Open Graph metadata. Profiles and both ranking boards show "Online now"
+  or a relative "Last active 7m/3h/2d/3w/4mo/1y ago" label (or "No recent activity"),
+  with Everyone/Followers/Nobody visibility. Phone, address and T-shirt size stay
+  private between the owner and admins.
+- **Direct messages** — two-person inbox and threads unlocked by an accepted follow in
+  either direction, with unread counts in the header, read receipts, message deletion,
+  per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
+  and strict participant-only access. Blocked conversations disappear from the inbox
+  and their direct links return 404 until unblock.
+- **Social reports** — report a message, conversation, follow request or profile with a
+  reason and optional details. Duplicate submissions are rejected atomically, admins
+  triage from `/admin/social-reports` with an hourly grouped email digest, and
+  resolving or dismissing notifies the reporter. Retention runs daily in the worker
+  (old messages, closed reports and cleared last-active timestamps) and
+  `pnpm social:retention` supports manual dry runs.
 - **Insights** — a Recharts 14-day activity chart and a 365-day submission heatmap.
 
 ### Contests
@@ -90,8 +115,9 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Problem approvals** — another setter's problems need approval before publication;
   drafts stay private, admin-created contests approve their problems automatically,
   and approval is individual or bulk.
-- **Live features** — registration, divisions, clarifications, ratings, virtual
-  replays (solo), a freeze window and an admin editor.
+- **Live features** — registration, divisions, clarifications, ratings (finalised
+  one hour after a contest ends, after the review/rejudge window), virtual replays
+  (solo), a freeze window and an admin editor.
 
 ### Assessments & roles
 - **Coding assessments** — private timed tests with per-candidate timers, early finish, private
@@ -294,6 +320,7 @@ All app routes are under `/api/v1`. Success: `{ "data": ..., "meta": { "page": 1
 | POST/GET | `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/me` | public / user | Account and session |
 | GET | `/problems`, `/problems/:slug` | optional | List and detail (contest lock) |
 | GET/POST | `/submissions`, `/submissions/:id`, `/submissions/:id/events` | optional/user | List, create, detail, SSE |
+| GET/PUT/DELETE | `/submissions/:id/analysis`, `/submissions/:id/notes` | optional/user | Distribution summary, private note |
 | POST | `/runs`, GET `/runs/:id` | user | Custom run and poll |
 | GET/POST | `/contests`, `/contests/:slug/standings`, `/contests/:slug/register` | optional/user | Contest and scoreboard |
 | POST/DELETE | `/contests/:slug/teams`, `/contests/:slug/teams/join`, `/contests/:slug/teams/leave` | user | Team formation and registration |
@@ -380,7 +407,13 @@ Runbook: [deploy/README.md](deploy/README.md). Guide: [docs/deployment.md](docs/
   3-easy / 3-medium / 2-hard practice tier plus two or three extra problems. The two free
   career-toolkit modules add three workshop topics each, with two guided and two solo drills per
   topic and a three-problem checkpoint; their lessons are story-driven and their terminal labs
-  run on the learner's own machine, not inside the judge.
+  run on the learner's own machine, not inside the judge. The SQL tracks share
+  `/learn/sql/project`, an industry-project dossier with seven squads, 23 work
+  tickets, a 19-table data dictionary, metric definitions, a handover checklist
+  and a downloadable SQLite fixture. Every lesson has previous/next navigation
+  (the first links to the track overview, the last to the checkpoint), module
+  pages offer previous/next track navigation, and the SQL delivery board follows
+  curriculum order.
 - Problem publication review is staff-only: only teachers and administrators can approve, hold,
   resolve or reopen, and coders only see the status of problems they authored. The public problem
   list shows published problems only — contest-only problems and private drafts never appear there.

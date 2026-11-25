@@ -29,6 +29,8 @@ export type ReviewAnalytics = {
     username: string;
     displayName: string;
     approved: number;
+    avatarPreset: string | null;
+    avatarImageUpdatedAt: string | null;
   }[];
 };
 
@@ -121,6 +123,8 @@ export async function getReviewAnalytics(
     .select({
       username: users.username,
       displayName: users.displayName,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
       approved: count(),
     })
     .from(problemContributions)
@@ -129,7 +133,12 @@ export async function getReviewAnalytics(
     .where(
       and(contributionWhere, eq(problemContributions.status, "APPROVED")),
     )
-    .groupBy(users.username, users.displayName)
+    .groupBy(
+      users.username,
+      users.displayName,
+      users.avatarPreset,
+      users.avatarImageUpdatedAt,
+    )
     .orderBy(desc(count()))
     .limit(5);
 
@@ -162,6 +171,9 @@ export async function getReviewAnalytics(
       username: row.username,
       displayName: row.displayName,
       approved: Number(row.approved),
+      avatarPreset: row.avatarPreset,
+      avatarImageUpdatedAt:
+        row.avatarImageUpdatedAt?.toISOString() ?? null,
     })),
   };
 }

@@ -8,7 +8,9 @@ import {
   Settings,
   ShieldCheck,
   Trophy,
+  UserCheck,
   UserPlus,
+  UserRoundPlus,
 } from "lucide-react";
 import { MarkAllReadButton } from "@/features/notifications/mark-all-read";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -61,6 +63,18 @@ const TYPE_META: Record<
   FOLLOW: {
     icon: UserPlus,
     className: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+  FOLLOW_REQUEST: {
+    icon: UserRoundPlus,
+    className: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
+  },
+  FOLLOW_ACCEPTED: {
+    icon: UserCheck,
+    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  },
+  MESSAGE: {
+    icon: MessageSquare,
+    className: "bg-teal-500/10 text-teal-600 dark:text-teal-400",
   },
   SYSTEM: {
     icon: Bell,

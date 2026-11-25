@@ -15,6 +15,8 @@ export default async function TeacherLayout({
       role={teacher.role}
       displayName={teacher.displayName}
       username={teacher.username}
+      avatarPreset={teacher.avatarPreset}
+      avatarImageUpdatedAt={teacher.avatarImageUpdatedAt}
     >
       {children}
     </DashboardFrame>

@@ -1,6 +1,5 @@
 import {
   and,
-  asc,
   count,
   desc,
   eq,
@@ -17,17 +16,14 @@ import {
   auditLogs,
   contests,
   problems,
-  submissionResults,
   submissions,
   testCases,
   users,
 } from "@/server/db/schema";
 import type { CreateSubmissionInput } from "@/lib/schemas/submission";
-import type {
-  SubmissionDetail,
-  SubmissionListItem,
-} from "@/lib/types";
+import type { SubmissionListItem } from "@/lib/types";
 import { isPendingVerdict, VERDICT_META } from "@/lib/verdicts";
+import { isContestRatingLocked } from "@/lib/contest-rating";
 import type { LanguageId } from "@/lib/languages";
 import { enqueueSubmission } from "@/server/judge/queue";
 import { markSubmissionQueued } from "@/server/judge/submission-runner";
@@ -253,6 +249,8 @@ export async function listSubmissions(
       premiumModuleSlug: problems.premiumModuleSlug,
       username: users.username,
       displayName: users.displayName,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
       contestSlug: contests.slug,
       assessmentSlug: assessments.slug,
     })
@@ -278,103 +276,20 @@ export async function listSubmissions(
       passedTests: row.passedTests,
       totalTests: row.totalTests,
       problem: { slug: row.problemSlug, title: row.problemTitle },
-      user: { username: row.username, displayName: row.displayName },
+      user: {
+        username: row.username,
+        displayName: row.displayName,
+        avatarPreset: row.avatarPreset,
+        avatarImageUpdatedAt:
+          row.avatarImageUpdatedAt?.toISOString() ?? null,
+      },
       contestSlug: row.contestSlug,
       assessmentSlug: row.assessmentSlug,
     })),
   };
 }
 
-export async function getSubmissionById(
-  id: string,
-  viewer: { id: string; role: "USER" | "TEACHER" | "ADMIN" } | null,
-): Promise<SubmissionDetail | null> {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: submissions.id,
-      userId: submissions.userId,
-      status: submissions.status,
-      language: submissions.language,
-      sourceCode: submissions.sourceCode,
-      createdAt: submissions.createdAt,
-      runtimeMs: submissions.runtimeMs,
-      memoryKb: submissions.memoryKb,
-      passedTests: submissions.passedTests,
-      totalTests: submissions.totalTests,
-      compileOutput: submissions.compileOutput,
-      errorMessage: submissions.errorMessage,
-      judgedAt: submissions.judgedAt,
-      problemSlug: problems.slug,
-      problemTitle: problems.title,
-      premiumModuleSlug: problems.premiumModuleSlug,
-      username: users.username,
-      displayName: users.displayName,
-      contestSlug: contests.slug,
-      contestEndAt: contests.endAt,
-      assessmentSlug: assessments.slug,
-      assessmentEndAt: assessments.endAt,
-    })
-    .from(submissions)
-    .innerJoin(problems, eq(problems.id, submissions.problemId))
-    .innerJoin(users, eq(users.id, submissions.userId))
-    .leftJoin(contests, eq(contests.id, submissions.contestId))
-    .leftJoin(assessments, eq(assessments.id, submissions.assessmentId))
-    .where(eq(submissions.id, id))
-    .limit(1);
-
-  const row = rows[0];
-  if (!row) return null;
-
-  const isOwner = viewer?.id === row.userId;
-  const isAdmin = viewer?.role === "ADMIN";
-  if (row.assessmentSlug && !isOwner && !isAdmin) return null;
-  const now = Date.now();
-  const contestActive = row.contestEndAt ? row.contestEndAt.getTime() > now : false;
-  const assessmentActive = row.assessmentEndAt
-    ? row.assessmentEndAt.getTime() > now
-    : false;
-  const canViewSource =
-    isOwner ||
-    isAdmin ||
-    (!row.premiumModuleSlug &&
-      !row.assessmentSlug &&
-      !contestActive &&
-      !assessmentActive);
-
-  const resultRows = await db
-    .select({
-      position: submissionResults.position,
-      status: submissionResults.status,
-      runtimeMs: submissionResults.runtimeMs,
-      memoryKb: submissionResults.memoryKb,
-      message: submissionResults.message,
-    })
-    .from(submissionResults)
-    .where(eq(submissionResults.submissionId, id))
-    .orderBy(asc(submissionResults.position));
-
-  return {
-    id: row.id,
-    status: row.status,
-    language: row.language,
-    createdAt: row.createdAt.toISOString(),
-    runtimeMs: row.runtimeMs,
-    memoryKb: row.memoryKb,
-    passedTests: row.passedTests,
-    totalTests: row.totalTests,
-    problem: { slug: row.problemSlug, title: row.problemTitle },
-    user: { username: row.username, displayName: row.displayName },
-    contestSlug: row.contestSlug,
-    assessmentSlug: row.assessmentSlug,
-    sourceCode: canViewSource ? row.sourceCode : null,
-    compileOutput: canViewSource ? row.compileOutput : null,
-    errorMessage: canViewSource ? row.errorMessage : null,
-    judgedAt: row.judgedAt?.toISOString() ?? null,
-    results: resultRows,
-    canViewSource,
-  };
-}
+export { getSubmissionById } from "./submission-detail";
 
 export async function rejudgeSubmission(
   adminId: string,
@@ -382,7 +297,11 @@ export async function rejudgeSubmission(
 ): Promise<void> {
   const db = getDb();
   const rows = await db
-    .select({ id: submissions.id, status: submissions.status })
+    .select({
+      id: submissions.id,
+      status: submissions.status,
+      contestId: submissions.contestId,
+    })
     .from(submissions)
     .where(eq(submissions.id, id))
     .limit(1);
@@ -392,13 +311,47 @@ export async function rejudgeSubmission(
     throw errors.conflict("This submission is already queued or running.");
   }
 
-  await markSubmissionQueued(id);
-  await db.insert(auditLogs).values({
+  const audit = {
     actorId: adminId,
     action: "submission.rejudge",
     entityType: "submission",
     entityId: id,
-  });
+  } as const;
+
+  if (submission.contestId) {
+    // Serialise with the rating finalizer on the contest row. Either we queue
+    // the rejudge first (and the finalizer sees a pending verdict, so it
+    // defers), or the finalizer sets rated_at first (and the rejudge is
+    // rejected). The audit row commits together with the queued status.
+    const contestId = submission.contestId;
+    await db.transaction(async (tx) => {
+      const [contest] = await tx
+        .select({ id: contests.id, ratedAt: contests.ratedAt })
+        .from(contests)
+        .where(eq(contests.id, contestId))
+        .for("update")
+        .limit(1);
+      const [fresh] = await tx
+        .select({ status: submissions.status })
+        .from(submissions)
+        .where(eq(submissions.id, id))
+        .limit(1);
+      if (!fresh) throw errors.notFound("Submission not found.");
+      if (isPendingVerdict(fresh.status)) {
+        throw errors.conflict("This submission is already queued or running.");
+      }
+      if (contest && isContestRatingLocked(contest.ratedAt)) {
+        throw errors.conflict(
+          "Contest ratings are finalized; this contest submission can no longer be rejudged.",
+        );
+      }
+      await markSubmissionQueued(id, tx);
+      await tx.insert(auditLogs).values(audit);
+    });
+  } else {
+    await markSubmissionQueued(id);
+    await db.insert(auditLogs).values(audit);
+  }
 
   try {
     await enqueueSubmission(id);

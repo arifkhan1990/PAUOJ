@@ -19,4 +19,10 @@ describe("learning route index", () => {
     expect(isLearningRoute("not-a-track")).toBe(false);
     expect(isLearningRoute("basic-programming-math", "not-a-topic")).toBe(false);
   });
+
+  it("allows only the reserved industry-project subroute for SQL", () => {
+    expect(isLearningRoute("sql", "project")).toBe(true);
+    expect(isLearningRoute("sql", "not-a-page")).toBe(false);
+    expect(isLearningRoute("basic-sql", "project")).toBe(false);
+  });
 });

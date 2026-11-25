@@ -39,6 +39,7 @@ export async function registerUser(input: RegisterInput): Promise<SafeUser> {
       email: input.email,
       displayName: input.displayName,
       passwordHash,
+      lastActiveAt: new Date(),
     })
     .returning();
 
@@ -132,6 +133,15 @@ export async function updateProfile(
       ? {}
       : { tshirtSize: input.tshirtSize }),
     ...(input.skills === undefined ? {} : { skills: input.skills }),
+    ...(input.presenceVisibility === undefined
+      ? {}
+      : { presenceVisibility: input.presenceVisibility }),
+    ...(input.notifyMessages === undefined
+      ? {}
+      : { notifyMessages: input.notifyMessages }),
+    ...(input.notifyFollows === undefined
+      ? {}
+      : { notifyFollows: input.notifyFollows }),
   };
   const linkValues = {
     ...(input.website === undefined ? {} : { website: input.website }),

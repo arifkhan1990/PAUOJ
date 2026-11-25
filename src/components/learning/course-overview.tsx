@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import type { LearningModuleView, LearningTopicView } from "@/lib/learning/types";
 import { cn } from "@/lib/utils";
 import { SqlQueryPipeline } from "./sql-query-pipeline";
+import { SqlProjectLink } from "./sql-project/sql-project-link";
 import {
   SQL_DATASET_GROUPS,
   SQL_EXAMPLE_ORDERS,
@@ -382,6 +383,8 @@ ORDER BY o.id LIMIT 3;`}</code>
               </pre>
             </Card>
           </div>
+
+          <SqlProjectLink moduleSlug={module.slug} className="mt-4" />
         </>
       ) : null}
     </section>

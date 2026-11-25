@@ -25,6 +25,8 @@ type ViewerView = {
   username: string;
   displayName: string;
   role: "USER" | "TEACHER" | "ADMIN";
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: Date | string | null;
 } | null;
 
 export function CommentThread({
@@ -183,6 +185,8 @@ export function CommentThread({
               name={comment.author.displayName}
               username={comment.author.username}
               size="sm"
+              avatarPreset={comment.author.avatarPreset}
+              avatarImageAt={comment.author.avatarImageUpdatedAt}
             />
             <Link
               href={`/users/${comment.author.username}`}

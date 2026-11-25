@@ -35,6 +35,31 @@ a longer story with a hands-on lab, and the topic has two guided drills plus two
 solo drills instead of a tiered easy/medium/hard set. The topic page hides empty
 tiered and extra groups rather than showing "in production" placeholders.
 
+## Sequence and navigation
+
+Topic position is the 1-based index in the module's `topics` array; module
+position is the `order` field. There is no separate sequence column to drift.
+Every unlocked lesson ends with a previous/next pager:
+
+- the first topic's previous card opens the track overview;
+- the last topic's next card opens the module checkpoint
+  (`/learn/<module>#checkpoint`), or the track overview when a module has no
+  checkpoint;
+- middle topics link to their immediate neighbours;
+- every card shows the target title, Bangla subtitle and `Topic NN of NN`.
+
+Module pages add a previous/next **track** pager after the checkpoint, following
+`LEARNING_MODULES` order (core 1-7, SQL 8-9, career toolkit 10-11). The
+`HashScroll` client component retries the `#checkpoint` scroll while streamed
+module content settles, so checkpoint links land on the card rather than the top
+of the page. The SQL industry-project ticket board sorts its 23 tickets by the
+same curriculum sequence, not by ticket id.
+
+`src/lib/learning/sequence.ts` owns `getLessonPagerData`,
+`getTrackPagerData`, `getCurriculumTopicSequence` and
+`getCurriculumTopicPosition`; `sequence.test.ts` checks every module boundary,
+the track order and the SQL ticket positions.
+
 ## Visual explainers
 
 Every live topic opens with one **visual explainer** between the concept note and
@@ -125,6 +150,8 @@ Module 6 while remaining advanced material overall.
 | Track/topic metadata and concept notes | `src/lib/learning/modules.ts`, `src/lib/learning/module-1/`, `src/lib/learning/tools/` |
 | Visual explainer configs | `src/lib/learning/visuals/` |
 | Visual primitives | `src/components/learning/visuals/` |
+| Topic/track order and pager data | `src/lib/learning/sequence.ts` |
+| Previous/next pagers | `src/components/learning/lesson-pager.tsx` |
 | Problem definitions | `src/server/db/learning/module-1/`, `src/server/db/learning/tools/` |
 | Seed aggregation | `src/server/db/learning/index.ts` |
 | Progress and checkpoint service | `src/server/services/learning.ts` |
@@ -298,6 +325,16 @@ limits, visible in the problem list.
   shipments, returns, coupons/redemptions, carts/items, product variants,
   inventory movements, JSON attributes and vendor payouts. All expected rows
   are generated from `judge/shopsphere.sql`.
+- `/learn/sql/project` is the shared industry-project dossier behind both SQL
+  tracks: seven feature squads, 23 work tickets (one per SQL topic), a 19-table
+  data dictionary with primary/foreign keys and seeded row counts, ten metric
+  definitions, a twelve-item handover checklist with judge-problem proofs,
+  staff-engineer defense questions and a six-step ticket workflow. Every SQL
+  topic renders its ticket from the same data, and the SQL hub plus both track
+  overviews link to the dossier. `public/learning/shopsphere.sql` is a
+  byte-identical download of `judge/shopsphere.sql`; `sql-project.test.ts`
+  parses the fixture and fails if a table, column, ticket, epic, metric or
+  problem reference drifts.
 - Every topic has 2 guided + 4 practice problems (two easy/medium warm-ups and two hard/challenge sets); four
   advanced lab topics add writable DDL/DML/transaction practice. Every SQL
   problem ships with five judge tests (two visible samples, at least three
@@ -354,7 +391,10 @@ limits, visible in the problem list.
 5. `pnpm sql:check` — runs every SQL reference solution against SQLite, MariaDB
    and PostgreSQL; all submissions must be `ACCEPTED`.
 6. Smoke `/learn`, a live module, a live topic and a checkpoint start with a
-   non-admin account. Confirm an unknown track returns a real `404`.
+   non-admin account; click a lesson's previous/next pager, the last topic's
+   checkpoint card and a module's next-track pager. On the SQL tracks also check
+   `/learn/sql/project` and the `/learning/shopsphere.sql` download. Confirm an
+   unknown track returns a real `404`.
 7. Keep `SEED_DEMO_DATA=false` in production; the seed still creates the admin
    account and curriculum content.
 8. Confirm no checkpoint attempts or QA submissions were left behind on the

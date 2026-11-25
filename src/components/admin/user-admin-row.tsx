@@ -88,7 +88,13 @@ export function UserAdminRow({
     <TableRow>
       <TableCell>
         <div className="flex items-center gap-2.5">
-          <UserAvatar name={user.displayName} username={user.username} size="sm" />
+          <UserAvatar
+            name={user.displayName}
+            username={user.username}
+            size="sm"
+            avatarPreset={user.avatarPreset}
+            avatarImageAt={user.avatarImageUpdatedAt}
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium">
               <Link

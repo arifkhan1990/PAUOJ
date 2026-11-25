@@ -37,6 +37,8 @@ export async function getAdminUserDetail(
       jobTitle: users.jobTitle,
       skills: users.skills,
       tshirtSize: users.tshirtSize,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     })
     .from(users)
     .where(eq(users.id, id))
@@ -70,5 +72,8 @@ export async function getAdminUserDetail(
     jobTitle: row.jobTitle,
     skills: row.skills ?? [],
     tshirtSize: row.tshirtSize,
+    avatarPreset: row.avatarPreset,
+    avatarImageUpdatedAt:
+      row.avatarImageUpdatedAt?.toISOString() ?? null,
   };
 }

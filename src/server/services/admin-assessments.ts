@@ -289,6 +289,8 @@ export async function getAssessmentResults(
       userId: users.id,
       username: users.username,
       displayName: users.displayName,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
       startedAt: assessmentParticipants.startedAt,
       expiresAt: assessmentParticipants.expiresAt,
       finishedAt: assessmentParticipants.finishedAt,
@@ -343,6 +345,9 @@ export async function getAssessmentResults(
       user: {
         username: participant.username,
         displayName: participant.displayName,
+        avatarPreset: participant.avatarPreset,
+        avatarImageUpdatedAt:
+          participant.avatarImageUpdatedAt?.toISOString() ?? null,
       },
       status: participantStatus(participant, now),
       startedAt: participant.startedAt.toISOString(),

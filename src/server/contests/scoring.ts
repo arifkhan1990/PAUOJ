@@ -10,12 +10,16 @@ export type ScoringParticipant = {
   userId: string;
   username: string;
   displayName: string;
+  avatarPreset?: string | null;
+  avatarImageUpdatedAt?: string | null;
 };
 
 export type ScoringTeamMember = {
   userId: string;
   username: string;
   displayName: string;
+  avatarPreset?: string | null;
+  avatarImageUpdatedAt?: string | null;
 };
 
 export type ScoringTeam = {
@@ -82,6 +86,8 @@ function rowSeedForParticipant(input: {
         user: {
           username: input.participant.username,
           displayName: input.participant.displayName,
+          avatarPreset: input.participant.avatarPreset,
+          avatarImageUpdatedAt: input.participant.avatarImageUpdatedAt,
         },
         team: null,
       },
@@ -100,7 +106,12 @@ function rowSeedForParticipant(input: {
   return {
     key: team.id,
     seed: {
-      user: { username: captain.username, displayName: captain.displayName },
+      user: {
+        username: captain.username,
+        displayName: captain.displayName,
+        avatarPreset: captain.avatarPreset,
+        avatarImageUpdatedAt: captain.avatarImageUpdatedAt,
+      },
       team: {
         id: team.id,
         name: team.name,
@@ -108,6 +119,8 @@ function rowSeedForParticipant(input: {
         members: team.members.map((member) => ({
           username: member.username,
           displayName: member.displayName,
+          avatarPreset: member.avatarPreset,
+          avatarImageUpdatedAt: member.avatarImageUpdatedAt,
         })),
       },
     },
@@ -207,10 +220,14 @@ export function computeScoreboard(input: {
   let previous: WorkingRow | null = null;
   let previousRank = 0;
   return result.map((row, index) => {
+    // A shared rank requires the full ranking key to match: solved, penalty
+    // and last acceptance time. lastAcceptedAt breaks ties the documented
+    // sort already resolves, so only fully equal rows share a rank.
     const tied =
       previous !== null &&
       previous.solved === row.solved &&
-      previous.penalty === row.penalty;
+      previous.penalty === row.penalty &&
+      previous.lastAcceptedAt === row.lastAcceptedAt;
     const rank = tied ? previousRank : index + 1;
     previous = row;
     previousRank = rank;

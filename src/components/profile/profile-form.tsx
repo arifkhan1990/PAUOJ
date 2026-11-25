@@ -13,8 +13,10 @@ import { ApiClientError, apiPatch } from "@/lib/api-client";
 import {
   MAX_PHONE_INPUT_LENGTH,
   MAX_PROFILE_SKILLS,
+  PRESENCE_VISIBILITY_OPTIONS,
   TSHIRT_SIZE_OPTIONS,
   USER_STATUS_OPTIONS,
+  type PresenceVisibility,
   type TshirtSize,
   type UserCurrentStatus,
 } from "@/lib/profile-fields";
@@ -41,6 +43,7 @@ export type ProfileFormProps = {
   jobTitle: string | null;
   skills: string[];
   tshirtSize: TshirtSize | null;
+  presenceVisibility: PresenceVisibility;
 };
 
 export function ProfileForm({
@@ -58,6 +61,7 @@ export function ProfileForm({
   jobTitle: initialJobTitle,
   skills: initialSkills,
   tshirtSize: initialTshirtSize,
+  presenceVisibility: initialPresenceVisibility,
 }: ProfileFormProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [bio, setBio] = useState(initialBio ?? "");
@@ -74,6 +78,9 @@ export function ProfileForm({
   const [skillsInput, setSkillsInput] = useState(initialSkills.join(", "));
   const [tshirtSize, setTshirtSize] = useState<string>(
     initialTshirtSize ?? "",
+  );
+  const [presenceVisibility, setPresenceVisibility] = useState<string>(
+    initialPresenceVisibility,
   );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -101,6 +108,7 @@ export function ProfileForm({
         .map((skill) => skill.trim())
         .filter(Boolean),
       tshirtSize,
+      presenceVisibility,
     });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "Check the fields.");
@@ -167,6 +175,24 @@ export function ProfileForm({
         />
         <p className="text-right text-[11px] text-muted-foreground">
           {bio.length}/500
+        </p>
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="presenceVisibility">Online status</Label>
+        <SearchableSelect
+          id="presenceVisibility"
+          value={presenceVisibility}
+          onValueChange={setPresenceVisibility}
+          options={PRESENCE_VISIBILITY_OPTIONS}
+          searchable={false}
+          aria-describedby="presenceVisibility-help"
+        />
+        <p
+          id="presenceVisibility-help"
+          className="text-[11px] text-muted-foreground"
+        >
+          Controls the “Online now” or last-active label on your profile and in
+          follow lists.
         </p>
       </div>
 

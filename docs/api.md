@@ -113,7 +113,8 @@ revokes every session.
   "skills": ["TypeScript", "PostgreSQL"],
   "phone": "01712-345678",
   "address": "House 42, Road 7, Dhaka 1200",
-  "tshirtSize": "L"
+  "tshirtSize": "L",
+  "presenceVisibility": "FOLLOWERS"
 }
 ```
 
@@ -125,7 +126,8 @@ string to clear any optional profile field; omitting a field keeps the stored va
 
 `currentStatus` is one of `STUDENT`, `EMPLOYED`, `FREELANCER`, `JOB_SEEKER` or
 `OTHER`; `skills` accepts up to 12 items of 1–30 characters (deduplicated
-case-insensitively); `tshirtSize` is `XS`–`XXXL`. `phone` accepts a Bangladeshi
+case-insensitively); `tshirtSize` is `XS`–`XXXL`; `presenceVisibility` is `EVERYONE`, `FOLLOWERS`
+or `NOBODY`. `phone` accepts a Bangladeshi
 `01XXXXXXXXX` / `8801XXXXXXXXX` number or an international `+` number and is
 stored normalized (for example `+8801712345678`).
 
@@ -134,22 +136,100 @@ Public profile fields are `currentStatus`, `companyName`, `jobTitle` and
 only to the account owner and to admins on `/admin/users/:id`; they are never
 included in the public profile or another user's response.
 
-### POST/DELETE `/users/:username/follow`
+### Profile avatars
 
-`POST` follows the user and `DELETE` unfollows them. Both are idempotent and
-return the caller-visible state:
+`PATCH /users/me/avatar` selects a preset or clears it:
 
 ```json
-{ "data": { "following": true, "followerCount": 12, "followingCount": 8 } }
+{ "preset": "cat" }
 ```
 
-`followerCount` and `followingCount` are the target user's totals. Rules: `401`
-anonymous, `404` unknown or banned user, `422` self-follow, `429` after 40
-follows or 40 unfollows per hour. Following creates one in-app `FOLLOW` notification
-for the target (`dedupeKey` per follower); no email is sent. Follower/following
-counts and the paginated lists at `/users/:username/connections` exclude banned
-accounts.
+`preset` is one of `cat`, `dog`, `bird`, `fish`, `rabbit`, `squirrel`,
+`turtle`, `panda`, `ghost`, `rocket`, `bot`, `gamepad`, or `null` for the
+initials avatar. Selecting a preset removes any uploaded photo. The response is
+`{ "avatarPreset": "cat", "avatarImageUpdatedAt": null }`.
 
+`POST /users/me/avatar` accepts multipart form data with a `file` field. PNG,
+JPEG and WebP are detected from the bytes (never the filename), at most 1 MB
+and 2048×2048 pixels. The response carries the new
+`avatarImageUpdatedAt` version. `DELETE /users/me/avatar` removes the uploaded
+photo and keeps the preset (or initials) as the fallback. All three endpoints
+require a session, same-origin requests and rate limits (10 uploads/hour, 30
+preset/delete changes/minute).
+
+`GET /users/:username/avatar?v=<version>` returns the uploaded image with
+`Content-Type`, `nosniff`, a same-origin resource policy and a one-year
+immutable cache because the URL changes on every upload. Unknown users, banned
+users and users without an upload return `404`. Preset avatars render inline in
+the UI and do not call this endpoint.
+
+### POST/DELETE `/users/:username/follow`
+
+`POST` creates a **follow request**; the target must accept it before a follow
+edge exists. `DELETE` cancels a pending request or unfollows an accepted edge.
+Both are idempotent and return the caller-visible state:
+
+```json
+{
+  "data": {
+    "following": false,
+    "requested": true,
+    "incomingRequest": false,
+    "followerCount": 12,
+    "followingCount": 8,
+    "blocked": false,
+    "canMessage": false
+  }
+}
+```
+
+Only accepted edges count in `followerCount`/`followingCount` and in the
+paginated lists at `/users/:username/connections`. Rules: `401` anonymous, `404`
+unknown or banned user, `422` self-follow, `403` when either side blocked the
+other, `429` after 40 follows or 40 unfollows per hour. A request creates one
+in-app `FOLLOW_REQUEST` notification for the target (`dedupeKey` per follower);
+acceptance creates one `FOLLOW_ACCEPTED` notification for the requester. No
+follow email is sent. A mutual request is auto-accepted: following someone who
+already has a pending request to you completes both edges. Profiles expose the
+coarse presence label on a five-minute online window: `Online now` or
+`Last active 7m/3h/2d/3w/4mo/1y ago` (a cleared timestamp reads
+`No recent activity`), subject to the target's visibility setting; exact
+timestamps are never returned. Presence also appears on the points and contest
+rating boards, where the viewer's own accepted-follow relation decides
+`FOLLOWERS` visibility.
+
+### GET `/follow-requests?page=1`
+
+Returns the caller's incoming pending requests (`data` array, `meta` with
+`page`, `pageSize`, `total`, `totalPages`; 20 per page), newest first, with the
+requester's username, display name, institution, rating, requested time and
+presence. Banned and blocked accounts are excluded.
+
+### POST `/users/:username/follow/accept` and `/follow/decline`
+
+Accept or decline the incoming pending request from `:username`. Accept turns
+it into an accepted edge (`acceptedAt`, `FOLLOW_ACCEPTED` notice for the
+requester) and marks the caller's request notice read; decline removes the
+pending row and its notice. Both return the caller-visible follow state. `404`
+when there is no pending request from that user, `429` after 60 responses per
+hour.
+
+### POST/DELETE `/users/:username/block`
+
+`POST` blocks the user and `DELETE` unblocks them. Blocking removes every follow
+edge in both directions (pending or accepted) in the same transaction, stops
+new follows/requests and messages, and hides presence. Blocked profiles show an
+"Unavailable" state to the other side; the blocker sees an Unblock action.
+`401` anonymous, `404` unknown/banned user, `422` self-block, `429` after 20
+blocks per hour. `GET /blocks` lists up to 200 of the caller's blocked users (username,
+display name, blocked time), newest first.
+
+### POST `/presence/heartbeat`
+
+Records activity for the signed-in caller at most once a minute (Redis
+throttle) and returns `{ "online": true }`. Session reads already touch presence
+with the same throttle, so the heartbeat only keeps open tabs active. Presence
+writes are best-effort and never fail authentication or rendering.
 ### POST `/users/me/password`
 
 ```json
@@ -389,7 +469,37 @@ full feed, and `mine=true` keeps the caller's own submissions visible.
 
 ### GET `/submissions/:id`
 
-Returns verdict, test results, compile output and source when permitted.
+Returns verdict, test results, compile output and source when permitted. The
+payload includes `problemId`, `isOwner` (the caller authored the submission) and,
+for the owner only, `note` (the private note text or `null`).
+
+### GET `/submissions/:id/analysis`
+
+Returns `{ "data": analysis }` for an accepted, settled submission, or
+`{ "data": null }` when the run is not accepted, has no metrics, belongs to an
+assessment, or its contest is still running. Unknown ids return `404`.
+
+`runtime` and `memory` each contain:
+
+- `value`: the run's metric (ms or KB).
+- `beats`: percentage of comparable runs this run is faster/smaller than
+  (`0-100`, `null` under five samples). Ties do not count as beaten.
+- `sampleSize` and `scope`: `"language"` for same-language samples, `"all"` when
+  a metric had fewer than five same-language rows and widened to every language.
+- `buckets`: `min`, `max` (exclusive; `null` on the last bucket), `count`,
+  `share` (`0-100`) and `current` (the run's bucket).
+- `median` and `best` for the sample.
+
+Samples are accepted rows on the same problem, excluding assessment and
+virtual-contest submissions. Contest runs become comparable once the contest has
+ended.
+
+### PUT `/submissions/:id/notes`
+
+Owner only; unknown ids and other users' submissions return `404`. Same-origin
+and rate limited to 60 requests per minute. Body `{ "body": "..." }` trimmed to
+1–2000 characters, returns `{ "note": "..." }` and upserts the one private note
+attached to that submission. `DELETE` removes it and returns `{ "note": null }`.
 
 ### GET `/submissions/:id/events`
 
@@ -648,12 +758,15 @@ automatically. A teacher adding another setter's public problem creates a
 
 ### Contest ratings
 
-When a contest ends, the first page view of the contest or its standings
-finalises the ratings exactly once. The update uses Elo with `K=32`, zero-sum
-normalisation and a rating floor of 100. Only participants with at least one
-contest submission are rated. Team contests are marked processed without
-individual rating changes. History is stored in `contest_rating_changes` and
-exposed on profile pages.
+Ratings finalise one hour after a contest ends, after a review and rejudge
+window. A worker sweep finalises due contests every minute; contest/standings
+page views call the same idempotent finaliser as a fallback. Finalisation waits
+while any contest submission is queued or judging. The update uses Elo with
+`K=32`, zero-sum normalisation and a rating floor of 100. Only non-banned
+participants with at least one contest submission are rated. Team contests are
+marked processed without individual rating changes. Once finalized, contest
+submissions cannot be rejudged and the contest problem set/schedule is locked.
+History is stored in `contest_rating_changes` and exposed on profile pages.
 
 ## Coding assessments
 
@@ -902,10 +1015,69 @@ problems are accepted.
 
 ## Ranking
 
-`GET /rank?page=1&pageSize=20`
+`GET /rank`
 
-Rows: `rank`, `username`, `displayName`, `points`, `solvedCount`,
-`submissionCount`, `acceptanceRate`, `lastAcceptedAt`.
+Query parameters:
+
+| Name | Default | Notes |
+| --- | --- | --- |
+| `page` | `1` | 1-based page number. |
+| `pageSize` | `20` | Between 1 and 50. |
+| `q` | none | Case-insensitive substring over `username`, `displayName` and `institution`, trimmed and capped at 100 chars; `%` and `_` match literally. |
+| `institution` | none | Exact match after trimming, capped at 120 chars. |
+| `country` | none | Exact match after trimming, capped at 80 chars. |
+| `minSolved` / `maxSolved` | none | Inclusive accepted-problem count, integer `0`–`100000`. |
+| `sort` | `points` | `points` (points, then solved count, then username), `solved` (solved count, then points, then username) or `name` (username). |
+
+Rows: `rank`, `username`, `displayName`, `institution`, `country`, `points`,
+`solvedCount`, `submissionCount`, `acceptanceRate`, `lastAcceptedAt`.
+
+`rank` is the global position over the whole ranked set, ordered by points, solved count and
+username. Filters, sorting and paging never renumber it: a row narrowed down to one institution
+can still be `rank: 47`. `meta.total` counts the rows after filters and before pagination.
+
+Only accepted practice and contest solves count; assessment and virtual-contest submissions never
+do. Blank values (`?page=`, `?sort=`) are treated as unset and fall back to the defaults. A parameter
+that fails validation — including `minSolved` greater than `maxSolved`, an unknown `sort`, or a
+solved bound outside `0`–`100000` — returns `422` with the standard error shape.
+
+## Contest rating
+
+`GET /ratings`
+
+The same board data that powers the rating view of `/rank`, as a paged list.
+
+Query parameters:
+
+| Name | Default | Notes |
+| --- | --- | --- |
+| `page` | `1` | 1-based page number. |
+| `pageSize` | `20` | Between 1 and 50. |
+| `q` | none | Case-insensitive substring over `username`, `displayName` and `institution`, trimmed and capped at 100 chars; `%` and `_` match literally. |
+| `institution` | none | Exact match after trimming, capped at 120 chars. |
+| `country` | none | Exact match after trimming, capped at 80 chars. |
+| `minRating` / `maxRating` | none | Inclusive current-rating bounds, integer `0`–`10000`. |
+| `sort` | `rating` | `rating` (rating, then peak, then contests, then username), `peak` (peak, then rating, then contests, then username), `contests` (contests, then rating, then peak, then username) or `name` (username). |
+
+Rows: `rank`, `username`, `displayName`, `institution`, `country`, `rating`, `maxRating`,
+`contestCount`, `lastDelta`, `lastContestAt`, `lastContestSlug`, `lastContestTitle`.
+
+Only rated coders appear: a non-banned user with at least one row in `contest_rating_changes`, i.e.
+at least one finalized rated solo contest. A user who never competed keeps the default `1500` rating
+but is not on this board. `rating` is the current rating, `maxRating` is the higher of the current
+rating and the best `new_rating` in the history, and `contestCount` counts rating changes;
+`lastDelta` and the last-contest fields come from the most recent change ordered by contest end
+(`created_at`) and then contest id.
+
+`rank` is the global position over the whole rated set, ordered by rating, peak rating, contest
+count and username. Filters, sorting and paging never renumber it. `meta.total` counts rows after
+filters and before pagination. Banned users are excluded from the board, its facets and its ranks.
+
+`GROUP`-format contests produce no individual rating changes, so they never add rows here.
+Finalization is lazy: ratings update on the first page view of an ended contest (or its standings),
+so this endpoint does not write and may trail a just-ended contest until that view happens. Blank
+values fall back to defaults; an unknown `sort`, a rating bound outside `0`–`10000`, or
+`minRating` greater than `maxRating` returns `422` with the standard error shape.
 
 ## Admin and teacher content
 
@@ -936,23 +1108,110 @@ other records return `404`.
 - Assessment roster invites, link rotation and the results CSV export are documented under
   [Coding assessments](#coding-assessments).
 
+## Messages
+
+Direct messages are two-person conversations. Opening a new conversation
+requires an accepted follow edge in either direction; blocked users cannot open
+or send, and non-participants receive `404` so conversation ids do not leak.
+Existing conversations stay readable and replyable after an unfollow. When
+either side blocks the other, the conversation disappears from both inboxes,
+stops contributing to unread counts and direct links return `404` until the
+block is lifted. Message bodies are plain
+text, trimmed to 1–2000 characters and escaped on render.
+
+- `GET /messages/conversations?page=1` — 20 per page, newest activity first, with
+  the other participant, presence, `muted`, unread count, last-message preview
+  (including "Message deleted") and `unreadTotal`. Muted conversations stay
+  listed but contribute zero unread and send no notices.
+- `POST /messages/conversations` with `{ "username": "nusrat" }` — opens (or
+  returns) the pair conversation; `201 { "id": "..." }`. `403` without an
+  accepted follow or when blocked, `422` self, `404` unknown/banned user, `429`
+  after 20 opens per hour.
+- `GET /messages/conversations/:id?page=1` — 30 messages per page counted from
+  the newest; items are oldest-first within the page. Returns the participant,
+  presence, `blocked` and `items` (`id`, `body`, `mine`, `createdAt`, `readAt`,
+  `deleted`). Deleted bodies are blank; malformed or foreign ids are `404`.
+- `POST /messages/conversations/:id/messages` with `{ "body": "..." }` — sends a
+  message (`201`). `403` blocked, `404` non-participant, `422` empty/overlong,
+  `429` after 30 per minute. The first unread message of a burst creates one
+  in-app `MESSAGE` notification; deleting it replaces the notification preview
+  with "This message was deleted.".
+- `POST`/`DELETE /messages/conversations/:id/mute` — toggles the caller's mute
+  (`{ "muted": true|false }`), participant-only, idempotent, 60 per minute.
+- `POST /messages/conversations/:id/read` — marks the other participant's
+  messages and the conversation's notifications read; returns `{ "marked": n }`
+  and is limited to 120 per minute.
+- `DELETE /messages/:id` — soft-deletes the caller's own message (idempotent,
+  `404` for anyone else, 60 per minute).
+- `GET /messages/unread` — `{ "count": n }`, `private, no-store`; drives the
+  header badge. List/thread/unread GETs are rate limited (120/240/120 per
+  minute) to bound polling cost.
+
+## Social reports
+
+Any signed-in user can report another user's message, conversation, follow
+request or profile. Reports are rate limited to 10 per hour and duplicates of
+the same kind/target/message within 24 hours return `409`. A message report must
+be a message the **other** participant sent; reporting your own message is
+`422`. The stored excerpt is captured at report time and shown only to admins.
+
+`POST /api/v1/social-reports`
+
+```json
+{
+  "kind": "MESSAGE",
+  "username": "nusrat",
+  "messageId": "…",
+  "conversationId": "…",
+  "reason": "HARASSMENT",
+  "details": "optional, up to 500 characters"
+}
+```
+
+Reports are inserted under an advisory lock, so two concurrent identical
+submissions produce one `201` and one `409`. While any report is open, admins
+receive one grouped in-app + email digest per UTC hour instead of one email per
+report.
+
+`kind` is `MESSAGE`, `CONVERSATION`, `FOLLOW_REQUEST` or `PROFILE`; `reason` is
+`SPAM`, `HARASSMENT`, `HATE`, `SCAM`, `IMPERSONATION` or `OTHER`. `MESSAGE`
+requires `messageId` (and must belong to the pair), `CONVERSATION` requires
+`conversationId`, `FOLLOW_REQUEST` requires a pending request **from the target
+to the reporter**, and `PROFILE` needs only the username. Success is
+`201 { "reported": true, "id": "…" }`; missing/foreign ids are `404`, wrong
+direction/self is `422`. Filing a report writes an audit entry and one in-app
+`SYSTEM` notice per admin (no report email); notification failures are
+best-effort.
+
+- `GET /api/v1/admin/social-reports?status=open|resolved|dismissed|all&page=1`
+  is admin-only and returns 20 reports per page with reporter/target identities,
+  excerpt, details and timestamps.
+- `PATCH /api/v1/admin/social-reports/:id` with
+  `{ "status": "RESOLVED"|"DISMISSED", "note": "optional" }` closes an open
+  report atomically with its audit entry, notifies the reporter and returns
+  `409` if it was already closed. Admins triage from `/admin/social-reports`.
+
 ## Notifications
 
-All endpoints require a session except unsubscribe.
+All endpoints require a session except unsubscribe. JSON request bodies are
+capped at 1 MiB (`413 PAYLOAD_TOO_LARGE`).
 
 - `GET /notifications?page=1` returns the current user's notifications, newest
   first, with `type`, `title`, `body`, `href`, `readAt` and `createdAt`.
 - `PATCH /notifications/read` marks every unread notification as read.
-- `PATCH /users/me/notifications` updates email preferences:
-  `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": false, "emailReviews": true, "reviewEmailFrequency": "INSTANT" }`.
+- `PATCH /users/me/notifications` updates email and in-app preferences:
+  `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": false, "emailReviews": true, "notifyMessages": true, "notifyFollows": true, "reviewEmailFrequency": "INSTANT" }`.
+  `notifyMessages`/`notifyFollows` control in-app MESSAGE and FOLLOW_* notices
+  only; unread badges and security/account notices are unaffected.
   `reviewEmailFrequency` is `INSTANT`, `HOURLY` or `DAILY`.
 - `POST /notifications/unsubscribe` with `{ "token": "...", "scope": "all" }`
   disables email categories from a one-click email link. Scopes: `all`,
   `verdicts`, `contests`, `clarifications`, `reviews`.
 
 In-app notifications are created for finished verdicts, contest starts,
-clarification activity, problem contribution proposals/reviews, contest
-problem approval requests/decisions and problem publication review events
+clarification activity, follow requests/acceptance, first unread direct
+messages, problem contribution proposals/reviews, contest problem approval
+requests/decisions and problem publication review events
 (submit, hold, respond, resolve, reopen and publish). Email copies follow the user's preferences
 and require a verified email address. Review emails cover contribution and
 contest-approval events, have their own `emailReviews` toggle, and follow the

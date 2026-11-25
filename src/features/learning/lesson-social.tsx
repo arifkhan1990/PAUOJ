@@ -20,6 +20,8 @@ type Viewer = {
   username: string;
   displayName: string;
   role: "USER" | "TEACHER" | "ADMIN";
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: string | null;
 } | null;
 
 function ReactionButton({

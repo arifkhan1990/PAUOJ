@@ -1,6 +1,7 @@
 import type { Difficulty } from "./difficulty";
 import type { RatingBucket } from "./rating-distribution";
 import type { RatingHistoryItem } from "./rating-types";
+import type { PresenceInfo } from "./follow-types";
 import type { UserCurrentStatus } from "./profile-fields";
 import type {
   HeatmapDay,
@@ -88,11 +89,19 @@ export type ProfileStats = {
     skills: string[];
     rating: number;
     createdAt: string;
+    avatarPreset: string | null;
+    avatarImageUpdatedAt: string | null;
     isSelf: boolean;
     followerCount: number;
     followingCount: number;
     isFollowing: boolean;
     canFollow: boolean;
+    requested: boolean;
+    incomingRequest: boolean;
+    blocked: boolean;
+    blockedByViewer: boolean;
+    canMessage: boolean;
+    presence: PresenceInfo;
   };
   solvedCount: number;
   submissionCount: number;

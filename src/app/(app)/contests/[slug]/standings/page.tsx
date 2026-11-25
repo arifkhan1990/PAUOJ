@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Trophy } from "lucide-react";
+import { Info, Trophy } from "lucide-react";
 import { AutoRefresh } from "@/components/shared/auto-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
@@ -53,6 +53,7 @@ export default async function StandingsPage({
   if (!board) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:px-8">
+        <h1 className="sr-only">Standings</h1>
         <EmptyState
           title="Standings unavailable"
           description={message ?? "This contest could not be found."}
@@ -69,6 +70,8 @@ export default async function StandingsPage({
 
   const format = board.contest.format ?? "SINGLE";
   const isGroup = format === "GROUP";
+  const reviewOpen =
+    new Date(board.contest.ratingReviewEndsAt).getTime() > Date.now();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -102,6 +105,21 @@ export default async function StandingsPage({
             : `${board.rows.length} coder${board.rows.length === 1 ? "" : "s"}`}
         </span>
       </div>
+
+      {board.contest.status === "ENDED" ? (
+        <div className="mt-4 flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <p>
+            {isGroup
+              ? "Team round — no individual rating changes."
+              : board.contest.ratingFinalizedAt
+                ? `Ratings finalized ${formatDhakaDateTime(board.contest.ratingFinalizedAt)}.`
+                : reviewOpen
+                  ? `Standings are final. Ratings are under review and finalize at ${formatDhakaDateTime(board.contest.ratingReviewEndsAt)} (one hour after the contest ends).`
+                  : "Standings are final. Ratings are awaiting finalization after the review window."}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-muted-foreground">

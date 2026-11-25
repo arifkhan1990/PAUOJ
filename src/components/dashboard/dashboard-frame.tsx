@@ -44,12 +44,16 @@ export function DashboardFrame({
   role,
   username,
   displayName,
+  avatarPreset = null,
+  avatarImageUpdatedAt = null,
   children,
 }: {
   panel: DashboardRole;
   role: UserRole;
   username: string;
   displayName: string;
+  avatarPreset?: string | null;
+  avatarImageUpdatedAt?: Date | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -176,7 +180,13 @@ export function DashboardFrame({
               href={`/users/${username}`}
               className="flex items-center gap-2.5 rounded-lg p-2 transition-colors hover:bg-muted"
             >
-              <UserAvatar name={displayName} username={username} size="sm" />
+              <UserAvatar
+                name={displayName}
+                username={username}
+                size="sm"
+                avatarPreset={avatarPreset}
+                avatarImageAt={avatarImageUpdatedAt}
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-semibold">{displayName}</p>
                 <p className="truncate text-[10px] text-muted-foreground">
@@ -244,7 +254,7 @@ export function DashboardFrame({
             </Link>
             <ThemeToggle />
             <UserMenu
-              user={{ username, displayName, role }}
+              user={{ username, displayName, role, avatarPreset, avatarImageUpdatedAt }}
               unreadNotifications={0}
             />
           </header>

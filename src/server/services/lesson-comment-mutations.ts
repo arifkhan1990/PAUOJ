@@ -14,7 +14,15 @@ import { assertLessonTopic } from "./lesson-discussions";
 export async function createLessonComment(
   moduleSlug: string,
   topicSlug: string,
-  user: Pick<SafeUser, "id" | "username" | "displayName" | "role">,
+  user: Pick<
+    SafeUser,
+    | "id"
+    | "username"
+    | "displayName"
+    | "role"
+    | "avatarPreset"
+    | "avatarImageUpdatedAt"
+  >,
   input: CreateCommentInput,
 ): Promise<ProblemComment> {
   assertLessonTopic(moduleSlug, topicSlug);
@@ -80,6 +88,9 @@ export async function createLessonComment(
       username: user.username,
       displayName: user.displayName,
       role: user.role,
+      avatarPreset: user.avatarPreset,
+      avatarImageUpdatedAt:
+        user.avatarImageUpdatedAt?.toISOString() ?? null,
     },
     replies: [],
   };

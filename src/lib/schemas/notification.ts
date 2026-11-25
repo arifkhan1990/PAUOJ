@@ -5,6 +5,8 @@ export const notificationPreferencesSchema = z.object({
   emailContests: z.boolean(),
   emailClarifications: z.boolean(),
   emailReviews: z.boolean(),
+  notifyMessages: z.boolean(),
+  notifyFollows: z.boolean(),
   reviewEmailFrequency: z.enum(["INSTANT", "HOURLY", "DAILY"]),
 });
 

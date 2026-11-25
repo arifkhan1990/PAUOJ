@@ -69,6 +69,9 @@ problem_comments 1─* problem_comments (replies, one level)
 problem_comments 1─* problem_comment_votes *─1 users
 users 1─* notifications
 users 1─* audit_logs
+users *─* users (user_follows: directed, PENDING/ACCEPTED)
+users *─* users (user_blocks: directed, severs follow edges)
+conversations 1─* messages *─1 users
 ```
 
 Key constraints:
@@ -120,6 +123,30 @@ submission. Assessment submissions are excluded from both the counts and the
 rankboard, and the rankboard also excludes virtual contests, so private test
 activity never appears there; the whole insights block is hidden while a
 contest or assessment context is active.
+
+## Submission analysis
+
+`/submissions/:id` adds a LeetCode-style analysis block for accepted, settled
+runs: runtime and memory percentiles plus a runtime histogram with the run
+marked. The comparison sample is every accepted submission on the same problem
+with the same language, excluding assessment and virtual-contest rows. When a
+metric has fewer than five same-language rows, the scope widens to all languages
+and the payload reports `scope: "all"` so the UI can label it. `beats` is the
+share of the sample strictly slower (runtime) or larger (memory) than this run,
+so ties do not inflate the percentile, and it is `null` below five samples.
+Buckets start at zero with a `1/2/5 × 10^n` width capped at 24 buckets; the last
+bucket is open ended. Neither sample query is cached: the aggregate is cheap at
+current scale and the freshness matters more.
+
+Analysis is suppressed for assessment submissions and for submissions whose
+contest is still running, matching the problem-insights lock, so a live round
+never reveals how many accepted runs exist or how fast they are. Contest runs
+become visible once the round ends.
+
+Each submission also has at most one private note owned by its author
+(`submission_notes`, primary key `submission_id`). Notes are owner-only in the
+detail service and the API, never serialized for public/assessment viewers, and
+cascade away with the submission or the user.
 
 ## Problem discussions
 
@@ -494,15 +521,33 @@ contests stay limited to participants and admins. Answers are allowed for
 admins, the contest creator and the problem author, and each answer writes an
 audit entry.
 
-When a contest ends, the first contest/standings page view calls the rating
-finaliser. It locks the contest row, re-checks `rated_at`, computes the ICPC
-scoreboard, keeps only participants with at least one contest submission,
-compacts tied ranks, and applies Elo with `K=32`, zero-sum normalisation and a
-floor of 100. Group contests are marked processed without rating changes.
+Ratings finalise one hour after a contest ends. The hour is a review and
+rejudge window: contest submissions can still be rejudged, and the finaliser
+defers while any contest submission is queued or judging (virtual replays are
+ignored). A Redis-locked worker sweep runs every minute and finalises due
+contests in `(end_at, id)` order; contest/standings page views also run a
+throttled, ordered fallback that finalises only the earliest due contest, and
+`pnpm ratings:finalize` can drain the queue manually. The finaliser locks the
+contest row, re-checks `rated_at` and that no earlier contest is unfinalised,
+computes the ICPC scoreboard, keeps only non-banned participants with at least
+one contest submission, uses competition ranks (ties share a rank, the last
+place scores zero), and applies Elo with `K=32`, zero-sum integer
+normalisation and a floor of 100. Participant user rows are locked in ascending
+id order so two contests finalising at once cannot lose a rating update. Group
+contests are marked processed without rating changes, but also wait for pending
+verdicts before their review closes.
+
 Changes are written to `contest_rating_changes` and `users.rating` in one
-transaction; `rated_at` makes the operation idempotent. Rating history rows use
-the contest end date as `created_at`, so profile charts keep the contest
-timeline even when finalisation happens on a later page view.
+transaction; `rated_at` makes the operation idempotent. Once `rated_at` is set,
+contest submissions cannot be rejudged and the contest problem set/schedule is
+locked; descriptive metadata stays editable. Rating history rows use the
+contest end date as `created_at`, so profile charts keep the contest timeline
+even though finalisation happens one hour later. `pnpm ratings:audit` checks
+history sums, old→new chains, `users.rating` drift, floor violations,
+finalised/unfinalised consistency and overdue contests; the baseline exits
+clean. `pnpm ratings:recompute` is a dry-run-by-default repair that replays
+stored rating changes chronologically with the current engine; `--apply` fixes
+historical rounding/rank drift after a backup.
 
 ## Dashboards and roles
 
@@ -579,6 +624,21 @@ state instead of a fabricated rank.
 
 ### Profile identity and social graph
 
+`users.avatar_preset` stores one of the twelve preset ids (`cat`, `dog`, `bird`,
+`fish`, `rabbit`, `squirrel`, `turtle`, `panda`, `ghost`, `rocket`, `bot`,
+`gamepad`) or `null`. Uploaded photos live in `user_avatar_images` as `bytea`
+with the detected MIME, parsed dimensions and SHA-256; keeping bytes out of
+`users` means session and list queries stay small. `users.avatar_image_updated_at`
+is both the "has an upload" flag and the cache-busting version in
+`/api/v1/users/:username/avatar?v=<epoch>`, so the route can answer with a
+one-year immutable cache. The browser crops/resizes to 512×512 and strips EXIF
+before upload; the server re-validates magic bytes and dimensions, caps the
+file at 1 MB/2048px, and rate limits uploads. Choosing a preset deletes the
+uploaded row and clears the version in one transaction. `UserAvatar` renders the
+upload first, then a preset, then the deterministic initials/colour fallback;
+every shared user projection carries the two avatar fields so pages never issue
+an N+1 avatar query.
+
 `users.website`, `users.github` and `users.linkedin` are optional display links.
 They are normalized at the API boundary by `src/lib/profile-links.ts` (website
 host/path, GitHub handle, LinkedIn `in/slug`), stored as `http(s)` URLs and
@@ -587,19 +647,99 @@ never fetches these URLs, so they add no SSRF surface.
 
 `user_follows` stores one directed edge per `(follower_id, following_id)` with a
 composite primary key, a `follower_id <> following_id` check, cascading user
-foreign keys and `(following_id, created_at)` / `(follower_id, created_at)`
-indexes for the two lists. Follow and unfollow are idempotent and same-origin,
-self-follow is rejected, and follows are rate limited to 40 per hour per viewer.
-The first follow inserts one in-app `FOLLOW` notification per follower pair;
-the unique `dedupe_key` prevents repeat notices. Follower/following totals,
-lists and pagination exclude banned accounts, and lists are capped at 20 rows
-per page. The profile hero and `/users/:username/connections` read the same
-service so counts and visible rows stay consistent. The proxy validates the
-username (and that the account is not banned) before the streaming boundary, so
-unknown profiles and connections pages return a real `404` instead of a
-soft-404, and mixed-case usernames redirect `301` to the lowercase canonical. Profiles also expose lowercase canonical and Open Graph/Twitter
-metadata with the brand image, and a client share button copies or shares the
-canonical profile URL.
+foreign keys and `(follower_id|following_id, status, created_at)` indexes for
+the accepted and pending lists. Since migration 0043 an edge carries
+`status = PENDING | ACCEPTED` and `accepted_at`; existing rows were backfilled
+as accepted. `POST /users/:username/follow` creates a request, `DELETE`
+cancels/unfollows, and accept/decline mutate the pending row atomically with
+`UPDATE/DELETE ... RETURNING`. A mutual request auto-accepts both edges. Only
+accepted edges count toward follower/following totals and the two connection
+lists (20 per page); banned and blocked members are excluded. The first request
+inserts one in-app `FOLLOW_REQUEST` notice per follower pair and acceptance one
+`FOLLOW_ACCEPTED` notice; the unique `dedupe_key` prevents repeats, and
+cancel/decline clears the notice so a later request can notify again. The
+profile hero and `/users/:username/connections` read the same service, so
+counts and rows stay consistent. The proxy validates the username (and that the
+account is not banned) before the streaming boundary, so unknown profiles and
+connections pages return a real `404` instead of a soft-404, and mixed-case
+usernames redirect `301` to the lowercase canonical. Profiles also expose
+lowercase canonical and Open Graph/Twitter metadata with the brand image, and a
+client share button copies or shares the canonical profile URL.
+
+### Presence, blocking and direct messages
+
+`users.last_active_at` records activity at most once a minute: `getCurrentUser`
+and `createSession` call a Redis `SET NX EX 60` throttle and then update the
+row, while a signed-in `PresenceHeartbeat` posts `/presence/heartbeat` every 90
+seconds so an open tab stays online. A Redis outage falls back to a per-process
+`Map` with the same 60-second window. Failures are logged and never block auth.
+A profile is "Online now" inside a five-minute window; otherwise the server
+computes a floor-based relative label (`Last active 7m/3h/2d/3w/4mo/1y ago`)
+and a cleared timestamp reads `No recent activity`. Exact timestamps are never
+serialized. Profiles, connection/request lists, message lists/threads and both
+rank boards show the same label (rank uses one batched users query plus the
+shared presence map, never an N+1). Migration 0044 backfills existing users from
+their account/session/submission history. `presence_visibility` (`EVERYONE`, `FOLLOWERS`, `NOBODY`, default
+`EVERYONE`) is enforced in `presenceForTarget`; `FOLLOWERS` requires an accepted
+follower edge, blocking forces `HIDDEN`, and the owner always sees their own.
+
+`user_blocks` is a directed pair with a self-check and cascading FKs. Blocking
+runs one transaction that inserts the block and deletes every follow edge in
+both directions, then refuses re-follow/re-request and hides presence. Block
+checks are repeated inside follow/open/send transactions to close
+check-then-write races. `canMessage` is true only when an accepted edge exists
+in either direction and neither side blocked the other.
+
+`conversations` stores exactly one row per unordered pair (`user_a_id <
+user_b_id` check plus a unique pair index) and `messages` stores plain-text
+bodies constrained to 1–2000 characters. Sending requires participation and no
+block in either direction; a new conversation additionally needs an accepted
+follow edge, while an existing conversation remains replyable after an unfollow.
+`conversation_mutes` is a per-user toggle that keeps the conversation listed but
+zeroes its unread count and suppresses its MESSAGE notices. When either side
+blocks — or the counterpart is banned — the conversation disappears from the
+inbox, unread totals exclude it and the thread returns `404`. Block also marks
+the blocker's pending request and message notices read. The header badge reads a
+15-second Redis cache (`messages:unread:<id>`) that every write path invalidates;
+a Redis outage falls back to the indexed DB count. `/messages` and thread SSR
+requests are rate limited (120/240 per minute per user) and the JSON API rejects
+bodies over 1 MiB with `413`. Block, follow, open and send take a
+transaction-scoped advisory lock on the user pair so a concurrent block cannot
+slip a follow or message through.
+Threads are 30 messages per page counted from the newest; lists are 20 per page
+and unread counts come from the partial unread index. Read receipts are
+`messages.read_at`, deletion is `messages.deleted_at` (bodies are masked on every
+read), and the first unread message of a burst inserts one `MESSAGE` notice
+unless the recipient muted the conversation or disabled `notify_messages`;
+deleting a message replaces the notice preview with "This message was deleted.".
+All message mutations are same-origin, rate limited and participant-scoped
+(foreign ids return `404`).
+
+### Moderation reports and retention
+
+`social_reports` stores one row per report with reporter/target, kind, reason,
+optional details, a snapshot excerpt, optional conversation/message references
+(`ON DELETE SET NULL` so removing a message or conversation keeps the report),
+status, resolver and resolution time. A message report must reference a message
+sent by the target; a follow-request report must reference a pending request
+from the target to the reporter. Duplicate reporter/kind/target/message reports
+inside 24 hours return `409` thanks to an advisory lock around the re-check and
+insert, submissions are limited to 10 per hour, and resolving/dismissing is
+open-only, atomic with its audit entry, and notifies the reporter.
+`/admin/social-reports` is the admin queue; while reports are open, a worker
+sweep sends admins one grouped in-app + email digest per UTC hour (deduped), so
+individual reports never flood the inbox.
+
+Retention runs in the worker every 24 hours and applies by default: messages
+older than `SOCIAL_MESSAGE_RETENTION_DAYS` (365), closed reports older than
+`SOCIAL_REPORT_RETENTION_DAYS` (730) and `last_active_at` older than
+`SOCIAL_PRESENCE_RETENTION_DAYS` (365) are removed/cleared in bounded
+transactions after their empty conversations are swept. Set
+`SOCIAL_RETENTION_AUTO_APPLY=false` for a dry-run/log-only window. The
+`pnpm social:retention [--apply]` CLI uses the same service for manual runs and
+prints counts only, never row contents.
+Rate limits use Redis Lua (`INCR` + TTL in one atomic call) and fall back to a
+bounded per-process counter when Redis is unavailable.
 
 ### Profile details and private contact data
 
@@ -757,8 +897,8 @@ immediately and needs no backfill.
 - penalty = solve minute + 20 × failed attempts before acceptance;
 - failed statuses for penalty: WA, TLE, MLE, RE, OLE;
 - CE and system errors do not add penalty;
-- ranking: solved descending, penalty ascending, last acceptance ascending,
-  username as the final tie-break.
+- ranking: solved descending, penalty ascending, last acceptance ascending;
+  fully equal rows share a rank and are ordered by username for display.
 
 ## Ranking
 
@@ -767,6 +907,15 @@ Each problem counts once, regardless of how many accepted submissions exist.
 Contest submissions count toward overall ranking as well; assessment and
 virtual-contest submissions never do (see
 [Assessment invites and join modes](#assessment-invites-and-join-modes)).
+Board filters and sorting never renumber ranks: the global position is computed
+before filtering, so a filtered row keeps its real rank.
+
+The contest rating board uses a separate, rated-only population: a non-banned
+user with at least one row in `contest_rating_changes` (a finalized rated solo
+contest). It shows the current rating, the peak rating (`max` of the current
+rating and the best change) and the contest count, ranked by rating, peak,
+contest count, then username. `GROUP` contests never create rating changes, and
+finalization stays lazy, so the board is as fresh as the last contest page view.
 
 ## Judge sandbox
 

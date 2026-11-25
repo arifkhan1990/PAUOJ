@@ -189,6 +189,12 @@ export function ContestDetailContent({ contest }: { contest: ContestDetail }) {
               ? "Team rounds are unrated for individual rating; virtual replay is solo-only."
               : "Only registered participants can submit contest problems."}
           </li>
+          {!isGroup ? (
+            <li>
+              Ratings finalize one hour after the contest ends, after the review
+              and rejudge window.
+            </li>
+          ) : null}
         </ul>
       </section>
 

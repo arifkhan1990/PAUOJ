@@ -4,7 +4,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { pageHref, type SearchParams } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
-function pageNumbers(page: number, totalPages: number): (number | "dots")[] {
+export function paginationRange(
+  page: number,
+  totalPages: number,
+): (number | "dots")[] {
   const wanted = new Set<number>([1, totalPages, page - 1, page, page + 1]);
   const pages = [...wanted]
     .filter((value) => value >= 1 && value <= totalPages)
@@ -47,7 +50,7 @@ export function Pagination({
       >
         <ChevronLeft className="size-4" />
       </Link>
-      {pageNumbers(page, totalPages).map((value, index) =>
+      {paginationRange(page, totalPages).map((value, index) =>
         value === "dots" ? (
           <span
             key={`dots-${index}`}

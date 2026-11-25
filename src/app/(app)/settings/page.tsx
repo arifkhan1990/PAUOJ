@@ -3,11 +3,13 @@ import Link from "next/link";
 import {
   Bell,
   CalendarDays,
+  Camera,
   KeyRound,
   Mail,
   ShieldCheck,
   UserRound,
 } from "lucide-react";
+import { AvatarForm } from "@/components/profile/avatar-form";
 import { ResendVerificationButton } from "@/components/profile/resend-verification-button";
 import { NotificationPreferencesForm } from "@/features/notifications/notification-preferences-form";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +30,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const settingsSections = [
+  { href: "#avatar", label: "Avatar", icon: Camera },
   { href: "#profile", label: "Profile", icon: UserRound },
   { href: "#password", label: "Password", icon: KeyRound },
   { href: "#notifications", label: "Notifications", icon: Bell },
@@ -58,6 +61,8 @@ export default async function SettingsPage() {
                 name={user.displayName}
                 username={user.username}
                 size="lg"
+                avatarPreset={user.avatarPreset}
+                avatarImageAt={user.avatarImageUpdatedAt}
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">
@@ -153,6 +158,22 @@ export default async function SettingsPage() {
         </aside>
 
         <div className="space-y-5">
+          <Card id="avatar" className="scroll-mt-24 p-5">
+            <h2 className="text-base font-semibold">Profile picture</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Your avatar appears on your profile, comments, rank boards and
+              messages.
+            </p>
+            <div className="mt-4">
+              <AvatarForm
+                username={user.username}
+                displayName={user.displayName}
+                initialPreset={user.avatarPreset}
+                initialImageAt={user.avatarImageUpdatedAt?.toISOString() ?? null}
+              />
+            </div>
+          </Card>
+
           <Card id="profile" className="scroll-mt-24 p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="text-base font-semibold">Profile details</h2>
@@ -183,6 +204,7 @@ export default async function SettingsPage() {
                 jobTitle={user.jobTitle}
                 skills={user.skills}
                 tshirtSize={user.tshirtSize}
+                presenceVisibility={user.presenceVisibility}
               />
             </div>
           </Card>
@@ -198,13 +220,15 @@ export default async function SettingsPage() {
           </Card>
 
           <Card id="notifications" className="scroll-mt-24 p-5">
-            <h2 className="text-base font-semibold">Email notifications</h2>
+            <h2 className="text-base font-semibold">Notifications</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Choose which activity should also reach your inbox.
+              Choose which activity reaches you in the app and in your inbox.
             </p>
             <div className="mt-4">
               <NotificationPreferencesForm
                 initial={{
+                  notifyMessages: user.notifyMessages,
+                  notifyFollows: user.notifyFollows,
                   emailVerdicts: user.emailVerdicts,
                   emailContests: user.emailContests,
                   emailClarifications: user.emailClarifications,

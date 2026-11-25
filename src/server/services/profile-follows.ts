@@ -1,6 +1,11 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { getDb } from "@/server/db";
-import { userFollows, users } from "@/server/db/schema";
+import {
+  notifications,
+  userBlocks,
+  userFollows,
+  users,
+} from "@/server/db/schema";
 import { errors } from "@/server/api/errors";
 import { enforceRateLimit } from "@/server/api/rate-limit";
 import type {
@@ -8,115 +13,98 @@ import type {
   FollowConnectionType,
   FollowState,
   FollowUserItem,
+  PresenceInfo,
 } from "@/lib/follow-types";
-import { logger } from "@/server/logger";
-import { notifyUser } from "./notifications";
+import { isBlockedEitherWay } from "./user-blocks";
+import { presenceForTarget } from "./presence";
+import {
+  FOLLOW_PAGE_SIZE,
+  FOLLOW_RATE_LIMIT,
+  FOLLOW_RATE_WINDOW_SECONDS,
+  OFFLINE_PRESENCE,
+  clampFollowPage,
+  decideFollowAction,
+  deriveFollowFlags,
+  findFollowTarget,
+  followAcceptedDedupeKey,
+  followRequestDedupeKey,
+  listedMemberWhere,
+  readBlockState,
+  readFollowCounts,
+  readFollowEdges,
+  readFollowState,
+  safeNotify,
+  safePresenceMap,
+  shouldNotifyFollow,
+  toPresenceTarget,
+  type FollowViewer,
+} from "./profile-follow-shared";
+import { lockUserPair } from "./social-lock";
 
-const CONNECTIONS_PAGE_SIZE = 20;
-const MAX_CONNECTIONS_PAGE = 10_000;
-const FOLLOW_RATE_LIMIT = 40;
-const FOLLOW_RATE_WINDOW_SECONDS = 60 * 60;
+export type { FollowViewer } from "./profile-follow-shared";
 
-export type FollowViewer = {
-  id: string;
-  username: string;
-  displayName: string;
+export type ProfileSocialSummary = {
+  followerCount: number;
+  followingCount: number;
+  isFollowing: boolean;
+  requested: boolean;
+  incomingRequest: boolean;
+  blocked: boolean;
+  blockedByViewer: boolean;
+  canFollow: boolean;
+  canMessage: boolean;
+  presence: PresenceInfo;
 };
-
-type FollowTarget = { id: string };
-
-async function findFollowTarget(username: string): Promise<FollowTarget> {
-  const [target] = await getDb()
-    .select({ id: users.id, isBanned: users.isBanned })
-    .from(users)
-    .where(eq(users.username, username.trim().toLowerCase()))
-    .limit(1);
-  if (!target || target.isBanned) throw errors.notFound("User not found.");
-  return target;
-}
-
-async function readFollowCounts(
-  userId: string,
-): Promise<{ followerCount: number; followingCount: number }> {
-  const db = getDb();
-  const [followerRow, followingRow] = await Promise.all([
-    db
-      .select({ value: count() })
-      .from(userFollows)
-      .innerJoin(users, eq(users.id, userFollows.followerId))
-      .where(
-        and(eq(userFollows.followingId, userId), eq(users.isBanned, false)),
-      ),
-    db
-      .select({ value: count() })
-      .from(userFollows)
-      .innerJoin(users, eq(users.id, userFollows.followingId))
-      .where(
-        and(eq(userFollows.followerId, userId), eq(users.isBanned, false)),
-      ),
-  ]);
-
-  return {
-    followerCount: Number(followerRow[0]?.value ?? 0),
-    followingCount: Number(followingRow[0]?.value ?? 0),
-  };
-}
-
-async function readFollowState(
-  userId: string,
-  viewerId: string,
-): Promise<FollowState> {
-  const [counts, edge] = await Promise.all([
-    readFollowCounts(userId),
-    getDb()
-      .select({ followerId: userFollows.followerId })
-      .from(userFollows)
-      .where(
-        and(
-          eq(userFollows.followerId, viewerId),
-          eq(userFollows.followingId, userId),
-        ),
-      )
-      .limit(1),
-  ]);
-
-  return {
-    following: edge.length > 0,
-    followerCount: counts.followerCount,
-    followingCount: counts.followingCount,
-  };
-}
 
 export async function getProfileSocialSummary(
   userId: string,
   viewerId: string | null,
-): Promise<{
-  followerCount: number;
-  followingCount: number;
-  isFollowing: boolean;
-  canFollow: boolean;
-}> {
-  const [counts, edge] = await Promise.all([
+): Promise<ProfileSocialSummary> {
+  const db = getDb();
+  const [counts, edges, block, presenceRows] = await Promise.all([
     readFollowCounts(userId),
     viewerId
-      ? getDb()
-          .select({ followerId: userFollows.followerId })
-          .from(userFollows)
-          .where(
-            and(
-              eq(userFollows.followerId, viewerId),
-              eq(userFollows.followingId, userId),
-            ),
-          )
-          .limit(1)
-      : Promise.resolve([]),
+      ? readFollowEdges(viewerId, userId)
+      : Promise.resolve({ forward: null, reverse: null }),
+    viewerId
+      ? readBlockState(viewerId, userId)
+      : Promise.resolve({ blocked: false, blockedByViewer: false }),
+    db
+      .select({
+        lastActiveAt: users.lastActiveAt,
+        presenceVisibility: users.presenceVisibility,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1),
   ]);
+
+  const flags = deriveFollowFlags({
+    viewerId,
+    targetId: userId,
+    edges,
+    blocked: block.blocked,
+    blockedByViewer: block.blockedByViewer,
+  });
+  const presenceRow = presenceRows[0];
+  const presence = presenceForTarget(
+    {
+      id: userId,
+      lastActiveAt: presenceRow?.lastActiveAt ?? null,
+      presenceVisibility: presenceRow?.presenceVisibility ?? "EVERYONE",
+    },
+    {
+      viewerId,
+      viewerFollowsTarget: flags.isFollowing,
+      blocked: flags.blocked,
+    },
+  );
 
   return {
     followerCount: counts.followerCount,
     followingCount: counts.followingCount,
-    isFollowing: edge.length > 0,
-    canFollow: viewerId !== null && viewerId !== userId,
+    ...flags,
+    presence,
   };
 }
 
@@ -134,27 +122,113 @@ export async function followUser(
     FOLLOW_RATE_WINDOW_SECONDS,
     "You are following accounts too quickly. Please try again later.",
   );
+  if (await isBlockedEitherWay(viewer.id, target.id)) {
+    throw errors.forbidden("You cannot follow this user.");
+  }
 
-  const [created] = await getDb()
-    .insert(userFollows)
-    .values({ followerId: viewer.id, followingId: target.id })
-    .onConflictDoNothing()
-    .returning({ followerId: userFollows.followerId });
+  const edges = await readFollowEdges(viewer.id, target.id);
+  const action = decideFollowAction(edges);
+  const db = getDb();
 
-  if (created) {
-    try {
-      await notifyUser({
+  if (action === "accept") {
+    const now = new Date();
+    await db.transaction(async (tx) => {
+      await lockUserPair(tx, viewer.id, target.id);
+      const [blocked] = await tx
+        .select({ blockerId: userBlocks.blockerId })
+        .from(userBlocks)
+        .where(
+          or(
+            and(
+              eq(userBlocks.blockerId, viewer.id),
+              eq(userBlocks.blockedId, target.id),
+            ),
+            and(
+              eq(userBlocks.blockerId, target.id),
+              eq(userBlocks.blockedId, viewer.id),
+            ),
+          ),
+        )
+        .limit(1);
+      if (blocked) throw errors.forbidden("You cannot follow this user.");
+      await tx
+        .insert(userFollows)
+        .values({
+          followerId: viewer.id,
+          followingId: target.id,
+          status: "ACCEPTED",
+          acceptedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [userFollows.followerId, userFollows.followingId],
+          set: {
+            status: "ACCEPTED",
+            acceptedAt: sql`coalesce(${userFollows.acceptedAt}, now())`,
+            updatedAt: now,
+          },
+        });
+      await tx
+        .update(userFollows)
+        .set({ status: "ACCEPTED", acceptedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(userFollows.followerId, target.id),
+            eq(userFollows.followingId, viewer.id),
+            eq(userFollows.status, "PENDING"),
+          ),
+        );
+    });
+
+    if (shouldNotifyFollow(target)) {
+      await safeNotify({
         userId: target.id,
-        type: "FOLLOW",
-        title: "New follower",
-        body: `${viewer.displayName} (@${viewer.username}) started following you.`,
+        type: "FOLLOW_ACCEPTED",
+        title: "Follow request accepted",
+        body: `${viewer.displayName} (@${viewer.username}) accepted your follow request.`,
         href: `/users/${viewer.username}`,
-        dedupeKey: `follow:${viewer.id}`,
+        dedupeKey: followAcceptedDedupeKey(viewer.id),
       });
-    } catch (error) {
-      logger.warn("Follow notification failed", {
+    }
+  } else if (action === "request") {
+    const created = await db.transaction(async (tx) => {
+      await lockUserPair(tx, viewer.id, target.id);
+      const [blocked] = await tx
+        .select({ blockerId: userBlocks.blockerId })
+        .from(userBlocks)
+        .where(
+          or(
+            and(
+              eq(userBlocks.blockerId, viewer.id),
+              eq(userBlocks.blockedId, target.id),
+            ),
+            and(
+              eq(userBlocks.blockerId, target.id),
+              eq(userBlocks.blockedId, viewer.id),
+            ),
+          ),
+        )
+        .limit(1);
+      if (blocked) throw errors.forbidden("You cannot follow this user.");
+      const rows = await tx
+        .insert(userFollows)
+        .values({
+          followerId: viewer.id,
+          followingId: target.id,
+          status: "PENDING",
+        })
+        .onConflictDoNothing()
+        .returning({ followerId: userFollows.followerId });
+      return rows[0] ?? null;
+    });
+
+    if (created && shouldNotifyFollow(target)) {
+      await safeNotify({
         userId: target.id,
-        error: error instanceof Error ? error.message : String(error),
+        type: "FOLLOW_REQUEST",
+        title: "New follow request",
+        body: `${viewer.displayName} (@${viewer.username}) wants to follow you.`,
+        href: `/users/${viewer.username}`,
+        dedupeKey: followRequestDedupeKey(viewer.id),
       });
     }
   }
@@ -168,7 +242,7 @@ export async function unfollowUser(
 ): Promise<FollowState> {
   const target = await findFollowTarget(username);
   if (target.id === viewer.id) {
-    throw errors.validation("You cannot follow yourself.");
+    throw errors.validation("You cannot unfollow yourself.");
   }
   await enforceRateLimit(
     `profile-unfollow:${viewer.id}`,
@@ -177,64 +251,30 @@ export async function unfollowUser(
     "You are updating your follow list too quickly. Please try again later.",
   );
 
-  await getDb()
+  const deleted = await getDb()
     .delete(userFollows)
     .where(
       and(
         eq(userFollows.followerId, viewer.id),
         eq(userFollows.followingId, target.id),
       ),
-    );
+    )
+    .returning({ status: userFollows.status });
+
+  // Cancelling a request also clears its pending notice so a later request can
+  // notify the target again despite the per-follower dedupe key.
+  if (deleted.some((row) => row.status === "PENDING")) {
+    await getDb()
+      .delete(notifications)
+      .where(
+        and(
+          eq(notifications.userId, target.id),
+          eq(notifications.dedupeKey, followRequestDedupeKey(viewer.id)),
+        ),
+      );
+  }
 
   return readFollowState(target.id, viewer.id);
-}
-
-async function readConnectionRows(
-  ownerId: string,
-  type: FollowConnectionType,
-  page: number,
-): Promise<{ items: (FollowUserItem & { id: string })[]; total: number }> {
-  const db = getDb();
-  const ownerColumn =
-    type === "followers" ? userFollows.followingId : userFollows.followerId;
-  const memberColumn =
-    type === "followers" ? userFollows.followerId : userFollows.followingId;
-  const where = and(eq(ownerColumn, ownerId), eq(users.isBanned, false));
-
-  const [totalRow, rows] = await Promise.all([
-    db
-      .select({ value: count() })
-      .from(userFollows)
-      .innerJoin(users, eq(users.id, memberColumn))
-      .where(where),
-    db
-      .select({
-        id: users.id,
-        username: users.username,
-        displayName: users.displayName,
-        institution: users.institution,
-        rating: users.rating,
-      })
-      .from(userFollows)
-      .innerJoin(users, eq(users.id, memberColumn))
-      .where(where)
-      .orderBy(desc(userFollows.createdAt), asc(memberColumn))
-      .limit(CONNECTIONS_PAGE_SIZE)
-      .offset((page - 1) * CONNECTIONS_PAGE_SIZE),
-  ]);
-
-  return {
-    total: Number(totalRow[0]?.value ?? 0),
-    items: rows.map((row) => ({
-      id: row.id,
-      username: row.username,
-      displayName: row.displayName,
-      institution: row.institution,
-      rating: row.rating,
-      isFollowing: false,
-      isSelf: false,
-    })),
-  };
 }
 
 async function readViewerFollows(
@@ -248,6 +288,7 @@ async function readViewerFollows(
     .where(
       and(
         eq(userFollows.followerId, viewerId),
+        eq(userFollows.status, "ACCEPTED"),
         inArray(userFollows.followingId, userIds),
       ),
     );
@@ -267,35 +308,98 @@ export async function listFollowConnections(
       username: users.username,
       displayName: users.displayName,
       isBanned: users.isBanned,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     })
     .from(users)
     .where(eq(users.username, username.trim().toLowerCase()))
     .limit(1);
   if (!owner || owner.isBanned) return null;
 
-  const safePage = Math.min(
-    MAX_CONNECTIONS_PAGE,
-    Math.max(1, Math.trunc(page) || 1),
+  const ownerColumn =
+    type === "followers" ? userFollows.followingId : userFollows.followerId;
+  const memberColumn =
+    type === "followers" ? userFollows.followerId : userFollows.followingId;
+  const where = listedMemberWhere({
+    ownerId: owner.id,
+    ownerColumn,
+    memberColumn,
+    viewerId: viewer?.id ?? null,
+    status: "ACCEPTED",
+  });
+
+  const safePage = clampFollowPage(page);
+  const [totalRow, rows] = await Promise.all([
+    db
+      .select({ value: count() })
+      .from(userFollows)
+      .innerJoin(users, eq(users.id, memberColumn))
+      .where(where),
+    db
+      .select({
+        id: users.id,
+        username: users.username,
+        displayName: users.displayName,
+        institution: users.institution,
+        rating: users.rating,
+        lastActiveAt: users.lastActiveAt,
+        presenceVisibility: users.presenceVisibility,
+        avatarPreset: users.avatarPreset,
+        avatarImageUpdatedAt: users.avatarImageUpdatedAt,
+      })
+      .from(userFollows)
+      .innerJoin(users, eq(users.id, memberColumn))
+      .where(where)
+      .orderBy(desc(userFollows.createdAt), asc(memberColumn))
+      .limit(FOLLOW_PAGE_SIZE)
+      .offset((safePage - 1) * FOLLOW_PAGE_SIZE),
+  ]);
+
+  const presence = await safePresenceMap(
+    rows.map((row) => toPresenceTarget(row)),
+    viewer?.id ?? null,
   );
-  const { items, total } = await readConnectionRows(owner.id, type, safePage);
   const viewerFollows = viewer
     ? await readViewerFollows(
         viewer.id,
-        items.map((item) => item.id),
+        rows.map((row) => row.id),
       )
     : new Set<string>();
+  const total = Number(totalRow[0]?.value ?? 0);
 
   return {
-    owner: { username: owner.username, displayName: owner.displayName },
+    owner: {
+      username: owner.username,
+      displayName: owner.displayName,
+      avatarPreset: owner.avatarPreset,
+      avatarImageUpdatedAt:
+        owner.avatarImageUpdatedAt?.toISOString() ?? null,
+    },
     type,
-    items: items.map(({ id, ...item }) => ({
-      ...item,
-      isFollowing: viewerFollows.has(id),
-      isSelf: viewer?.id === id,
-    })),
+    items: rows.map(
+      (row): FollowUserItem => ({
+        username: row.username,
+        displayName: row.displayName,
+        institution: row.institution,
+        rating: row.rating,
+        isFollowing: viewerFollows.has(row.id),
+        isSelf: viewer?.id === row.id,
+        presence: presence.get(row.id) ?? OFFLINE_PRESENCE,
+        avatarPreset: row.avatarPreset,
+        avatarImageUpdatedAt:
+          row.avatarImageUpdatedAt?.toISOString() ?? null,
+      }),
+    ),
     total,
     page: safePage,
-    pageSize: CONNECTIONS_PAGE_SIZE,
-    totalPages: Math.max(1, Math.ceil(total / CONNECTIONS_PAGE_SIZE)),
+    pageSize: FOLLOW_PAGE_SIZE,
+    totalPages: Math.max(1, Math.ceil(total / FOLLOW_PAGE_SIZE)),
   };
 }
+
+export {
+  acceptFollowRequest,
+  countPendingFollowRequests,
+  declineFollowRequest,
+  listFollowRequests,
+} from "./profile-follow-requests";

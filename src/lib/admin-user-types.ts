@@ -24,4 +24,6 @@ export type AdminUserDetail = {
   jobTitle: string | null;
   skills: string[];
   tshirtSize: TshirtSize | null;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: string | null;
 };

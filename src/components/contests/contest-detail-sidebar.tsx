@@ -77,6 +77,17 @@ export function ContestDetailSidebar({
   const showTeams = isGroup || contest.teamCount > 0;
   const registration = registrationState(contest, isGroup);
   const registrationClosesAt = isGroup ? contest.startAt : contest.endAt;
+  const reviewOpen =
+    new Date(contest.ratingReviewEndsAt).getTime() > Date.now();
+  const ratingState = isGroup
+    ? "Team round — unrated"
+    : contest.status !== "ENDED"
+      ? "Finalizes 1h after the contest ends"
+      : contest.ratingFinalizedAt
+        ? `Finalized ${formatDhakaDateTime(contest.ratingFinalizedAt)}`
+        : reviewOpen
+          ? `Under review until ${formatDhakaDateTime(contest.ratingReviewEndsAt)}`
+          : "Awaiting post-review finalization";
 
   return (
     <aside
@@ -125,6 +136,7 @@ export function ContestDetailSidebar({
           {showTeams ? (
             <DetailRow label="Teams" value={String(contest.teamCount)} />
           ) : null}
+          <DetailRow label="Ratings" value={ratingState} mono={false} />
         </dl>
         {contest.canRegister && contest.status === "RUNNING" && !isGroup ? (
           <p className="mt-3 rounded-md bg-muted/50 p-2 text-[11px] leading-relaxed text-muted-foreground">

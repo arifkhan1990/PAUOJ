@@ -15,6 +15,8 @@ export default async function CoderDashboardLayout({
       role={user.role}
       displayName={user.displayName}
       username={user.username}
+      avatarPreset={user.avatarPreset}
+      avatarImageUpdatedAt={user.avatarImageUpdatedAt}
     >
       {children}
     </DashboardFrame>

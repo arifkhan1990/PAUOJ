@@ -129,6 +129,8 @@ function baseSelection(viewerId: string | null) {
     username: users.username,
     displayName: users.displayName,
     role: users.role,
+    avatarPreset: users.avatarPreset,
+    avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     score: scoreExpression(),
     myVote: myVoteExpression(viewerId),
   };

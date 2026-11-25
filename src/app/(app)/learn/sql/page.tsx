@@ -10,6 +10,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
+import { SqlProjectLink } from "@/components/learning/sql-project/sql-project-link";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import {
   advancedSqlModule,
   basicSqlModule,
 } from "@/lib/learning/tracks/sql-track";
+import { SQL_PROJECT_TABLES } from "@/lib/learning/sql-project-schema";
 import { purchasePriceBdt } from "@/lib/learning/payments";
 import { getCurrentUser } from "@/server/auth/session";
 import { getEntitledModuleSlugs } from "@/server/services/learning-payments";
@@ -38,27 +40,6 @@ const INTRO = {
   title: "ShopSphere: query the marketplace",
   summary:
     "একটি মাল্টি-ভেন্ডর অনলাইন দোকান। ভেন্ডর, কাস্টমার, প্রোডাক্ট, অর্ডার, পেমেন্ট, শিপমেন্ট, রিটার্ন, কুপন, কার্ট, ইনভেন্টরি, রিভিউ আর ভেন্ডর পেআউট — সব একই ডেটাবেসে। প্রতিটি টপিক বাস্তব প্রশ্ন দিয়ে শুরু হয়, তারপর সেই প্রশ্নের SQL সমাধান।",
-  tables: [
-    ["vendors", "id, name, city, rating"],
-    ["customers", "id, name, city, signup_date"],
-    ["categories", "id, name, parent_id"],
-    ["products", "id, vendor_id, category_id, name, price_cents, stock, rating"],
-    ["orders", "id, customer_id, ordered_at, status"],
-    ["order_items", "id, order_id, product_id, quantity, unit_price_cents"],
-    ["reviews", "id, product_id, customer_id, rating, created_at"],
-    ["referrals", "customer_id, referred_by"],
-    ["product_attributes", "product_id, brand, color, warranty_months, attributes (JSON)"],
-    ["product_variants", "id, product_id, sku, size, color, price_cents, stock"],
-    ["payments", "id, order_id, method, amount_cents, status, paid_at"],
-    ["shipments", "id, order_id, carrier, tracking_no, status, shipped_at, delivered_at"],
-    ["returns", "id, order_item_id, quantity, reason, refund_cents, status, requested_at"],
-    ["coupons", "id, code, kind, value, min_order_cents, starts_at, ends_at"],
-    ["coupon_redemptions", "id, coupon_id, order_id, customer_id, discount_cents, redeemed_at"],
-    ["carts", "id, customer_id, status, created_at, updated_at"],
-    ["cart_items", "id, cart_id, product_id, quantity, unit_price_cents, added_at"],
-    ["inventory_movements", "id, product_id, kind, quantity, reference, created_at"],
-    ["vendor_payouts", "id, vendor_id, period_start, period_end, gross_cents, commission_cents, refund_cents, net_cents, status, paid_at"],
-  ],
 } as const;
 
 const SQL_MODULES = [basicSqlModule, advancedSqlModule] as const;
@@ -146,14 +127,16 @@ export default async function SqlLabPage() {
           syntax-এ লিখতে পারো (portable standard SQL সবচেয়ে নিরাপদ)।
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          {INTRO.tables.map(([name, columns]) => (
+          {SQL_PROJECT_TABLES.map((table) => (
             <div
-              key={name}
+              key={table.name}
               className="rounded-lg border border-border bg-muted/20 px-3 py-2"
             >
-              <p className="font-mono text-[11px] font-semibold">{name}</p>
+              <p className="font-mono text-[11px] font-semibold">
+                {table.name}
+              </p>
               <p className="mt-0.5 text-[10px] leading-relaxed text-muted-foreground">
-                {columns}
+                {table.columns.map((column) => column.name).join(", ")}
               </p>
             </div>
           ))}
@@ -184,6 +167,8 @@ export default async function SqlLabPage() {
         </span>
         <span className="text-xs font-medium text-primary">Read handbook →</span>
       </Link>
+
+      <SqlProjectLink className="mt-4" />
 
       {SQL_MODULES.map((module) => {
         const locked = module.slug === "advanced-sql" && !advancedUnlocked;

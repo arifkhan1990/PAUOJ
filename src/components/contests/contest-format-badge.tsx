@@ -46,7 +46,7 @@ export function ContestFormatBadge({
       <Icon className="size-3" aria-hidden="true" />
       <span>{CONTEST_FORMAT_LABEL[format]}</span>
       {isGroup && showTeamSize ? (
-        <span className="text-muted-foreground/80">· {detail}</span>
+        <span className="text-muted-foreground">· {detail}</span>
       ) : null}
     </Badge>
   );

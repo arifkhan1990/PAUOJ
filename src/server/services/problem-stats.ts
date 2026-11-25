@@ -132,6 +132,8 @@ export async function getProblemRankboard(
       .select({
         username: users.username,
         displayName: users.displayName,
+        avatarPreset: users.avatarPreset,
+        avatarImageUpdatedAt: users.avatarImageUpdatedAt,
         solvedAt: firstAccepted.solvedAt,
         language: acceptedSubmission.language,
         runtimeMs: acceptedSubmission.runtimeMs,
@@ -180,6 +182,8 @@ export async function getProblemRankboard(
       solvedAt: toIso(row.solvedAt),
       language: row.language,
       runtimeMs: row.runtimeMs,
+      avatarPreset: row.avatarPreset,
+      avatarImageUpdatedAt: row.avatarImageUpdatedAt?.toISOString() ?? null,
     })),
   };
 }

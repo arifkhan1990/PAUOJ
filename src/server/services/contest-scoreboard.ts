@@ -13,29 +13,42 @@ import {
 } from "@/server/db/schema";
 import type { ContestScoreboard } from "@/lib/types";
 import { contestStatus } from "@/lib/contests";
+import { ratingReviewEndsAtIso } from "@/lib/contest-rating";
+import { maybeFinalizeRatingSweep } from "./rating-sweep";
 import {
   computeScoreboard,
   type ScoringParticipant,
   type ScoringTeam,
 } from "@/server/contests/scoring";
-import { finalizeContestRatings } from "./ratings";
 
 type ParticipantRow = {
   userId: string;
   username: string;
   displayName: string;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: string | null;
 };
 
+function toAvatarIso(value: Date | null): string | null {
+  return value?.toISOString() ?? null;
+}
+
 async function loadParticipantRows(contestId: string): Promise<ParticipantRow[]> {
-  return getDb()
+  const rows = await getDb()
     .select({
       userId: contestRegistrations.userId,
       username: users.username,
       displayName: users.displayName,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     })
     .from(contestRegistrations)
     .innerJoin(users, eq(users.id, contestRegistrations.userId))
     .where(eq(contestRegistrations.contestId, contestId));
+  return rows.map((row) => ({
+    ...row,
+    avatarImageUpdatedAt: toAvatarIso(row.avatarImageUpdatedAt),
+  }));
 }
 
 async function loadTeamBoard(
@@ -68,6 +81,8 @@ async function loadTeamBoard(
       userId: contestTeamMembers.userId,
       username: users.username,
       displayName: users.displayName,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     })
     .from(contestTeamMembers)
     .innerJoin(users, eq(users.id, contestTeamMembers.userId))
@@ -83,6 +98,8 @@ async function loadTeamBoard(
       userId: member.userId,
       username: member.username,
       displayName: member.displayName,
+      avatarPreset: member.avatarPreset,
+      avatarImageUpdatedAt: toAvatarIso(member.avatarImageUpdatedAt),
     });
     membersByTeam.set(member.teamId, list);
   }
@@ -130,11 +147,17 @@ export async function getScoreboard(
       "The scoreboard is not available before the contest starts.",
     );
   }
+  // Ordered, best-effort fallback for worker downtime; the worker is primary.
+  let ratedAt: Date | null = contest.ratedAt;
   if (status === "ENDED") {
-    try {
-      await finalizeContestRatings(contest.slug);
-    } catch (error) {
-      console.error("Contest rating finalization failed", error);
+    await maybeFinalizeRatingSweep();
+    if (!ratedAt) {
+      const [fresh] = await db
+        .select({ ratedAt: contests.ratedAt })
+        .from(contests)
+        .where(eq(contests.id, contest.id))
+        .limit(1);
+      ratedAt = fresh?.ratedAt ?? null;
     }
   }
 
@@ -176,7 +199,9 @@ export async function getScoreboard(
       createdAt: submissions.createdAt,
     })
     .from(submissions)
-    .where(and(...submissionConditions));
+    .where(and(...submissionConditions))
+    // Stable input for same-timestamp runs and first-blood attribution.
+    .orderBy(asc(submissions.createdAt), asc(submissions.id));
 
   const scoreboard = computeScoreboard({
     startAt: contest.startAt,
@@ -197,6 +222,8 @@ export async function getScoreboard(
       freezeMinutes: contest.freezeMinutes,
       format: contest.format,
       teamSize: contest.teamSize,
+      ratingFinalizedAt: ratedAt?.toISOString() ?? null,
+      ratingReviewEndsAt: ratingReviewEndsAtIso(contest.endAt),
     },
     frozen,
     freezeAt: freezeAt?.toISOString() ?? null,

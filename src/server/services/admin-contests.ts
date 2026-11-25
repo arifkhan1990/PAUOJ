@@ -9,6 +9,10 @@ import {
   problems,
 } from "@/server/db/schema";
 import type { ContestInput } from "@/lib/schemas/contest";
+import {
+  contestStructureChanges,
+  isContestStructureLocked,
+} from "@/lib/contest-rating";
 import type {
   AdminContestDetail,
   AdminContestListItem,
@@ -303,6 +307,11 @@ export async function updateContest(
       id: contests.id,
       createdBy: contests.createdBy,
       feeStatus: contests.feeStatus,
+      startAt: contests.startAt,
+      endAt: contests.endAt,
+      format: contests.format,
+      division: contests.division,
+      ratedAt: contests.ratedAt,
     })
     .from(contests)
     .where(
@@ -315,6 +324,28 @@ export async function updateContest(
   const problemIds = await prepareProblems(input.problemIds, createdBy);
   const slug = input.slug || slugify(input.title);
 
+  const existingProblemRows = await db
+    .select({ problemId: contestProblems.problemId })
+    .from(contestProblems)
+    .where(eq(contestProblems.contestId, id));
+  const currentProblemIds = existingProblemRows
+    .map((row) => row.problemId)
+    .sort();
+  const nextProblemIds = [...problemIds].sort();
+  const problemSetChanged =
+    currentProblemIds.length !== nextProblemIds.length ||
+    currentProblemIds.some((value, index) => value !== nextProblemIds[index]);
+  const structureChanges = contestStructureChanges(
+    owned,
+    {
+      startAt: new Date(input.startAt),
+      endAt: new Date(input.endAt),
+      format: input.format,
+      division: input.division,
+    },
+    problemSetChanged,
+  );
+
   const [existing] = await db
     .select({ id: contests.id })
     .from(contests)
@@ -325,6 +356,20 @@ export async function updateContest(
   }
 
   const requests = await db.transaction(async (tx) => {
+    const [locked] = await tx
+      .select({ ratedAt: contests.ratedAt })
+      .from(contests)
+      .where(eq(contests.id, id))
+      .for("update")
+      .limit(1);
+    if (!locked) throw errors.notFound("Contest not found.");
+    // Re-check under the same lock the finalizer takes, so a rating run cannot
+    // land between the edit check and this update.
+    if (isContestStructureLocked(locked.ratedAt, structureChanges)) {
+      throw errors.conflict(
+        "Contest ratings are finalized; the contest problems and schedule are locked.",
+      );
+    }
     await tx
       .update(contests)
       .set({

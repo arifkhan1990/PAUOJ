@@ -173,6 +173,12 @@ Automated operations on the same host:
   `ALERT_WEBHOOK` in the cron line to POST failures to a chat webhook.
 - After every deploy run `bash scripts/prod-smoke.sh` (health/version/
   migrations/worker, key pages, markers and the admin gate).
+- After deploying rating changes, run `pnpm ratings:audit` (read-only) and
+  confirm `critical: 0` and `warnings: 0`; `--strict` also fails on warnings.
+  The worker must be running (or page views/`pnpm ratings:finalize` can drain
+  due contests) so the one-hour rating sweep can finalize. After a rating-math
+  upgrade, run `pnpm ratings:recompute` (dry run), inspect the delta, back up,
+  then `pnpm ratings:recompute --apply`; a second apply is idempotent.
 - Rehearse a restore by loading the newest dump into a scratch database:
 
 ```bash

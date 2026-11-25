@@ -80,6 +80,8 @@ export function ReviewerLeaderboardTable({
                     name={row.displayName}
                     username={row.username}
                     size="sm"
+                    avatarPreset={row.avatarPreset}
+                    avatarImageAt={row.avatarImageUpdatedAt}
                   />
                   <span className="min-w-0 max-w-40 sm:max-w-none">
                     <span className="block truncate text-sm font-medium">

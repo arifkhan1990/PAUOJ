@@ -5,9 +5,11 @@ import { ArrowLeft } from "lucide-react";
 import { ContentInProduction } from "@/components/learning/content-in-production";
 import { LearningLocked } from "@/components/learning/learning-locked";
 import { LearningSection } from "@/components/learning/learning-section";
+import { LessonPager } from "@/components/learning/lesson-pager";
 import { ProblemGroup } from "@/components/learning/problem-group";
 import { PremiumPaywall } from "@/components/learning/premium-paywall";
 import { SqlTopicStory } from "@/components/learning/sql-topic-story";
+import { SqlWorkTicket } from "@/components/learning/sql-project/sql-work-ticket";
 import { LessonVisual } from "@/components/learning/visuals/lesson-visual";
 import {
   CheckpointCta,
@@ -231,6 +233,14 @@ export default async function LearningTopicPage({
             {topic.summary}
           </p>
 
+          {isSql ? (
+            <SqlWorkTicket
+              topicSlug={topicSlug}
+              moduleSlug={moduleSlug}
+              className="mt-6"
+            />
+          ) : null}
+
           <div className="lg:hidden">
             <LessonNav
               showCheckpoint={Boolean(checkpoint)}
@@ -371,6 +381,9 @@ export default async function LearningTopicPage({
                           username: user.username,
                           displayName: user.displayName,
                           role: user.role,
+                          avatarPreset: user.avatarPreset,
+                          avatarImageUpdatedAt:
+                            user.avatarImageUpdatedAt?.toISOString() ?? null,
                         }
                       : null
                   }
@@ -382,6 +395,12 @@ export default async function LearningTopicPage({
               )}
             </LearningSection>
           </div>
+
+          <LessonPager
+            module={definition}
+            topicSlug={topicSlug}
+            className="mt-10"
+          />
         </div>
       </div>
     </div>

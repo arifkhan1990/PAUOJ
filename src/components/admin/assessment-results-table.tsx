@@ -63,6 +63,8 @@ export function AssessmentResultsTable({
                   name={row.user.displayName}
                   username={row.user.username}
                   size="sm"
+                  avatarPreset={row.user.avatarPreset}
+                  avatarImageAt={row.user.avatarImageUpdatedAt}
                 />
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium">

@@ -174,6 +174,8 @@ export type ContestTeamMemberView = {
   displayName: string;
   role: "CAPTAIN" | "MEMBER";
   joinedAt: string;
+  avatarPreset?: string | null;
+  avatarImageUpdatedAt?: string | null;
 };
 
 export type ContestTeamInviteView = {

@@ -48,6 +48,8 @@ export function ReviewerLeaderboardPodium({
                 name={row.displayName}
                 username={row.username}
                 size="lg"
+                avatarPreset={row.avatarPreset}
+                avatarImageAt={row.avatarImageUpdatedAt}
               />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">

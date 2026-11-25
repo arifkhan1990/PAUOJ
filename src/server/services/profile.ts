@@ -50,6 +50,8 @@ export async function getProfile(
       rating: users.rating,
       createdAt: users.createdAt,
       isBanned: users.isBanned,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     })
     .from(users)
     .where(eq(users.username, username.toLowerCase()))
@@ -290,7 +292,7 @@ export async function getProfile(
   const longestStreak = computeLongestStreak(heatmap);
   const activeDays = computeActiveDays(heatmap);
   const { ratedUserCount, ratingRank, ratingDistribution } =
-    await getRatingRankStats(user.rating, ratingRows.length > 0);
+    await getRatingRankStats(user.id, ratingRows.length > 0);
   const {
     solvedProblems,
     unsolvedProblems,
@@ -316,11 +318,19 @@ export async function getProfile(
       skills: user.skills ?? [],
       rating: user.rating,
       createdAt: user.createdAt.toISOString(),
+      avatarPreset: user.avatarPreset,
+      avatarImageUpdatedAt: user.avatarImageUpdatedAt?.toISOString() ?? null,
       isSelf: viewer?.id === user.id,
       followerCount: socialSummary.followerCount,
       followingCount: socialSummary.followingCount,
       isFollowing: socialSummary.isFollowing,
       canFollow: socialSummary.canFollow,
+      requested: socialSummary.requested,
+      incomingRequest: socialSummary.incomingRequest,
+      blocked: socialSummary.blocked,
+      blockedByViewer: socialSummary.blockedByViewer,
+      canMessage: socialSummary.canMessage,
+      presence: socialSummary.presence,
     },
     solvedCount: solvedRows.length,
     submissionCount,

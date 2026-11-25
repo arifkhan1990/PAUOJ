@@ -12,6 +12,16 @@ import type { NotificationPreferences } from "@/lib/notification-types";
 
 const OPTIONS = [
   {
+    key: "notifyMessages" as const,
+    label: "In-app message notifications",
+    description: "Show activity and unread badges for new direct messages.",
+  },
+  {
+    key: "notifyFollows" as const,
+    label: "Follow request notifications",
+    description: "Show activity when someone asks to follow you.",
+  },
+  {
     key: "emailVerdicts" as const,
     label: "Verdict emails",
     description: "Receive an email when a submission finishes judging.",
@@ -79,7 +89,7 @@ export function NotificationPreferencesForm({
                 {option.description}
               </p>
             </div>
-            <label className="inline-flex cursor-pointer items-center gap-2 pt-0.5">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
                 checked={preferences[option.key]}
@@ -89,7 +99,7 @@ export function NotificationPreferencesForm({
                     [option.key]: event.target.checked,
                   }))
                 }
-                className="size-4 rounded border-border accent-primary"
+                className="size-5 rounded border-border accent-primary"
               />
               <span className="sr-only">{option.label}</span>
             </label>
@@ -125,8 +135,8 @@ export function NotificationPreferencesForm({
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-[11px] text-muted-foreground">
-          In-app notifications are always delivered. Emails require a verified
-          address.
+          In-app message and follow notifications can be turned off above.
+          Emails require a verified address.
         </p>
         <Button
           type="button"

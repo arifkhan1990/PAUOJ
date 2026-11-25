@@ -16,6 +16,8 @@ export type CommentRow = {
   username: string;
   displayName: string;
   role: "USER" | "TEACHER" | "ADMIN";
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: Date | null;
   score: number | string;
   myVote: number | string;
 };
@@ -41,6 +43,8 @@ export function assembleComments(
       username: row.username,
       displayName: row.displayName,
       role: row.role,
+      avatarPreset: row.avatarPreset,
+      avatarImageUpdatedAt: row.avatarImageUpdatedAt?.toISOString() ?? null,
     },
     replies: [],
   });

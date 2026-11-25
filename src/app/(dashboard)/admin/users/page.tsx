@@ -97,6 +97,9 @@ export default async function AdminUsersPage({
                     isBanned: user.isBanned,
                     rating: user.rating,
                     createdAt: user.createdAt.toISOString(),
+                    avatarPreset: user.avatarPreset,
+                    avatarImageUpdatedAt:
+                      user.avatarImageUpdatedAt?.toISOString() ?? null,
                   }}
                   isSelf={user.id === admin.id}
                 />

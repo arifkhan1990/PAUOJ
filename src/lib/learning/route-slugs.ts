@@ -83,10 +83,24 @@ export const LEARNING_ROUTE_SLUGS: Record<string, string[]> = {
   "docker-cicd": ["containers", "compose-production", "pipelines"],
 };
 
+/**
+ * Reserved subroutes that belong to a module but are not lesson topics.
+ * `/learn/sql/project` is the ShopSphere industry-project dossier.
+ */
+const RESERVED_LEARNING_SUBROUTES: Record<string, string[]> = {
+  sql: ["project"],
+};
+
 export function isLearningRoute(
   moduleSlug: string,
   topicSlug?: string,
 ): boolean {
+  if (
+    topicSlug &&
+    (RESERVED_LEARNING_SUBROUTES[moduleSlug]?.includes(topicSlug) ?? false)
+  ) {
+    return true;
+  }
   const topics = LEARNING_ROUTE_SLUGS[moduleSlug];
   if (!topics) return false;
   return topicSlug ? topics.includes(topicSlug) : true;

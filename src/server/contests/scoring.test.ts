@@ -125,6 +125,39 @@ describe("computeScoreboard", () => {
     expect(alice?.penalty).toBe(5);
   });
 
+  it("splits ranks when only the last acceptance differs", () => {
+    const rows = computeScoreboard({
+      startAt,
+      problems,
+      participants,
+      submissions: [
+        submission("u1", "p1", "WRONG_ANSWER", 10),
+        submission("u1", "p1", "ACCEPTED", 30),
+        submission("u2", "p2", "ACCEPTED", 50),
+      ],
+    });
+    // Same solved count and penalty, but alice's last acceptance is earlier,
+    // so the documented order breaks the tie instead of sharing a rank.
+    expect(rows[0]?.user.username).toBe("alice");
+    expect(rows[0]?.rank).toBe(1);
+    expect(rows[1]?.rank).toBe(2);
+  });
+
+  it("shares a rank only when last acceptance also matches", () => {
+    const rows = computeScoreboard({
+      startAt,
+      problems,
+      participants,
+      submissions: [
+        submission("u1", "p1", "ACCEPTED", 10),
+        submission("u2", "p2", "ACCEPTED", 10),
+      ],
+    });
+    expect(rows[0]?.rank).toBe(1);
+    expect(rows[1]?.rank).toBe(1);
+    expect(rows.map((row) => row.user.username)).toEqual(["alice", "bob"]);
+  });
+
   it("keeps team null for individual contests", () => {
     const rows = computeScoreboard({
       startAt,

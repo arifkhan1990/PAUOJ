@@ -50,6 +50,28 @@ export const TSHIRT_SIZE_OPTIONS: { value: TshirtSize; label: string }[] =
     label: TSHIRT_SIZE_LABELS[value],
   }));
 
+export const PRESENCE_VISIBILITY_VALUES = [
+  "EVERYONE",
+  "FOLLOWERS",
+  "NOBODY",
+] as const;
+
+export type PresenceVisibility = (typeof PRESENCE_VISIBILITY_VALUES)[number];
+
+export const PRESENCE_VISIBILITY_LABELS: Record<PresenceVisibility, string> = {
+  EVERYONE: "Everyone",
+  FOLLOWERS: "People who follow me",
+  NOBODY: "Nobody",
+};
+
+export const PRESENCE_VISIBILITY_OPTIONS: {
+  value: PresenceVisibility;
+  label: string;
+}[] = PRESENCE_VISIBILITY_VALUES.map((value) => ({
+  value,
+  label: PRESENCE_VISIBILITY_LABELS[value],
+}));
+
 export const MAX_PROFILE_SKILLS = 12;
 export const MAX_PROFILE_SKILL_LENGTH = 30;
 export const MAX_PHONE_INPUT_LENGTH = 20;

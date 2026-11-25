@@ -101,6 +101,8 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,
       emailReviews: users.emailReviews,
+      notifyMessages: users.notifyMessages,
+      notifyFollows: users.notifyFollows,
       reviewEmailFrequency: users.reviewEmailFrequency,
     })
     .from(users)
@@ -230,6 +232,8 @@ export async function getNotificationPreferences(
       emailContests: users.emailContests,
       emailClarifications: users.emailClarifications,
       emailReviews: users.emailReviews,
+      notifyMessages: users.notifyMessages,
+      notifyFollows: users.notifyFollows,
       reviewEmailFrequency: users.reviewEmailFrequency,
     })
     .from(users)

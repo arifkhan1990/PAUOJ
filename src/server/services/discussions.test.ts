@@ -18,6 +18,8 @@ function row(overrides: {
     username: "coder",
     displayName: "Coder",
     role: "USER" as const,
+    avatarPreset: null,
+    avatarImageUpdatedAt: null,
     score: overrides.score ?? 0,
     myVote: overrides.myVote ?? 0,
   };

@@ -18,6 +18,8 @@ type ViewerView = {
   username: string;
   displayName: string;
   role: "USER" | "TEACHER" | "ADMIN";
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: Date | string | null;
 } | null;
 
 export function ProblemDiscussion({

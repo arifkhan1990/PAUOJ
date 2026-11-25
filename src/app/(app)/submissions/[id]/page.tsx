@@ -8,7 +8,6 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { AutoRefresh } from "@/components/shared/auto-refresh";
-import { CopyButton } from "@/components/shared/copy-button";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { VerdictBadge } from "@/components/shared/verdict-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -21,10 +20,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MoreChallenges } from "@/features/submissions/more-challenges";
+import { SubmissionAnalysisBlock } from "@/features/submissions/submission-analysis";
+import { SubmissionCode } from "@/features/submissions/submission-code";
 import { SubmissionLive } from "@/features/submissions/submission-live";
+import { SubmissionNote } from "@/features/submissions/submission-note";
 import { RejudgeButton } from "@/features/submissions/rejudge-button";
 import { getCurrentUser } from "@/server/auth/session";
 import { getSubmissionById } from "@/server/services/submissions";
+import { getRelatedProblems } from "@/server/services/problem-extras";
+import { getSubmissionAnalysis } from "@/server/services/submission-analysis";
 import { highlightCode } from "@/server/highlight";
 import { getLanguage } from "@/lib/languages";
 import { isPendingVerdict } from "@/lib/verdicts";
@@ -56,11 +61,23 @@ export default async function SubmissionPage({
   const submission = await getSubmissionById(id, user);
   if (!submission) notFound();
 
-  const highlighted = submission.sourceCode
-    ? await highlightCode(submission.sourceCode, submission.language)
-    : null;
+  const [highlighted, analysis, relatedProblems] = await Promise.all([
+    submission.sourceCode
+      ? highlightCode(submission.sourceCode, submission.language)
+      : Promise.resolve(null),
+    getSubmissionAnalysis(submission.id),
+    getRelatedProblems(
+      submission.problemId,
+      user?.id ?? null,
+      user?.role === "ADMIN",
+      3,
+    ),
+  ]);
   const language = getLanguage(submission.language);
   const pending = isPendingVerdict(submission.status);
+  const lineCount = submission.sourceCode
+    ? submission.sourceCode.split("\n").length
+    : 0;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
@@ -102,6 +119,8 @@ export default async function SubmissionPage({
                   username={submission.user.username}
                   size="sm"
                   className="size-5 text-[8px]"
+                  avatarPreset={submission.user.avatarPreset}
+                  avatarImageAt={submission.user.avatarImageUpdatedAt}
                 />
                 {submission.user.displayName}
               </Link>
@@ -142,30 +161,37 @@ export default async function SubmissionPage({
         </div>
       ) : null}
 
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Tests passed</p>
-          <p className="mt-1 font-mono text-lg font-semibold">
-            {submission.passedTests}/{submission.totalTests}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Runtime</p>
-          <p className="mt-1 font-mono text-lg font-semibold">
-            {formatRuntime(submission.runtimeMs)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Memory</p>
-          <p className="mt-1 font-mono text-lg font-semibold">
-            {formatMemory(submission.memoryKb)}
-          </p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Language</p>
-          <p className="mt-1 text-sm font-semibold">{language.shortLabel}</p>
-        </Card>
-      </div>
+      {analysis ? (
+        <SubmissionAnalysisBlock
+          analysis={analysis}
+          languageLabel={language.label}
+        />
+      ) : (
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Tests passed</p>
+            <p className="mt-1 font-mono text-lg font-semibold">
+              {submission.passedTests}/{submission.totalTests}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Runtime</p>
+            <p className="mt-1 font-mono text-lg font-semibold">
+              {formatRuntime(submission.runtimeMs)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Memory</p>
+            <p className="mt-1 font-mono text-lg font-semibold">
+              {formatMemory(submission.memoryKb)}
+            </p>
+          </Card>
+          <Card className="p-4">
+            <p className="text-xs text-muted-foreground">Language</p>
+            <p className="mt-1 text-sm font-semibold">{language.shortLabel}</p>
+          </Card>
+        </div>
+      )}
 
       {submission.compileOutput ? (
         <Card className="mt-5 overflow-hidden">
@@ -185,20 +211,19 @@ export default async function SubmissionPage({
         </Card>
       ) : null}
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="min-w-0">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2.5">
-            <h2 className="text-sm font-semibold">Source code</h2>
-            {submission.sourceCode ? (
-              <CopyButton value={submission.sourceCode} label="Copy code" />
-            ) : null}
-          </div>
-          {highlighted ? (
-            <div
-              className="max-h-[640px] overflow-auto bg-[#0d1117] p-4 text-[13px] text-slate-200 [&_pre]:!bg-transparent"
-              dangerouslySetInnerHTML={{ __html: highlighted }}
-            />
-          ) : (
+      <div className="mt-5 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {highlighted && submission.sourceCode ? (
+          <SubmissionCode
+            html={highlighted}
+            languageLabel={language.label}
+            lineCount={lineCount}
+            copyValue={submission.sourceCode}
+          />
+        ) : (
+          <Card className="min-w-0 overflow-hidden">
+            <div className="border-b border-border px-4 py-2.5">
+              <h2 className="text-sm font-semibold">Source code</h2>
+            </div>
             <div className="flex items-start gap-3 p-5 text-sm text-muted-foreground">
               <EyeOff className="mt-0.5 size-4 shrink-0" />
               <div>
@@ -210,8 +235,8 @@ export default async function SubmissionPage({
                 </p>
               </div>
             </div>
-          )}
-        </Card>
+          </Card>
+        )}
 
         <Card className="overflow-hidden">
           <div className="border-b border-border px-4 py-2.5">
@@ -276,6 +301,17 @@ export default async function SubmissionPage({
           ) : null}
         </Card>
       </div>
+
+      {submission.assessmentSlug ? null : (
+        <MoreChallenges problems={relatedProblems} />
+      )}
+
+      {submission.isOwner ? (
+        <SubmissionNote
+          submissionId={submission.id}
+          initialNote={submission.note}
+        />
+      ) : null}
 
       <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">

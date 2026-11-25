@@ -3,6 +3,122 @@
 All notable changes to PAU OJ are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/) and the project uses SemVer.
 
+## [Unreleased]
+
+### Added
+- Profile avatars: every account can upload a PNG/JPG/WebP photo or pick one
+  of twelve preset avatars (cat, dog, bird, fish, rabbit, squirrel, turtle,
+  panda, ghost, rocket, bot, gamepad) from Settings → Profile picture. The
+  browser crops to a square and resizes to 512×512 before upload; the server
+  validates the bytes and dimensions and stores the image in
+  `user_avatar_images`. The chosen avatar appears on profiles, the header,
+  rank/rating boards, comments, messages, contest rosters and scoreboards, and
+  admin pages. Choosing a preset replaces an uploaded photo; removing a photo
+  falls back to the selected preset or the existing initials avatar. Avatars
+  are served from a versioned, immutable `/api/v1/users/:username/avatar` URL.
+- Social graph v2: follows are now approval-based (`PENDING`/`ACCEPTED`, with
+  `acceptedAt`) instead of instant. A profile shows Follow → Requested →
+  Following, incoming requests can be accepted or declined from
+  `/connections/requests`, mutual requests auto-accept, and request/acceptance
+  produce deduped in-app notices. Existing accepted follows are preserved by
+  migration 0043.
+- Direct messages: two-person conversations unlocked by an accepted follow in
+  either direction, with an inbox, paged threads, header unread badge, read
+  receipts, soft delete (notification previews are cleared), in-app notices for
+  the first unread message of a burst, and participant-only `404` semantics.
+  Rate limits: open 20/h, send 30/min, read 120/min, delete 60/min.
+- Blocking: one transaction inserts `user_blocks`, severs both follow edges
+  (pending or accepted) and hides presence; blocked users cannot follow,
+  re-request, open a conversation or send. The conversation disappears from
+  both inboxes and direct links return 404 until unblock; block checks are
+  serialized per user pair to close check-then-write races.
+- Ranking board: `/rank` now supports text search over name, username and
+  institution, exact institution/country filters, solved brackets, sorting by
+  points/solved/name and 10/20/50 page sizes. Global ranks are computed before
+  filtering, so a filtered row keeps its real rank. The page adds a top-3
+  podium, active-filter chips, mobile cards, range/first/last pagination and a
+  "your standing" card; `GET /api/v1/rank` accepts the same filters.
+- Dual leaderboards on `/rank`: a Points board and a Contest rating board
+  (`?board=rating`). The rating board only admits non-banned coders with
+  finalized rated solo contests, and shows current rating, peak, contest count,
+  last delta and last contest; global ranks use rating → peak → contests →
+  username and are computed before filters. It adds rating-tier filters,
+  rating/peak/contests/name sorting, tab switching that preserves shared filters,
+  and Codeforces-style tier-coloured names and handles. Profile rating rank uses
+  the same board order. `GET /api/v1/ratings` mirrors the board with the same
+  validation, and the points board now excludes banned users too.
+- Learning content navigation: every lesson ends with a previous/next pager
+  (first lesson → track overview, last → module checkpoint); module pages offer
+  previous/next track navigation, and the SQL industry-project delivery board lists all 23
+  tickets in curriculum order. Topic/track order comes from the existing
+  module/topic arrays; `#checkpoint` links now scroll correctly after the
+  streamed module card lands. The sequence helper and pagers are covered by
+  unit/render tests.
+- ShopSphere industry-project dossier at `/learn/sql/project`: seven feature
+  squads, 23 work tickets mapped one-to-one to the SQL lesson topics, a 19-table
+  data dictionary with keys and seeded row counts, ten metric definitions, a
+  twelve-item handover checklist with judge-problem proofs, staff-engineer
+  defense questions, and a downloadable SQLite fixture. Every SQL topic renders
+  its work ticket; the SQL hub and both track overviews link to the dossier.
+  `sql-project.test.ts` keeps the dictionary, epics, tickets and fixture aligned.
+- Submission analysis on `/submissions/:id`: runtime and memory percentile
+  ("beats") against accepted runs on the same problem (same language, widening
+  to all languages for small samples), a runtime-distribution histogram with the
+  submitting run marked, fastest/median/sample stats, a collapsible source panel
+  (`View more`), related-practice pills and a private per-submission note.
+  Analysis is hidden for assessment submissions and live contests. Migration
+  `0042_submission_notes`; `GET /submissions/:id/analysis` and
+  `PUT/DELETE /submissions/:id/notes`.
+
+- Presence is now explicit on every social surface: profiles, follower/following
+  and request lists, message inbox/threads and both rank boards show "Online
+  now" or `Last active 7m/3h/2d/3w/4mo/1y ago` ("No recent activity" when
+  cleared), subject to Everyone/Followers/Nobody visibility. Migration 0044
+  backfills existing users from account/session/submission history.
+- Conversation mute and in-app notice preferences: muted conversations keep
+  their history but contribute zero unread and send no notices; `notifyMessages`
+  and `notifyFollows` can be switched off in settings without affecting security
+  or account notices. Blocking now hides the conversation from both inboxes,
+  excludes it from unread counts, returns 404 on direct links and marks the
+  blocker's related notices read.
+- Social reports: messages, conversations, follow requests and profiles can be
+  reported with a reason and optional details, with a 24-hour duplicate guard
+  and 10/hour limit. Message evidence must be authored by the reported user.
+  Admins triage open/resolved/dismissed reports at `/admin/social-reports` and
+  closing a report is atomic with its audit entry and notifies the reporter.
+  Duplicate submissions are serialized, admins get one grouped digest per hour
+  while reports are open, and retention runs daily in the worker (365/730/365,
+  opt out with `SOCIAL_RETENTION_AUTO_APPLY=false`); `pnpm social:retention`
+  remains the manual dry-run/apply entry point.
+
+### Fixed
+- Tied players with equal ratings keep equal rounded Elo deltas (the rounding
+  remainder no longer splits a tie group when another group can absorb it).
+- Rate-limit buckets now set their TTL in one atomic Redis script, so a
+  connection drop cannot leave a permanent 429 key; a bounded per-process
+  fallback covers Redis outages.
+- A block that races a follow/open/send transaction is serialized with a
+  per-pair advisory lock, so a concurrent block cannot be bypassed.
+- Banned counterparts are hidden from message inboxes, unread counts and
+  threads (direct links 404); the header badge uses a 15-second invalidated
+  cache; `/messages` SSR pages are rate limited; and JSON bodies over 1 MiB are
+  rejected with 413.
+
+### Changed
+- Contest ratings finalize one hour after a contest ends instead of on the first
+  contest page view. The hour is a review/rejudge window; the Redis-locked worker
+  sweep waits for pending verdicts, finalizes in `(end_at, id)` order, and defers
+  while an earlier contest is unfinalized. A throttled ordered page fallback and
+  `pnpm ratings:finalize` keep ratings moving without the worker. Finalization
+  uses competition ranks, exact zero-sum integer deltas (floor-aware), locks
+  participant rows, excludes banned/virtual participants, and locks contest
+  submissions/problems/schedule after `rated_at`. Profile/standings show the
+  review/finalized state. A dry-run-first `pnpm ratings:recompute` replays stored
+  history with the current engine; the local history was repaired (two old −1
+  sums → 0, sadia 1570→1572) and a second apply is idempotent. `pnpm
+  ratings:audit` now passes with `warnings: 0`. The shared footer/empty-state
+  heading order and GROUP format-badge contrast were also fixed.
+
 ## [0.9.0] - 2026-11-24
 
 ### Added

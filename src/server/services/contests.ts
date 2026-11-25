@@ -19,7 +19,8 @@ import type {
 } from "@/lib/types";
 import type { ContestFormat } from "@/lib/contest-ops";
 import { contestStatus } from "@/lib/contests";
-import { finalizeContestRatings } from "./ratings";
+import { ratingReviewEndsAtIso } from "@/lib/contest-rating";
+import { maybeFinalizeRatingSweep } from "./rating-sweep";
 import {
   participantCountSql,
   problemCountSql,
@@ -98,18 +99,6 @@ async function loadTopSponsors(
     });
   }
   return top;
-}
-
-async function finalizeRatingsIfEnded(
-  slug: string,
-  status: string,
-): Promise<void> {
-  if (status !== "ENDED") return;
-  try {
-    await finalizeContestRatings(slug);
-  } catch (error) {
-    console.error("Contest rating finalization failed", error);
-  }
 }
 
 function nullableText(value: string | null): string | null {
@@ -216,7 +205,20 @@ export async function getContestBySlug(
   }
 
   const status = contestStatus(contest.startAt, contest.endAt, now);
-  await finalizeRatingsIfEnded(contest.slug, status);
+  // Ordered, best-effort fallback for worker downtime. The worker sweep stays
+  // primary; this only ever finalises the earliest due contest.
+  let ratedAt: Date | null = contest.ratedAt;
+  if (status === "ENDED") {
+    await maybeFinalizeRatingSweep();
+    if (!ratedAt) {
+      const [fresh] = await db
+        .select({ ratedAt: contests.ratedAt })
+        .from(contests)
+        .where(eq(contests.id, contest.id))
+        .limit(1);
+      ratedAt = fresh?.ratedAt ?? null;
+    }
+  }
 
   const [registration, participantRow, viewerRow, teamState, crew, sponsors] =
     await Promise.all([
@@ -336,6 +338,8 @@ export async function getContestBySlug(
     integrityWatermark: watermark,
     viewerStaffRole: crew?.role ?? null,
     viewerStaffStatus: crew?.status ?? null,
+    ratingFinalizedAt: ratedAt?.toISOString() ?? null,
+    ratingReviewEndsAt: ratingReviewEndsAtIso(contest.endAt),
     problems: showProblems
       ? problemRows.map((row) => ({
           label: row.label,

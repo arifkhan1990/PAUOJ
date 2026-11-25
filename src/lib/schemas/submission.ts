@@ -50,5 +50,14 @@ export const submissionListQuerySchema = z.object({
   assessment: z.string().max(120).optional(),
 });
 
+export const submissionNoteInputSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Write a note first.")
+    .max(2_000, "Notes can be up to 2000 characters."),
+});
+
 export type CreateSubmissionInput = z.infer<typeof createSubmissionSchema>;
 export type RunCodeInput = z.infer<typeof runCodeSchema>;
+export type SubmissionNoteInput = z.infer<typeof submissionNoteInputSchema>;

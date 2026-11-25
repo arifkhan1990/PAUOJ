@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, lt, sql } from "drizzle-orm";
-import { getDb } from "@/server/db";
+import { getDb, type Database } from "@/server/db";
 import {
   problems,
   submissionResults,
@@ -236,10 +236,17 @@ export async function recoverStaleSubmissions(): Promise<string[]> {
   return stale.map((row) => row.id);
 }
 
+type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+
+/**
+ * Resets a submission for judging. Pass a transaction when this must be atomic
+ * with another lock (for example the contest-only rejudge guard).
+ */
 export async function markSubmissionQueued(
   submissionId: string,
+  db: Database | Transaction = getDb(),
 ): Promise<void> {
-  await getDb()
+  await db
     .update(submissions)
     .set({
       status: "QUEUED",
@@ -251,7 +258,7 @@ export async function markSubmissionQueued(
       judgedAt: null,
     })
     .where(eq(submissions.id, submissionId));
-  await getDb()
+  await db
     .delete(submissionResults)
     .where(eq(submissionResults.submissionId, submissionId));
 }

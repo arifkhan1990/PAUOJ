@@ -34,9 +34,9 @@ export function SiteFooter() {
           </p>
         </div>
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Platform
-          </h3>
+          </h2>
           <ul className="mt-3 space-y-1 text-sm md:space-y-2">
             <li>
               <Link href="/problems" className={footerLink}>
@@ -66,9 +66,9 @@ export function SiteFooter() {
           </ul>
         </div>
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Resources
-          </h3>
+          </h2>
           <ul className="mt-3 space-y-1 text-sm md:space-y-2">
             <li>
               <Link href="/docs" className={footerLink}>

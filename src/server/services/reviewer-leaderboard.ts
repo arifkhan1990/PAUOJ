@@ -59,6 +59,8 @@ async function loadReviewerRows(
       username: users.username,
       displayName: users.displayName,
       role: users.role,
+      avatarPreset: users.avatarPreset,
+      avatarImageUpdatedAt: users.avatarImageUpdatedAt,
       decisions: sql<number>`count(*)::int`,
       approved: sql<
         number
@@ -74,7 +76,14 @@ async function loadReviewerRows(
     .from(problemContributions)
     .innerJoin(users, eq(users.id, problemContributions.reviewedById))
     .where(where)
-    .groupBy(users.id, users.username, users.displayName, users.role)
+    .groupBy(
+      users.id,
+      users.username,
+      users.displayName,
+      users.role,
+      users.avatarPreset,
+      users.avatarImageUpdatedAt,
+    )
     .orderBy(
       desc(count()),
       sql`avg(${reviewHours}) asc nulls last`,
@@ -104,6 +113,9 @@ async function loadReviewerRows(
       lastReviewedAt: row.lastReviewedAt
         ? new Date(row.lastReviewedAt).toISOString()
         : null,
+      avatarPreset: row.avatarPreset,
+      avatarImageUpdatedAt:
+        row.avatarImageUpdatedAt?.toISOString() ?? null,
     };
   });
 }

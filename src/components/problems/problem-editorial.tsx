@@ -107,6 +107,8 @@ export function ProblemEditorial({ problem }: { problem: ProblemDetail }) {
             name={problem.editorialCredit.displayName}
             username={problem.editorialCredit.username}
             size="sm"
+            avatarPreset={problem.editorialCredit.avatarPreset}
+            avatarImageAt={problem.editorialCredit.avatarImageUpdatedAt}
           />
           <p className="text-xs text-muted-foreground">
             Community editorial by{" "}

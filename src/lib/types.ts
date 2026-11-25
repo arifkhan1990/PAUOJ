@@ -1,14 +1,7 @@
 import type { Difficulty } from "./difficulty";
 export type { Difficulty } from "./difficulty";
 import type { ProblemRatingSummary } from "./problem-extras-types";
-import type {
-  ContestFormat,
-  ContestSponsorBadge,
-  ContestStaffRole,
-  ContestStaffStatus,
-  ContestTeamInviteView,
-  ContestTeamView,
-} from "./contest-ops";
+import type { ContestStatus } from "./contest-detail-types";
 export type {
   ProblemRatingSummary,
   ProblemResourceItem,
@@ -52,7 +45,11 @@ export type SessionUser = {
   createdAt: string;
 };
 
-export type HeaderUser = Pick<SessionUser, "id" | "username" | "displayName" | "role"> & { emailVerified: boolean };
+export type HeaderUser = Pick<SessionUser, "id" | "username" | "displayName" | "role"> & {
+  emailVerified: boolean;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: Date | null;
+};
 
 export type ProblemTag = {
   name: string;
@@ -96,8 +93,18 @@ export type ProblemDetail = {
   timeLimitMs: number;
   memoryLimitMb: number;
   authorId: string | null;
-  author: { username: string; displayName: string } | null;
-  editorialCredit: { username: string; displayName: string } | null;
+  author: {
+    username: string;
+    displayName: string;
+    avatarPreset: string | null;
+    avatarImageUpdatedAt: string | null;
+  } | null;
+  editorialCredit: {
+    username: string;
+    displayName: string;
+    avatarPreset: string | null;
+    avatarImageUpdatedAt: string | null;
+  } | null;
   acceptedCount: number;
   submissionCount: number;
   tags: ProblemTag[];
@@ -150,6 +157,8 @@ export type ProblemSolver = {
   solvedAt: string;
   language: string;
   runtimeMs: number | null;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: string | null;
 };
 
 export type ProblemRankboard = {
@@ -165,60 +174,17 @@ export type {
   SubmissionTestResult,
 } from "./submission-types";
 
-export type ContestStatus = "UPCOMING" | "RUNNING" | "ENDED";
-
-export type ContestDivision = "OPEN" | "DIV1" | "DIV2" | "DIV3" | "DIV4";
-
-export type ContestListItem = {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  bannerUrl: string | null;
-  startAt: string;
-  endAt: string;
-  status: ContestStatus;
-  division: ContestDivision;
-  format: ContestFormat;
-  teamSize: number;
-  isOfficial: boolean;
-  seriesId: string | null;
-  feeStatus: "NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "REFUNDED";
-  sponsor: ContestSponsorBadge | null;
-  freezeMinutes: number;
-  participantCount: number;
-  problemCount: number;
-  registered: boolean;
-};
-
-export type ContestProblemItem = {
-  label: string;
-  slug: string;
-  title: string;
-  difficulty: Difficulty;
-  points: number;
-  solvedByMe: boolean;
-  attemptedByMe: boolean;
-};
-
-export type ContestDetail = ContestListItem & {
-  problems: ContestProblemItem[];
-  canRegister: boolean;
-  registrationCount: number;
-  teamCount: number;
-  sponsors: ContestSponsorBadge[];
-  viewerTeam: ContestTeamView | null;
-  incomingTeamInvite: ContestTeamInviteView | null;
-  canCreateTeam: boolean;
-  canJoinTeam: boolean;
-  eligibility: string | null;
-  rules: string | null;
-  prizes: string | null;
-  editorialLocked: boolean;
-  integrityWatermark: string | null;
-  viewerStaffRole: ContestStaffRole | null;
-  viewerStaffStatus: ContestStaffStatus | null;
-};
+export type {
+  ContestDetail,
+  ContestDivision,
+  ContestListItem,
+  ContestProblemItem,
+  ContestScoreboard,
+  ContestStatus,
+  ScoreboardCell,
+  ScoreboardRow,
+  VirtualContestInfo,
+} from "./contest-detail-types";
 
 export * from "./clarification-types";
 
@@ -302,7 +268,12 @@ export type AssessmentResultCell = {
 
 export type AssessmentResultRow = {
   rank: number;
-  user: { username: string; displayName: string };
+  user: {
+    username: string;
+    displayName: string;
+    avatarPreset?: string | null;
+    avatarImageUpdatedAt?: string | null;
+  };
   status: AssessmentParticipantStatus;
   startedAt: string;
   expiresAt: string;
@@ -326,56 +297,6 @@ export type AssessmentResults = {
   rows: AssessmentResultRow[];
 };
 
-export type ScoreboardCell = {
-  solved: boolean;
-  attempts: number;
-  solveTimeMinutes: number | null;
-  firstBlood: boolean;
-};
-
-export type ScoreboardRow = {
-  rank: number;
-  user: { username: string; displayName: string };
-  team: {
-    id: string;
-    name: string;
-    memberCount: number;
-    members: { username: string; displayName: string }[];
-  } | null;
-  solved: number;
-  penalty: number;
-  problems: Record<string, ScoreboardCell>;
-};
-
-export type VirtualContestInfo = {
-  id: string;
-  contestSlug: string;
-  contestTitle: string;
-  startedAt: string;
-  endsAt: string;
-  finishedAt: string | null;
-  problems: ContestProblemItem[];
-  solved: number;
-  penalty: number;
-};
-
-export type ContestScoreboard = {
-  contest: {
-    slug: string;
-    title: string;
-    startAt: string;
-    endAt: string;
-    status: ContestStatus;
-    freezeMinutes: number;
-    format: ContestFormat;
-    teamSize: number;
-  };
-  frozen: boolean;
-  freezeAt: string | null;
-  labels: string[];
-  rows: ScoreboardRow[];
-};
-
 export type RunResult = {
   id: string;
   status: Verdict;
@@ -387,18 +308,7 @@ export type RunResult = {
   finished: boolean;
 };
 
-export type RankRow = {
-  rank: number;
-  username: string;
-  displayName: string;
-  institution: string | null;
-  country: string | null;
-  points: number;
-  solvedCount: number;
-  submissionCount: number;
-  acceptanceRate: number;
-  lastAcceptedAt: string | null;
-};
+export type { RankFacet, RankFacets, RankRow, RankSort, RankStanding } from "./rank-types";
 
 export type HeatmapDay = {
   date: string;
@@ -419,6 +329,8 @@ export type AdminUserListItem = {
   isBanned: boolean;
   rating: number;
   createdAt: string;
+  avatarPreset?: string | null;
+  avatarImageUpdatedAt?: string | null;
 };
 
 export type Paginated<T> = {

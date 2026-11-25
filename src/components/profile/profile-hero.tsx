@@ -12,13 +12,18 @@ import {
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import { ReportButton } from "@/features/moderation/report-dialog";
 import { FollowButton } from "@/components/profile/follow-button";
+import { MessageButton } from "@/components/profile/message-button";
+import { PresenceIndicator } from "@/components/profile/presence-indicator";
+import { ProfileBlockButton } from "@/components/profile/profile-block-button";
 import { ProfileDetails } from "@/components/profile/profile-details";
 import { ProfileShareButton } from "@/components/profile/profile-share-button";
 import { ProfileSocialLinks } from "@/components/profile/profile-social-links";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import type { FollowState } from "@/lib/follow-types";
 import type { ProfileStats } from "@/lib/types";
 import { getRatingTier } from "@/lib/rating-tiers";
 import { cn, formatDate, formatPercent } from "@/lib/utils";
@@ -35,6 +40,15 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
   const tier = getRatingTier(user.rating, rated);
   const followersHref = `/users/${user.username}/connections?tab=followers`;
   const followingHref = `/users/${user.username}/connections?tab=following`;
+  const followState: FollowState = {
+    following: user.isFollowing,
+    requested: user.requested,
+    incomingRequest: user.incomingRequest,
+    followerCount: user.followerCount,
+    followingCount: user.followingCount,
+    blocked: user.blocked,
+    canMessage: user.canMessage,
+  };
 
   const stats: HeroStat[] = [
     {
@@ -68,16 +82,19 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
               name={user.displayName}
               username={user.username}
               size="xl"
-              className="size-20 bg-orange-700 text-[26px] font-bold ring-0"
+              className="size-20 text-[26px] font-bold ring-0"
+              avatarPreset={user.avatarPreset}
+              avatarImageAt={user.avatarImageUpdatedAt}
             />
             <div className="min-w-0 pt-0.5">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
                 Coder profile
               </p>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                 <h1 className="text-2xl font-bold tracking-tight">
                   {user.displayName}
                 </h1>
+                <PresenceIndicator presence={user.presence} />
                 <span
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium",
@@ -164,12 +181,28 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
               >
                 <Settings className="size-4" aria-hidden="true" /> Edit profile
               </Link>
+            ) : user.blocked ? (
+              user.blockedByViewer ? (
+                <ProfileBlockButton username={user.username} blockedByViewer />
+              ) : (
+                <span className="inline-flex min-h-11 items-center rounded-lg border border-border bg-muted/40 px-3.5 text-xs font-medium text-muted-foreground">
+                  Unavailable
+                </span>
+              )
             ) : user.canFollow ? (
-              <FollowButton
-                username={user.username}
-                initialFollowing={user.isFollowing}
-                canFollow={user.canFollow}
-              />
+              <>
+                <FollowButton
+                  username={user.username}
+                  initialState={followState}
+                />
+                {user.canMessage ? (
+                  <MessageButton username={user.username} />
+                ) : null}
+                <ProfileBlockButton
+                  username={user.username}
+                  blockedByViewer={false}
+                />
+              </>
             ) : (
               <Link
                 href={`/login?next=${encodeURIComponent(`/users/${user.username}`)}`}
@@ -186,6 +219,9 @@ export function ProfileHero({ profile }: { profile: ProfileStats }) {
               username={user.username}
               displayName={user.displayName}
             />
+            {!user.isSelf ? (
+              <ReportButton kind="PROFILE" username={user.username} />
+            ) : null}
           </div>
         </div>
 

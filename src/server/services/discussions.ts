@@ -65,6 +65,8 @@ function baseSelection(viewerId: string | null) {
     username: users.username,
     displayName: users.displayName,
     role: users.role,
+    avatarPreset: users.avatarPreset,
+    avatarImageUpdatedAt: users.avatarImageUpdatedAt,
     score: scoreExpression(),
     myVote: myVoteExpression(viewerId),
   };
@@ -164,7 +166,15 @@ export async function listProblemComments(
 
 export async function createProblemComment(
   slug: string,
-  user: Pick<SafeUser, "id" | "username" | "displayName" | "role">,
+  user: Pick<
+    SafeUser,
+    | "id"
+    | "username"
+    | "displayName"
+    | "role"
+    | "avatarPreset"
+    | "avatarImageUpdatedAt"
+  >,
   input: CreateCommentInput,
 ): Promise<ProblemComment> {
   const db = getDb();
@@ -224,6 +234,9 @@ export async function createProblemComment(
       username: user.username,
       displayName: user.displayName,
       role: user.role,
+      avatarPreset: user.avatarPreset,
+      avatarImageUpdatedAt:
+        user.avatarImageUpdatedAt?.toISOString() ?? null,
     },
     replies: [],
   };

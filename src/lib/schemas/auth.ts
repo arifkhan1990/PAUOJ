@@ -8,6 +8,7 @@ import {
   TSHIRT_SIZE_VALUES,
   USER_STATUS_VALUES,
 } from "@/lib/profile-fields";
+import { AVATAR_PRESET_IDS } from "@/lib/avatars";
 import {
   parseGitHub,
   parseLinkedIn,
@@ -137,6 +138,15 @@ export const profileSchema = z.object({
   jobTitle: optionalText(120, "Job title"),
   skills: skillsField,
   tshirtSize: optionalEnum(TSHIRT_SIZE_VALUES),
+  presenceVisibility: z
+    .enum(["EVERYONE", "FOLLOWERS", "NOBODY"])
+    .optional(),
+  notifyMessages: z.boolean().optional(),
+  notifyFollows: z.boolean().optional(),
+});
+
+export const avatarPresetSchema = z.object({
+  preset: z.enum(AVATAR_PRESET_IDS).nullable(),
 });
 
 export const changePasswordSchema = z

@@ -17,6 +17,8 @@ export type ReviewerLeaderboardRow = {
   averageReviewHours: number | null;
   /** ISO */
   lastReviewedAt: string | null;
+  avatarPreset: string | null;
+  avatarImageUpdatedAt: string | null;
 };
 
 export type ReviewerLeaderboard = {

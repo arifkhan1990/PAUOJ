@@ -166,7 +166,7 @@ export const DOC_SECTIONS: DocSection[] = [
       "The first accepted solve of each problem is highlighted with a lightning icon in the standings.",
       "Contests carry a division label. Ended public contests can be replayed as a personal virtual contest from the contest page; virtual submissions never change official standings or ratings.",
       "Some contests freeze the public standings near the end. The full board is revealed when the contest ends; admins always see live data.",
-      "When the contest ends, ratings update once from your final rank and the ratings of the other participants. Your profile shows the full rating graph.",
+      "When the contest ends, ratings finalize one hour later, after the review and rejudge window, using your final rank and the ratings of the other eligible participants. Your profile shows the full rating graph.",
       "Contest submissions and practice submissions both count toward your overall ranking once, using the first accepted solution for each problem.",
     ],
   },

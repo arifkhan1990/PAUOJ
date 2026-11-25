@@ -12,7 +12,6 @@ import {
 } from "@/server/db/schema";
 import type { ContestProblemOption, ContestStatus } from "@/lib/types";
 import { contestStatus } from "@/lib/contests";
-import { finalizeContestRatings } from "./ratings";
 import { implicitContestCrewRole, isContestStaff } from "./contest-staff";
 
 export type ContestViewer = {
@@ -186,13 +185,6 @@ export async function getContestAccess(
     viewer,
   );
   const status = contestStatus(contest.startAt, contest.endAt);
-  if (status === "ENDED") {
-    try {
-      await finalizeContestRatings(contest.slug);
-    } catch (error) {
-      console.error("Contest rating finalization failed", error);
-    }
-  }
   const canViewContent = resolveContestContentAccess({
     status,
     isPublic: contest.isPublic,

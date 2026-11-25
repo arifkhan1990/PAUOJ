@@ -2,83 +2,159 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, UserCheck, UserPlus } from "lucide-react";
+import { Clock, Loader2, UserCheck, UserPlus, X } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { ApiClientError, apiDelete, apiPost } from "@/lib/api-client";
 import type { FollowState } from "@/lib/follow-types";
+import { followActionAriaLabel, followActionLabel, followMode } from "@/lib/follow-state";
+
+type PendingAction = "follow" | "accept" | "decline";
 
 export function FollowButton({
   username,
-  initialFollowing,
-  canFollow,
+  initialState,
 }: {
   username: string;
-  initialFollowing: boolean;
-  canFollow: boolean;
+  initialState: FollowState;
 }) {
-  const [following, setFollowing] = useState(initialFollowing);
-  const [pending, setPending] = useState(false);
+  const [state, setState] = useState(initialState);
+  const [pending, setPending] = useState<PendingAction | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => {
-    setFollowing(initialFollowing);
-  }, [initialFollowing]);
+    setState(initialState);
+  }, [initialState]);
 
-  if (!canFollow) return null;
+  const mode = followMode(state);
+  if (mode === "blocked") return null;
 
-  const toggle = async () => {
+  const path = `/api/v1/users/${encodeURIComponent(username)}/follow`;
+
+  const act = async (
+    action: PendingAction,
+    request: () => Promise<FollowState>,
+    successTitle: (next: FollowState) => string,
+  ) => {
     if (pending) return;
-    setPending(true);
+    setPending(action);
     try {
-      const state = following
-        ? await apiDelete<FollowState>(`/api/v1/users/${username}/follow`)
-        : await apiPost<FollowState>(`/api/v1/users/${username}/follow`, {});
-      setFollowing(state.following);
-      toast({
-        title: state.following
-          ? `Following @${username}`
-          : `Unfollowed @${username}`,
-        variant: "success",
-      });
+      const next = await request();
+      setState(next);
+      toast({ title: successTitle(next), variant: "success" });
       router.refresh();
     } catch (error) {
-      const message =
-        error instanceof ApiClientError
-          ? error.message
-          : "Could not update the follow state.";
       toast({
         title: "Follow action failed",
-        description: message,
+        description:
+          error instanceof ApiClientError
+            ? error.message
+            : "Could not update the follow state.",
         variant: "error",
       });
     } finally {
-      setPending(false);
+      setPending(null);
     }
   };
+
+  const toggleFollow = () => {
+    if (mode === "following") {
+      return act(
+        "follow",
+        () => apiDelete<FollowState>(path),
+        () => `Unfollowed @${username}`,
+      );
+    }
+    if (mode === "requested") {
+      return act(
+        "follow",
+        () => apiDelete<FollowState>(path),
+        () => "Follow request cancelled",
+      );
+    }
+    return act(
+      "follow",
+      () => apiPost<FollowState>(path, {}),
+      (next) =>
+        next.requested && !next.following
+          ? `Request sent to @${username}`
+          : `Following @${username}`,
+    );
+  };
+
+  const accept = () =>
+    act(
+      "accept",
+      () => apiPost<FollowState>(`${path}/accept`, {}),
+      () => "Follow request accepted",
+    );
+
+  const decline = () =>
+    act(
+      "decline",
+      () => apiPost<FollowState>(`${path}/decline`, {}),
+      () => "Follow request declined",
+    );
+
+  if (mode === "incoming") {
+    return (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          onClick={() => void accept()}
+          disabled={pending !== null}
+          aria-busy={pending === "accept"}
+          aria-label={followActionAriaLabel("incoming", username)}
+          className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+        >
+          {pending === "accept" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <UserCheck className="size-4" aria-hidden="true" />
+          )}
+          Accept request
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void decline()}
+          disabled={pending !== null}
+          aria-busy={pending === "decline"}
+          aria-label={`Decline follow request from @${username}`}
+          className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+        >
+          {pending === "decline" ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <X className="size-4" aria-hidden="true" />
+          )}
+          Decline
+        </Button>
+      </div>
+    );
+  }
+
+  const Icon =
+    mode === "following" ? UserCheck : mode === "requested" ? Clock : UserPlus;
 
   return (
     <Button
       type="button"
-      onClick={() => void toggle()}
-      disabled={pending}
-      aria-pressed={following}
-      aria-busy={pending}
-      aria-label={
-        following ? `Unfollow @${username}` : `Follow @${username}`
-      }
-      variant={following ? "outline" : "default"}
+      onClick={() => void toggleFollow()}
+      disabled={pending !== null}
+      aria-busy={pending !== null}
+      aria-pressed={mode === "following"}
+      aria-label={followActionAriaLabel(mode, username)}
+      variant={mode === "none" ? "default" : "outline"}
       className="h-11 min-w-28 gap-1.5 rounded-lg px-4 text-sm"
     >
-      {pending ? (
+      {pending !== null ? (
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-      ) : following ? (
-        <UserCheck className="size-4" aria-hidden="true" />
       ) : (
-        <UserPlus className="size-4" aria-hidden="true" />
+        <Icon className="size-4" aria-hidden="true" />
       )}
-      {following ? "Following" : "Follow"}
+      {followActionLabel(mode)}
     </Button>
   );
 }

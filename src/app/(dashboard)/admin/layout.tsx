@@ -15,6 +15,8 @@ export default async function AdminLayout({
       role={admin.role}
       displayName={admin.displayName}
       username={admin.username}
+      avatarPreset={admin.avatarPreset}
+      avatarImageUpdatedAt={admin.avatarImageUpdatedAt}
     >
       {children}
     </DashboardFrame>

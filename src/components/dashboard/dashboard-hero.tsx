@@ -76,7 +76,9 @@ export function DashboardHero({
               name={user.displayName}
               username={user.username}
               size="xl"
-              className="size-16 bg-orange-700 text-xl font-bold ring-0"
+              className="size-16 text-xl font-bold ring-0"
+              avatarPreset={user.avatarPreset}
+              avatarImageAt={user.avatarImageUpdatedAt}
             />
             <div className="min-w-0 pt-0.5">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">

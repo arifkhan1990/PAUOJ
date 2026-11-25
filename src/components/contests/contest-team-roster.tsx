@@ -18,6 +18,8 @@ export function ContestTeamRoster({
             name={member.displayName}
             username={member.username}
             size="sm"
+            avatarPreset={member.avatarPreset}
+            avatarImageAt={member.avatarImageUpdatedAt}
           />
           <div className="min-w-0 flex-1">
             <Link

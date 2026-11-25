@@ -74,6 +74,13 @@ const quickActions = [
     icon: Flag,
   },
   {
+    href: "/admin/social-reports",
+    label: "Review social reports",
+    description:
+      "Triage reported messages, conversations and follow requests",
+    icon: Flag,
+  },
+  {
     href: "/admin/payments",
     label: "Payments & access",
     description: "Approve TrxIDs or grant premium learning access.",
@@ -175,7 +182,7 @@ export default async function AdminDashboardPage({
 
         <DashboardPanel
           title="Quick actions"
-          description="The four jobs you start most often."
+          description="The jobs you start most often."
           icon={<ArrowUpRight className="size-4" />}
           bodyClassName="p-2"
         >

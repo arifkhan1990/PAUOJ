@@ -34,7 +34,11 @@
     "setup": "bash scripts/setup-dev.sh",
     "judge:build": "docker build -t pauoj/judge:latest judge",
     "judge:build:swift": "docker build -t pauoj/judge-swift:latest -f judge/Dockerfile.swift judge",
-    "docker:build": "docker compose --profile build build"
+    "docker:build": "docker compose --profile build build",
+    "social:retention": "tsx scripts/social-retention.ts",
+    "ratings:audit": "tsx scripts/audit-ratings.ts",
+    "ratings:recompute": "tsx scripts/recompute-ratings.ts",
+    "ratings:finalize": "tsx scripts/finalize-ratings.ts"
   },
   "dependencies": {
     "@monaco-editor/react": "4.7.0",
