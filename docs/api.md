@@ -1147,6 +1147,22 @@ text, trimmed to 1–2000 characters and escaped on render.
   cached unread total. List/thread/unread GETs are rate limited
   (120/240/120 per minute) to bound polling cost.
 
+### Social counts
+
+`GET /social/counts` — authenticated, rate limited to 120 per minute, sent with
+`Cache-Control: private, no-store`. Returns the three dashboard social badges in
+one round trip:
+
+```json
+{ "data": { "messages": 3, "notifications": 12, "requests": 0 } }
+```
+
+`messages` is the unread message total, `notifications` the unread
+notification total and `requests` the pending follow-request count. The
+dashboard sidebar polls this endpoint every 45 seconds while the tab is visible
+to refresh its Social badges; a server render already supplies the first
+counts.
+
 ## Social reports
 
 Any signed-in user can report another user's message, conversation, follow

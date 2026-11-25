@@ -77,6 +77,44 @@ export function dashboardNav(
   username: string,
   badges?: DashboardBadges,
 ): DashboardNavSection[] {
+  const sections = buildSections(role, username);
+  return sections.map((section) => ({
+    ...section,
+    items: attachBadges(section.items, badges),
+  }));
+}
+
+/** Social inbox lives in the coder dashboard for every staff role. */
+function socialSection(): DashboardNavSection {
+  return {
+    label: "Social",
+    items: [
+      {
+        href: "/dashboard/connections",
+        label: "Connections",
+        icon: Users,
+        badgeKey: "requests",
+      },
+      {
+        href: "/dashboard/messages",
+        label: "Messages",
+        icon: MessageSquare,
+        badgeKey: "messages",
+      },
+      {
+        href: "/dashboard/notifications",
+        label: "Notifications",
+        icon: Bell,
+        badgeKey: "notifications",
+      },
+    ],
+  };
+}
+
+function buildSections(
+  role: DashboardRole,
+  username: string,
+): DashboardNavSection[] {
   if (role === "ADMIN") {
     return [
       {
@@ -113,6 +151,7 @@ export function dashboardNav(
         label: "People",
         items: [{ href: "/admin/users", label: "Users", icon: Users }],
       },
+      socialSection(),
       {
         label: "Workspaces",
         items: [
@@ -173,6 +212,7 @@ export function dashboardNav(
           },
         ],
       },
+      socialSection(),
       {
         label: "Workspaces",
         items: [
@@ -186,7 +226,7 @@ export function dashboardNav(
     ];
   }
 
-  const sections: DashboardNavSection[] = [
+  return [
     {
       label: "My workspace",
       items: [
@@ -229,29 +269,7 @@ export function dashboardNav(
         { href: "/dashboard/reviews", label: "Reviews", icon: ShieldCheck },
       ],
     },
-    {
-      label: "Social",
-      items: [
-        {
-          href: "/dashboard/connections",
-          label: "Connections",
-          icon: Users,
-          badgeKey: "requests",
-        },
-        {
-          href: "/dashboard/messages",
-          label: "Messages",
-          icon: MessageSquare,
-          badgeKey: "messages",
-        },
-        {
-          href: "/dashboard/notifications",
-          label: "Notifications",
-          icon: Bell,
-          badgeKey: "notifications",
-        },
-      ],
-    },
+    socialSection(),
     {
       label: "Account",
       items: [
@@ -264,11 +282,6 @@ export function dashboardNav(
       ],
     },
   ];
-
-  return sections.map((section) => ({
-    ...section,
-    items: attachBadges(section.items, badges),
-  }));
 }
 
 export function dashboardWorkspaceMeta(role: DashboardRole): {

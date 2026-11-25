@@ -18,7 +18,7 @@ import {
 import { errors } from "@/server/api/errors";
 import { enforceRateLimit } from "@/server/api/rate-limit";
 import type { BlockedUserItem } from "@/lib/follow-types";
-import { conversationHref } from "./message-helpers";
+import { conversationHrefVariants } from "./message-helpers";
 import { followRequestDedupeKey } from "./profile-follow-shared";
 import { lockUserPair } from "./social-lock";
 import { invalidateUnreadCacheFor } from "./message-unread-cache";
@@ -85,7 +85,9 @@ async function markPairNoticesRead(
         ),
       ),
     );
-  const hrefs = pairConversations.map((row) => conversationHref(row.id));
+  const hrefs = pairConversations.flatMap((row) =>
+    conversationHrefVariants(row.id),
+  );
   const now = new Date();
 
   await db

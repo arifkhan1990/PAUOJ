@@ -412,7 +412,9 @@ show every live track badge as earned or locked.
 Login, registration, password recovery and email verification share a split
 modal-style card: a dark brand panel with a sample profile preview, and a
 theme-aware form panel. Sign-in and registration expose tabs that preserve the
-`next` redirect. Fields use the shared `AuthField` component, errors use
+`next` redirect; a signed-out dashboard deep link lands on
+`/login?next=<exact destination>` and returns there after sign-in. Fields use
+the shared `AuthField` component, errors use
 `AuthError`, and the password-strength meter is client-side only. These are
 full pages styled as a modal card, not a route-level overlay.
 
@@ -715,6 +717,20 @@ unless the recipient muted the conversation or disabled `notify_messages`;
 deleting a message replaces the notice preview with "This message was deleted.".
 All message mutations are same-origin, rate limited and participant-scoped
 (foreign ids return `404`).
+
+The dashboard sidebar refreshes its three social badges (messages, unread
+notifications, pending follow requests) from `GET /api/v1/social/counts` every
+45 seconds while the tab is visible; a server render already carries the first
+counts. The public site header shows only a small unread-activity dot on the
+avatar/Coder dashboard menu row — the messages and notification feature pages
+and their icons stay dashboard-only. The old public page URLs (`/notifications`,
+`/messages`, `/messages/:id`, `/connections/requests`, `/connections`) answer
+with permanent `308` redirects to the `/dashboard/...` paths and forward query
+strings (`src/lib/legacy-redirects.ts`). Message read and delete match both href
+shapes (`conversationHrefVariants`), so notices written before the move still
+resolve; migration `0046_dashboard_notification_links` backfills stored
+notification hrefs, and because the compose files run `node dist/migrate.js`
+before `server.js` a deploy race cannot leave orphaned notices.
 
 ### Moderation reports and retention
 

@@ -342,3 +342,28 @@ describe("contest slug proxy", () => {
     expect(response.status).toBe(200);
   });
 });
+
+describe("dashboard deep link proxy", () => {
+  beforeEach(() => {
+    sql.mockReset();
+  });
+
+  it("forwards the full dashboard path with its query string", async () => {
+    const response = await proxy(request("/dashboard/messages/abc?page=2"));
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+    expect(
+      response.headers.get("x-middleware-request-x-pathname"),
+    ).toBe("/dashboard/messages/abc?page=2");
+    expect(sql).not.toHaveBeenCalled();
+  });
+
+  it("forwards the dashboard root", async () => {
+    const response = await proxy(request("/dashboard"));
+    expect(response.status).toBe(200);
+    expect(
+      response.headers.get("x-middleware-request-x-pathname"),
+    ).toBe("/dashboard");
+    expect(sql).not.toHaveBeenCalled();
+  });
+});

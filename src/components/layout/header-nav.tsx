@@ -43,11 +43,14 @@ function isActive(pathname: string, href: string): boolean {
 
 export function UserMenu({
   user,
+  hasSocialUnread = false,
 }: {
   user: Pick<
     HeaderUser,
     "username" | "displayName" | "role" | "avatarPreset" | "avatarImageUpdatedAt"
   >;
+  /** Unread messages, notifications, or follow requests; shows a quiet dot. */
+  hasSocialUnread?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
@@ -107,15 +110,27 @@ export function UserMenu({
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Open user menu for ${user.displayName}`}
+        aria-label={
+          hasSocialUnread
+            ? `Open user menu for ${user.displayName}, unread activity`
+            : `Open user menu for ${user.displayName}`
+        }
       >
-        <UserAvatar
-          name={user.displayName}
-          username={user.username}
-          size="sm"
-          avatarPreset={user.avatarPreset}
-          avatarImageAt={user.avatarImageUpdatedAt}
-        />
+        <span className="relative inline-flex shrink-0">
+          <UserAvatar
+            name={user.displayName}
+            username={user.username}
+            size="sm"
+            avatarPreset={user.avatarPreset}
+            avatarImageAt={user.avatarImageUpdatedAt}
+          />
+          {hasSocialUnread ? (
+            <span
+              aria-hidden="true"
+              className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-primary"
+            />
+          ) : null}
+        </span>
         <span className="hidden max-w-28 truncate text-sm font-medium sm:block">
           {user.displayName}
         </span>
@@ -135,6 +150,15 @@ export function UserMenu({
           <div className="py-1">
             <Link href="/dashboard" role="menuitem" className={menuRowClass}>
               <LayoutDashboard className="size-4" /> Coder dashboard
+              {hasSocialUnread ? (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className="ml-auto size-2 shrink-0 rounded-full bg-primary"
+                  />
+                  <span className="sr-only">unread activity</span>
+                </>
+              ) : null}
             </Link>
             {user.role === "TEACHER" || user.role === "ADMIN" ? (
               <Link href="/teacher" role="menuitem" className={menuRowClass}>
@@ -185,7 +209,13 @@ export function UserMenu({
   );
 }
 
-export function HeaderNav({ user }: { user: HeaderUser | null }) {
+export function HeaderNav({
+  user,
+  hasSocialUnread = false,
+}: {
+  user: HeaderUser | null;
+  hasSocialUnread?: boolean;
+}) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -240,7 +270,7 @@ export function HeaderNav({ user }: { user: HeaderUser | null }) {
         <div className="ml-auto flex items-center gap-1">
           <ThemeToggle />
           {user ? (
-            <UserMenu user={user} />
+            <UserMenu user={user} hasSocialUnread={hasSocialUnread} />
           ) : (
             <div className="hidden items-center gap-1.5 sm:flex">
               <Link

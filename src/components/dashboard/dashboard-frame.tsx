@@ -9,6 +9,7 @@ import { UserMenu } from "@/components/layout/header-nav";
 import { DashboardFooter } from "@/components/dashboard/dashboard-footer";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
+import { apiRequest } from "@/lib/api-client";
 import {
   dashboardBadgeNoun,
   dashboardNav,
@@ -17,8 +18,20 @@ import {
   type DashboardBadges,
   type DashboardRole,
 } from "@/lib/dashboard-nav";
+import type { SocialCounts } from "@/lib/social-types";
 import type { UserRole } from "@/lib/types";
 import { cn } from "@/lib/utils";
+
+/** Cross-panel counters refresh cadence while the tab stays visible. */
+const SOCIAL_COUNTS_POLL_MS = 45_000;
+
+function countsChanged(previous: SocialCounts, next: SocialCounts): boolean {
+  return (
+    previous.messages !== next.messages ||
+    previous.notifications !== next.notifications ||
+    previous.requests !== next.requests
+  );
+}
 
 function isItemActive(
   pathname: string,
@@ -67,10 +80,15 @@ export function DashboardFrame({
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const badges: DashboardBadges = {
+  const [socialCounts, setSocialCounts] = useState<SocialCounts>({
     messages: unreadMessages,
     notifications: unreadNotifications,
     requests: pendingFollowRequests,
+  });
+  const badges: DashboardBadges = {
+    messages: socialCounts.messages,
+    notifications: socialCounts.notifications,
+    requests: socialCounts.requests,
   };
   const sections = dashboardNav(panel, username, badges);
   const meta = dashboardWorkspaceMeta(panel);
@@ -98,6 +116,65 @@ export function DashboardFrame({
       document.removeEventListener("keydown", onKey);
     };
   }, [mobileOpen]);
+
+  // A server render (refresh or navigation) carries fresher counts than the
+  // last poll, so adopt them without dropping a still-valid object identity.
+  useEffect(() => {
+    setSocialCounts((previous) =>
+      countsChanged(previous, {
+        messages: unreadMessages,
+        notifications: unreadNotifications,
+        requests: pendingFollowRequests,
+      })
+        ? {
+            messages: unreadMessages,
+            notifications: unreadNotifications,
+            requests: pendingFollowRequests,
+          }
+        : previous,
+    );
+  }, [unreadMessages, unreadNotifications, pendingFollowRequests]);
+
+  // The server layout already fetched the counts, so the first request waits
+  // for the interval or for the tab becoming visible again.
+  useEffect(() => {
+    let active = true;
+    let inFlight = false;
+
+    const load = async () => {
+      if (!active || inFlight || document.visibilityState !== "visible") {
+        return;
+      }
+      inFlight = true;
+      try {
+        const counts = await apiRequest<SocialCounts>("/api/v1/social/counts");
+        if (!active) return;
+        const next = {
+          messages: counts.messages,
+          notifications: counts.notifications,
+          requests: counts.requests,
+        };
+        setSocialCounts((previous) =>
+          countsChanged(previous, next) ? next : previous,
+        );
+      } catch {
+        // Keep the last known counts; the next tick retries.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const interval = window.setInterval(() => void load(), SOCIAL_COUNTS_POLL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-muted/20">

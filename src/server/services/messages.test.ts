@@ -10,8 +10,10 @@ import { isMuted } from "./conversation-mutes";
 import {
   clampPage,
   conversationHref,
+  conversationHrefVariants,
   isParticipant,
   isUuid,
+  legacyConversationHref,
   maskDeletedBody,
   messageDedupeKey,
   messageNotificationTitle,
@@ -132,6 +134,17 @@ describe("notification helpers", () => {
   it("links notifications to the conversation thread", () => {
     expect(conversationHref("conv-1")).toBe("/dashboard/messages/conv-1");
     expect(messageNotificationTitle("Ayesha")).toContain("Ayesha");
+  });
+
+  it("still resolves notices written against the legacy inbox path", () => {
+    expect(legacyConversationHref("conv-1")).toBe("/messages/conv-1");
+  });
+
+  it("matches both href shapes, newest first", () => {
+    expect(conversationHrefVariants("conv-1")).toEqual([
+      "/dashboard/messages/conv-1",
+      "/messages/conv-1",
+    ]);
   });
 });
 

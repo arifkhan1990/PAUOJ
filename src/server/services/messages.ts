@@ -1,4 +1,4 @@
-import { and, eq, isNull, ne, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
   conversations,
@@ -19,6 +19,7 @@ import { logger } from "@/server/logger";
 import {
   clampPage,
   conversationHref,
+  conversationHrefVariants,
   isParticipant,
   isUuid,
   messageDedupeKey,
@@ -366,7 +367,7 @@ export async function markConversationRead(
     .where(
       and(
         eq(notifications.userId, viewerId),
-        eq(notifications.href, conversationHref(conversationId)),
+        inArray(notifications.href, conversationHrefVariants(conversationId)),
         isNull(notifications.readAt),
       ),
     );
@@ -413,7 +414,10 @@ export async function deleteMessage(
     .set({ body: "This message was deleted.", updatedAt: now })
     .where(
       and(
-        eq(notifications.href, conversationHref(message.conversationId)),
+        inArray(
+          notifications.href,
+          conversationHrefVariants(message.conversationId),
+        ),
         eq(notifications.dedupeKey, messageDedupeKey(messageId)),
       ),
     );

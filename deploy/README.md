@@ -81,7 +81,11 @@ It also reports `migrations: { applied, expected, ok }`; a database that is
 behind the shipped drizzle journal returns `503` with `"status":"degraded"`, so
 a partial deploy cannot serve stale schema. The app container runs
 `node dist/migrate.js` before `server.js`, so the normal compose path migrates
-first. To check a database from the repo before shipping:
+first. Migration `0046_dashboard_notification_links` is a data-only backfill
+(rewrites stored notification hrefs to the `/dashboard/...` paths); rollback
+safety comes from message read/delete matching both the old and new href
+formats, not from a down migration. To check a database from the repo before
+shipping:
 
 ```bash
 pnpm db:check

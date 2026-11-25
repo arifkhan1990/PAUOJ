@@ -93,6 +93,22 @@ export function conversationHref(conversationId: string): string {
   return `/dashboard/messages/${conversationId}`;
 }
 
+/**
+ * Notifications written before the dashboard move still point at the old
+ * inbox path, so reads and deletes must match both shapes. New notices always
+ * use `conversationHref`.
+ */
+export function legacyConversationHref(conversationId: string): string {
+  return `/messages/${conversationId}`;
+}
+
+export function conversationHrefVariants(conversationId: string): string[] {
+  return [
+    conversationHref(conversationId),
+    legacyConversationHref(conversationId),
+  ];
+}
+
 export function messageNotificationTitle(displayName: string): string {
   return `New message from ${displayName}`;
 }

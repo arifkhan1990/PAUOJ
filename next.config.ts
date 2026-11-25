@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { legacyRedirects } from "./src/lib/legacy-redirects";
 import pkg from "./package.json";
 
 const securityHeaders = [
@@ -29,35 +30,9 @@ const nextConfig: NextConfig = {
     },
   },
   async redirects() {
-    // Messaging and notifications moved inside the coder dashboard. Temporary
-    // (307) so old bookmarks keep working without being cached forever.
-    return [
-      {
-        source: "/notifications",
-        destination: "/dashboard/notifications",
-        permanent: false,
-      },
-      {
-        source: "/messages",
-        destination: "/dashboard/messages",
-        permanent: false,
-      },
-      {
-        source: "/messages/:id",
-        destination: "/dashboard/messages/:id",
-        permanent: false,
-      },
-      {
-        source: "/connections/requests",
-        destination: "/dashboard/connections/requests",
-        permanent: false,
-      },
-      {
-        source: "/connections",
-        destination: "/dashboard/connections",
-        permanent: false,
-      },
-    ];
+    // Messaging and notifications moved inside the coder dashboard. The table
+    // lives in src/lib/legacy-redirects.ts so it can be unit tested.
+    return legacyRedirects;
   },
   async headers() {
     return [

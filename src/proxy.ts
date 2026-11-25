@@ -31,6 +31,16 @@ const RESERVED_LEARNING_SEGMENTS = new Set(["pricing", "sql"]);
 const RESERVED_STUDY_LIST_SEGMENTS = new Set(["new"]);
 
 export async function proxy(request: NextRequest) {
+  // The dashboard layout does its own auth check and redirects to /dashboard.
+  // Forward the full path (plus query) so signing in from a deep link returns
+  // the user to the exact page instead of the dashboard root. No DB work here.
+  const { pathname, search } = request.nextUrl;
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
+    const headers = new Headers(request.headers);
+    headers.set("x-pathname", `${pathname}${search}`);
+    return NextResponse.next({ request: { headers } });
+  }
+
   const learningMatch = /^\/learn\/([^/]+)(?:\/([^/]+))?\/?$/.exec(
     request.nextUrl.pathname,
   );
@@ -211,5 +221,7 @@ export const config = {
     "/lists/:slug/edit",
     "/users/:username",
     "/users/:username/connections",
+    // `:path*` also matches `/dashboard` itself, so the root is covered.
+    "/dashboard/:path*",
   ],
 };
