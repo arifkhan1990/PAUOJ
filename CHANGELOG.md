@@ -92,6 +92,9 @@ All notable changes to PAU OJ are documented here. The format follows
   remains the manual dry-run/apply entry point.
 
 ### Fixed
+- Learning badges no longer render locked placeholders. The profile section is
+  hidden until at least one module checkpoint is completed, then shows only the
+  earned badges with their completion dates.
 - Tied players with equal ratings keep equal rounded Elo deltas (the rounding
   remainder no longer splits a tie group when another group can absorb it).
 - Rate-limit buckets now set their TTL in one atomic Redis script, so a

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, Award, LockKeyhole } from "lucide-react";
+import { ArrowUpRight, Award } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { LearningBadge } from "@/lib/learning/types";
 import { cn, formatDate } from "@/lib/utils";
@@ -11,8 +11,9 @@ export function LearningBadges({
   badges: LearningBadge[];
   className?: string;
 }) {
-  if (badges.length === 0) return null;
-  const earned = badges.filter((badge) => badge.earned).length;
+  // Only completed checkpoints are shown; an empty profile gets no section.
+  const earned = badges.filter((badge) => badge.earned);
+  if (earned.length === 0) return null;
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -24,35 +25,21 @@ export function LearningBadges({
           </p>
         </div>
         <span className="font-mono text-xs text-muted-foreground">
-          {earned}/{badges.length} earned
+          {earned.length}/{badges.length} earned
         </span>
       </div>
       <ul className="grid gap-2 p-3 sm:grid-cols-2 xl:grid-cols-3">
-        {badges.map((badge) => (
+        {earned.map((badge) => (
           <li key={badge.moduleSlug}>
             <Link
               href={badge.href}
-              className={cn(
-                "group flex h-full items-start gap-3 rounded-lg border p-3 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                badge.earned
-                  ? "border-amber-300/60 bg-amber-500/[0.06] hover:border-amber-400/80 dark:border-amber-700/50"
-                  : "border-border bg-muted/20 hover:border-muted-foreground/35",
-              )}
+              className="group flex h-full items-start gap-3 rounded-lg border border-amber-300/60 bg-amber-500/[0.06] p-3 transition-colors hover:border-amber-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-amber-700/50"
             >
               <span
-                className={cn(
-                  "grid size-9 shrink-0 place-items-center rounded-full border",
-                  badge.earned
-                    ? "border-amber-400/70 bg-amber-500/15 text-amber-600 dark:text-amber-300"
-                    : "border-border bg-muted text-muted-foreground",
-                )}
+                className="grid size-9 shrink-0 place-items-center rounded-full border border-amber-400/70 bg-amber-500/15 text-amber-600 dark:text-amber-300"
                 aria-hidden="true"
               >
-                {badge.earned ? (
-                  <Award className="size-4" />
-                ) : (
-                  <LockKeyhole className="size-4" />
-                )}
+                <Award className="size-4" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-xs font-semibold">
@@ -63,9 +50,9 @@ export function LearningBadges({
                   {badge.moduleTitle}
                 </span>
                 <span className="mt-1 block text-[10px] text-muted-foreground">
-                  {badge.earned && badge.earnedAt
+                  {badge.earnedAt
                     ? `Earned ${formatDate(badge.earnedAt)}`
-                    : "Locked"}
+                    : "Earned"}
                 </span>
               </span>
               <ArrowUpRight

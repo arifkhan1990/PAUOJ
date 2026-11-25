@@ -71,6 +71,9 @@ export default async function ProfilePage({
   if (!profile) notFound();
 
   const { user } = profile;
+  const hasLearningBadges = profile.learningBadges.some(
+    (badge) => badge.earned,
+  );
 
   return (
     <div className="relative isolate mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -118,9 +121,11 @@ export default async function ProfilePage({
         <AchievementBadges achievements={profile.achievements} />
       </div>
 
-      <div className="animate-enter mt-5" style={{ animationDelay: "180ms" }}>
-        <LearningBadges badges={profile.learningBadges} />
-      </div>
+      {hasLearningBadges ? (
+        <div className="animate-enter mt-5" style={{ animationDelay: "180ms" }}>
+          <LearningBadges badges={profile.learningBadges} />
+        </div>
+      ) : null}
 
       <div
         className="animate-enter mt-5 grid gap-5 lg:grid-cols-2"
