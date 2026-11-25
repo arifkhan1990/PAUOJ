@@ -9,10 +9,11 @@ All notable changes to PAU OJ are documented here. The format follows
 - Custom-test runs no longer report a green “AC”. A clean run is now
   `EXECUTED`, the result card shows “Ran” (or a sample comparison when the
   input matches an official sample) and never presents an unjudged run as
-  correct. Empty output on a sample now shows the expected output and
-  “Differs from sample” instead of a misleading AC. Run results cached before
-  this change are normalized to `EXECUTED` on read, and `EXECUTED` renders with
-  neutral “Ran” metadata instead of a judge-error fallback.
+  correct. Empty output on a sample now shows “Your output” with a
+  `(no output)` placeholder, the expected sample output and “Differs from
+  sample” instead of a misleading AC. Run results cached before this change are
+  normalized to `EXECUTED` on read, and `EXECUTED` renders with neutral “Ran”
+  metadata instead of a judge-error fallback.
 
 ### Changed
 - Conversation info now uses three tabs (Media, Documents, Links), shows

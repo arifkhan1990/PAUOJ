@@ -223,27 +223,21 @@ export function CustomRunCard({
               </pre>
             </div>
           ) : null}
-          {matched ? (
-            <>
+          {executed && finished ? (
+            <div>
+              <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                Your output
+              </p>
               {result.stdout ? (
-                <div>
-                  <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                    Your output
-                  </p>
-                  <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
-                    {result.stdout}
-                  </pre>
-                </div>
-              ) : null}
-              <div>
-                <p className="mb-1 text-[11px] font-medium text-muted-foreground">
-                  Sample output
-                </p>
                 <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
-                  {matched.sample.output}
+                  {result.stdout}
                 </pre>
-              </div>
-            </>
+              ) : (
+                <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px] text-muted-foreground">
+                  (no output)
+                </pre>
+              )}
+            </div>
           ) : result.stdout ? (
             <div>
               <p className="mb-1 text-[11px] font-medium text-muted-foreground">
@@ -251,6 +245,16 @@ export function CustomRunCard({
               </p>
               <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
                 {result.stdout}
+              </pre>
+            </div>
+          ) : null}
+          {matched ? (
+            <div>
+              <p className="mb-1 text-[11px] font-medium text-muted-foreground">
+                Sample output
+              </p>
+              <pre className="max-h-40 overflow-auto rounded-md border border-border bg-muted/40 p-2.5 font-mono text-[11px]">
+                {matched.sample.output}
               </pre>
             </div>
           ) : null}
