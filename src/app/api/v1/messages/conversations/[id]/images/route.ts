@@ -9,6 +9,7 @@ import {
   MESSAGE_IMAGE_RATE_LIMIT,
   MESSAGE_IMAGE_RATE_WINDOW_SECONDS,
   sendMessageImage,
+  uploadExceedsLimit,
 } from "@/server/services/message-images";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -26,6 +27,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
       "You are sending images too quickly. Please slow down.",
     );
     const { id } = await context.params;
+
+    // Reject a declared oversized body before `formData()` buffers it. The
+    // per-file cap below still runs as defense in depth.
+    if (uploadExceedsLimit(request.headers.get("content-length"))) {
+      throw errors.validation("Images must be at most 5 MB.");
+    }
 
     let form: FormData;
     try {

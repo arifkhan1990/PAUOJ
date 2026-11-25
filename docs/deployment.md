@@ -143,7 +143,12 @@ delivery.
 - Limit worker concurrency to available CPU/memory; each job uses one CPU and up
   to the container memory limit.
 - Add rate limiting/WAF at the proxy if the judge is public.
-- Do not mount user uploads; there is intentionally no file upload path.
+- Uploads are limited to avatars (1 MiB) and DM images (5 MiB file, 6 MiB
+  total body preflighted before multipart parsing); both are stored as `bytea`
+  in Postgres, so no upload directory is ever mounted. Caddy must allow an 8 MB
+  request body (`request_body { max_size 8MB }` in the Compose Caddyfile and
+  the shared-host site block). Per-sender DM image quotas are 50 images per
+  rolling 24 hours and 250 MiB stored.
 
 ## Updating
 

@@ -1146,15 +1146,21 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
   optional `caption` (empty allowed, trimmed, max 2000 characters); returns
   `201` with the usual `MessageItem` (`body` is the caption, `attachment` is
   set). One image per message; PNG, JPEG or WebP detected from the magic bytes,
-  never from the client MIME or filename; max 5 MiB and 4096×4096. `422` for an
-  empty file, an unsupported or oversized image, or an overlong caption; `403`
-  blocked, `404` non-participant/banned, `429` after 10 per minute. Same-origin,
-  session-cookie auth like the other message writes.
+  never from the client MIME or filename; max 5 MiB and 4096×4096. The request's
+  `Content-Length` is preflighted before multipart parsing: anything above 6 MiB
+  (5 MiB file + 1 MiB multipart allowance) is rejected without buffering the
+  body, and the 5 MiB file check still applies after parsing. Per-sender image
+  quotas bound growth on top of the 10-per-minute limit: at most 50 images per
+  rolling 24 hours (`429` with a retry message) and 250 MiB of stored images
+  (`422` when exceeded). `422` for an empty file, an unsupported or oversized
+  image, or an overlong caption; `403` blocked, `404` non-participant/banned.
+  Same-origin, session-cookie auth like the other message writes.
 - `GET /messages/attachments/:id` — streams the stored bytes so a browser `<img>`
   works with the session cookie. Participant-only: `404` for a malformed id, a
   foreign conversation, a deleted message, or a blocked/banned pair, so the
   bytes never leak. `200` with the stored MIME, `Content-Disposition: inline`,
-  `Cache-Control: private, max-age=31536000, immutable` and
+  `Cache-Control: private, no-store` (so a delete, block or ban takes effect on
+  the next reload instead of a year-long immutable cache) and
   `X-Content-Type-Options: nosniff`; 240 per minute.
 - `GET /messages/suggestions?kind=contest|problem|learn&q=…` — authenticated,
   `q` trimmed and max 80 characters, at most 8 rows, 120 per minute; returns
@@ -1167,14 +1173,16 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
   allow-listed to those three internal prefixes, so a token can never become an
   off-site link; anything else stays literal text. Inbox previews and
   notification bodies show tokens as `@Label`, and an image-only message
-  previews as "📷 Photo" in the inbox and "Sent a photo" in notifications.
+  reads as "📷 Photo" in both the inbox and the notification body.
 - `POST`/`DELETE /messages/conversations/:id/mute` — toggles the caller's mute
   (`{ "muted": true|false }`), participant-only, idempotent, 60 per minute.
 - `POST /messages/conversations/:id/read` — marks the other participant's
   messages and the conversation's notifications read; returns `{ "marked": n }`
   and is limited to 120 per minute.
-- `DELETE /messages/:id` — soft-deletes the caller's own message (idempotent,
-  `404` for anyone else, 60 per minute).
+- `DELETE /messages/:id` — soft-deletes the caller's own message and
+  hard-deletes its `message_attachments` row in the same operation, so an
+  image message leaves no stored bytes behind; repeating the delete is
+  idempotent (`404` for anyone else, 60 per minute).
 - `GET /messages/unread` — `{ "count": n }`, `private, no-store`; returns the
   cached unread total. List/thread/unread GETs are rate limited
   (120/240/120 per minute) to bound polling cost.

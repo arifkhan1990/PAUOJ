@@ -4,8 +4,10 @@ import {
   MESSAGE_ATTACHMENT_RATE_LIMIT,
   MESSAGE_IMAGE_MAX_BYTES,
   MESSAGE_IMAGE_MAX_DIMENSION,
+  MESSAGE_IMAGE_MAX_UPLOAD_BYTES,
   MESSAGE_IMAGE_RATE_LIMIT,
   MESSAGE_IMAGE_RATE_WINDOW_SECONDS,
+  uploadExceedsLimit,
   validateMessageImageBytes,
 } from "./message-images";
 
@@ -82,5 +84,35 @@ describe("image message limits", () => {
     expect(MESSAGE_IMAGE_RATE_LIMIT).toBe(10);
     expect(MESSAGE_IMAGE_RATE_WINDOW_SECONDS).toBe(60);
     expect(MESSAGE_ATTACHMENT_RATE_LIMIT).toBe(240);
+  });
+
+  it("caps the whole multipart body at 6 MiB", () => {
+    expect(MESSAGE_IMAGE_MAX_UPLOAD_BYTES).toBe(6 * 1024 * 1024);
+  });
+});
+
+describe("uploadExceedsLimit", () => {
+  it("lets a request without a content-length header reach the parser", () => {
+    expect(uploadExceedsLimit(null)).toBe(false);
+  });
+
+  it("allows a small upload and the exact 6 MiB boundary", () => {
+    expect(uploadExceedsLimit("1024")).toBe(false);
+    expect(uploadExceedsLimit(String(MESSAGE_IMAGE_MAX_UPLOAD_BYTES))).toBe(
+      false,
+    );
+  });
+
+  it("rejects one byte over the boundary and a huge upload", () => {
+    expect(uploadExceedsLimit(String(MESSAGE_IMAGE_MAX_UPLOAD_BYTES + 1))).toBe(
+      true,
+    );
+    expect(uploadExceedsLimit(String(1024 * 1024 * 1024))).toBe(true);
+  });
+
+  it("ignores a malformed header so the per-file check stays authoritative", () => {
+    expect(uploadExceedsLimit("")).toBe(false);
+    expect(uploadExceedsLimit("not-a-number")).toBe(false);
+    expect(uploadExceedsLimit("-1")).toBe(false);
   });
 });

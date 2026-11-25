@@ -86,9 +86,9 @@ describe("image captions and photo previews", () => {
     );
   });
 
-  it("falls back to 'Sent a photo' when an image has no caption", () => {
+  it("falls back to '📷 Photo' when an image has no caption", () => {
     expect(messageNotificationBody({ body: "", hasAttachment: true })).toBe(
-      "Sent a photo",
+      "📷 Photo",
     );
   });
 

@@ -23,11 +23,27 @@ import {
 } from "./message-send";
 
 export const MESSAGE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+/** 5 MiB file plus multipart framing, checked before the body is buffered. */
+export const MESSAGE_IMAGE_MAX_UPLOAD_BYTES =
+  MESSAGE_IMAGE_MAX_BYTES + 1024 * 1024;
 export const MESSAGE_IMAGE_MAX_DIMENSION = 4096;
 export const MESSAGE_IMAGE_RATE_LIMIT = 10;
 export const MESSAGE_IMAGE_RATE_WINDOW_SECONDS = 60;
 export const MESSAGE_ATTACHMENT_RATE_LIMIT = 240;
 export const MESSAGE_ATTACHMENT_RATE_WINDOW_SECONDS = 60;
+
+/**
+ * Pre-parse guard: a declared body above 6 MiB (5 MiB file + multipart
+ * framing) is rejected before `request.formData()` buffers it. A missing or
+ * malformed header returns false; the per-file size check still runs after
+ * parsing, so a dishonest header cannot smuggle an oversized image through.
+ */
+export function uploadExceedsLimit(contentLength: string | null): boolean {
+  if (contentLength === null) return false;
+  const trimmed = contentLength.trim();
+  if (!/^\d+$/.test(trimmed)) return false;
+  return Number(trimmed) > MESSAGE_IMAGE_MAX_UPLOAD_BYTES;
+}
 
 /**
  * Validates an uploaded message image from its bytes, never from the client

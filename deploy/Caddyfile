@@ -11,8 +11,10 @@
 		-Server
 	}
 
+	# DM images allow 5 MiB files plus multipart overhead. Route handlers still
+	# enforce their own tighter limits (1 MiB JSON, 1 MiB avatars, 6 MiB DM images).
 	request_body {
-		max_size 2MB
+		max_size 8MB
 	}
 
 	log {

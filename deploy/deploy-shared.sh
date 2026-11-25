@@ -161,6 +161,9 @@ if [ -d "$CADDY_SITES_DIR" ]; then
   cat > "$SITE_FILE" <<EOF
 http://${APP_HOST} {
     import security_headers
+    request_body {
+        max_size 8MB
+    }
     reverse_proxy pauoj-app:3000
 }
 EOF

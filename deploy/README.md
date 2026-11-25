@@ -412,5 +412,9 @@ deploy job on a shared/dirty machine.
 - The worker mounts the Docker socket. Use a dedicated judge host for a public,
   high-risk deployment and consider gVisor/rootless Docker.
 - Rebuild the judge image when compiler/security updates are needed.
+- Verify the reverse proxy allows an 8 MB request body (Caddy
+  `request_body { max_size 8MB }`); anything lower makes DM image uploads
+  return `413`. Rebuild the app/worker image after this change so the running
+  containers pick up the new upload limits.
 - Review `docker compose ... logs` after every deploy.
 - Test restores on a schedule; an untested backup is not a backup.

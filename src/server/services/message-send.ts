@@ -27,6 +27,7 @@ import {
   type ConversationUserRow,
 } from "./message-queries";
 import { isMuted } from "./conversation-mutes";
+import { assertImageQuota, lockImageQuota } from "./message-image-quota";
 import { notifyUser } from "./notifications";
 import { lockUserPair } from "./social-lock";
 import { isBlockedEitherWay } from "./user-blocks";
@@ -123,6 +124,12 @@ export async function deliverMessage(input: {
       .limit(1);
     if (blocked) {
       throw errors.forbidden("You cannot send messages in this conversation.");
+    }
+    // The quota gate sits inside the transaction, after the pair lock/block
+    // re-check, so concurrent image sends for one sender cannot overshoot.
+    if (attachment) {
+      await lockImageQuota(tx, viewer.id);
+      await assertImageQuota(tx, viewer.id, attachment.bytes.byteLength);
     }
     const [inserted] = await tx
       .insert(messages)

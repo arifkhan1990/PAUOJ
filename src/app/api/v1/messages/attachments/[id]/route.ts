@@ -30,7 +30,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
       headers: {
         "Content-Type": attachment.mime,
         "Content-Length": String(attachment.bytes.byteLength),
-        "Cache-Control": "private, max-age=31536000, immutable",
+        "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         "Content-Disposition": "inline",
       },

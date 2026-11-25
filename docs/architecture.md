@@ -798,11 +798,28 @@ Each message carries at most one image in `message_attachments` (migration
 `0050_big_wallow`, `UNIQUE(message_id)`): the type is detected from the magic
 bytes rather than the client MIME, capped at 5 MiB and 4096×4096, and stored as
 `bytea` beside the message so the row and its bytes commit in one transaction.
-The bytes are never inlined in thread payloads — `MessageItem` carries only
+Deleting a message therefore purges its bytes too: `DELETE /messages/:id`
+soft-deletes the `messages` row and hard-deletes the matching
+`message_attachments` row in the same transaction, so image data never lingers
+after a soft delete (repeating the delete is idempotent). Two per-sender image
+quotas bound growth alongside the 10/minute upload rate limit: at most 50
+images per rolling 24 hours (`429` with a retry message) and 250 MiB of stored
+images per sender (`422` when exceeded). Both quotas are checked inside the
+same transaction that inserts the attachment row — like the existing
+check-then-write block checks — so two concurrent uploads cannot both slip
+under the same remaining budget, and a counted/charged image is never lost if
+the insert fails. The upload route also preflights `Content-Length` against
+6 MiB (5 MiB file + 1 MiB multipart allowance) before multipart parsing, so an
+oversized body is rejected without buffering it. The bytes are never inlined
+in thread payloads — `MessageItem` carries only
 `attachment: { id, mime, width, height, url } | null` — and
 `GET /messages/attachments/:id` streams them after the same participant, block,
 ban and `deleted_at` checks as the thread, so a deleted message or a blocked
-pair exposes neither body nor bytes. Composer reference tokens
+pair exposes neither body nor bytes; it sends `Cache-Control: private, no-store`
+instead of a year-long immutable cache so a delete, block or ban takes effect
+on the next reload. The composer's emoji picker is a curated list of at least
+120 emoji searchable by name with 44px targets, implemented without a new
+dependency. Composer reference tokens
 (`@[Label](/contests/slug)` and the `/problems/`, `/learn/` equivalents) are
 plain text in the body; rendering is allow-listed to those three internal
 prefixes, so a typed link can never leave the site. The suggestion drawer that
@@ -810,6 +827,9 @@ produces them (`GET /messages/suggestions`) is read-only: contests are public,
 problems reuse the normal visibility/entitlement rules, and learn reads the
 static LIVE curriculum. Thread and last-message attachment joins run in the same
 batched queries as the message rows, so inbox lists stay free of N+1 lookups.
+Images stay `bytea` in Postgres beside their message; the quotas above bound
+that growth, and moving image bytes to object storage is a future scale
+decision if image volume grows beyond DM usage — not a current defect.
 
 The dashboard sidebar refreshes its three social badges (messages, unread
 notifications, pending follow requests) from `GET /api/v1/social/counts` every

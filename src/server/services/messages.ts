@@ -1,6 +1,10 @@
 import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { getDb } from "@/server/db";
-import { messages, notifications } from "@/server/db/schema";
+import {
+  messageAttachments,
+  messages,
+  notifications,
+} from "@/server/db/schema";
 import { errors } from "@/server/api/errors";
 import { enforceRateLimit } from "@/server/api/rate-limit";
 import type { PresenceInfo } from "@/lib/follow-types";
@@ -288,8 +292,9 @@ export async function deleteMessage(
     ? otherParticipantId(conversation, viewerId)
     : null;
   const now = new Date();
-  if (!message.deletedAt) {
-    await getDb()
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    await tx
       .update(messages)
       .set({ deletedAt: now })
       .where(
@@ -299,9 +304,29 @@ export async function deleteMessage(
           isNull(messages.deletedAt),
         ),
       );
-  }
+    // Attachment bytes live in Postgres, so the delete must free them too. The
+    // ownership subquery keeps a second gate even though the lookup above only
+    // returns the sender's own message. This also clears rows left behind by
+    // messages that were soft-deleted before the purge existed.
+    await tx
+      .delete(messageAttachments)
+      .where(
+        inArray(
+          messageAttachments.messageId,
+          tx
+            .select({ id: messages.id })
+            .from(messages)
+            .where(
+              and(
+                eq(messages.id, messageId),
+                eq(messages.senderId, viewerId),
+              ),
+            ),
+        ),
+      );
+  });
   // A delivered notification must not outlive the message it previews.
-  await getDb()
+  await db
     .update(notifications)
     .set({ body: "This message was deleted.", updatedAt: now })
     .where(

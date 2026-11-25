@@ -6,7 +6,7 @@ import { messageReferencePreview } from "@/lib/message-references";
 export const CONVERSATION_BODY_MAX_LENGTH = 2000;
 export const NOTIFICATION_PREVIEW_LENGTH = 120;
 export const MAX_MESSAGE_PAGE = 10_000;
-export const PHOTO_NOTIFICATION_BODY = "Sent a photo";
+export const PHOTO_NOTIFICATION_BODY = "📷 Photo";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

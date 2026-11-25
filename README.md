@@ -78,9 +78,11 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
 - **Direct messages** — two-person inbox and threads unlocked by an accepted follow in
   either direction, with unread counts in the dashboard sidebar, read receipts, message
   deletion, per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
-  and strict participant-only access. The composer has an emoji picker, one image per
+  and strict participant-only access. The composer has a searchable emoji picker
+  (120+ curated emoji, matched by name), one image per
   message (PNG/JPEG/WebP up to 5 MB and 4096×4096, optional caption, served only to
-  participants) and `@contest`/`@problem`/`@learn` suggestions that insert shareable
+  participants; capped at 50 images per day and 250 MiB stored per sender) and
+  `@contest`/`@problem`/`@learn` suggestions that insert shareable
   reference links. Blocked conversations disappear from the inbox
   and their direct links return 404 until unblock.
 - **Social reports** — report a message, conversation, follow request or profile with a
