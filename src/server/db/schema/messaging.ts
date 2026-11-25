@@ -94,9 +94,14 @@ export const messages = pgTable(
 
 export type Message = typeof messages.$inferSelect;
 
+export const MESSAGE_ATTACHMENT_KINDS = ["IMAGE", "DOCUMENT"] as const;
+export type MessageAttachmentKind = (typeof MESSAGE_ATTACHMENT_KINDS)[number];
+
 /**
- * At most one image per message. Bytes stay in Postgres behind an
- * auth-checked route; the row is removed with its message.
+ * At most one attachment per message, either an image or a document. Bytes
+ * stay in Postgres behind an auth-checked route; the row is removed with its
+ * message. Images keep pixel dimensions, documents keep their sanitized name
+ * and byte size so previews never need to load the payload.
  */
 export const messageAttachments = pgTable(
   "message_attachments",
@@ -106,9 +111,15 @@ export const messageAttachments = pgTable(
       .notNull()
       .unique()
       .references(() => messages.id, { onDelete: "cascade" }),
+    kind: text("kind")
+      .$type<MessageAttachmentKind>()
+      .notNull()
+      .default("IMAGE"),
     mime: text("mime").notNull(),
-    width: integer("width").notNull(),
-    height: integer("height").notNull(),
+    width: integer("width"),
+    height: integer("height"),
+    fileName: text("file_name"),
+    sizeBytes: integer("size_bytes").notNull().default(0),
     bytes: bytea("bytes").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -116,12 +127,39 @@ export const messageAttachments = pgTable(
   },
   (table) => [
     check(
-      "message_attachments_mime_check",
-      sql`${table.mime} in ('image/png', 'image/jpeg', 'image/webp')`,
+      "message_attachments_kind_check",
+      sql`${table.kind} in ('IMAGE', 'DOCUMENT')`,
     ),
     check(
-      "message_attachments_dimensions_check",
-      sql`${table.width} between 1 and 4096 and ${table.height} between 1 and 4096`,
+      "message_attachments_image_check",
+      sql`${table.kind} <> 'IMAGE' or (
+        ${table.mime} in ('image/png', 'image/jpeg', 'image/webp')
+        and ${table.width} is not null
+        and ${table.width} between 1 and 4096
+        and ${table.height} is not null
+        and ${table.height} between 1 and 4096
+        and ${table.fileName} is null
+        and ${table.sizeBytes} = 0
+      )`,
+    ),
+    check(
+      "message_attachments_document_check",
+      sql`${table.kind} <> 'DOCUMENT' or (
+        ${table.mime} in (
+          'application/pdf',
+          'text/plain',
+          'text/csv',
+          'application/zip',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+        and ${table.width} is null
+        and ${table.height} is null
+        and ${table.fileName} is not null
+        and char_length(${table.fileName}) between 1 and 120
+        and ${table.sizeBytes} between 1 and 5242880
+      )`,
     ),
     check(
       "message_attachments_size_check",

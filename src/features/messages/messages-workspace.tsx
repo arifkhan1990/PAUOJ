@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronLeft,
@@ -18,6 +18,7 @@ import { ConversationHeader } from "./conversation-header";
 import { ConversationInfoPanel } from "./conversation-info-panel";
 import { ConversationRail } from "./conversation-rail";
 import { MessageThread } from "./message-thread";
+import { railClassName, withPinnedConversation } from "./messages-layout";
 import { useConversationSharedContent } from "./use-conversation-shared-content";
 
 function ThreadPageBar({
@@ -94,6 +95,7 @@ function EmptyConversationPane() {
  */
 export function MessagesWorkspace({
   conversations,
+  pinnedConversation = null,
   activeId,
   list,
   thread,
@@ -101,6 +103,8 @@ export function MessagesWorkspace({
   searchParams,
 }: {
   conversations: ConversationSummary[];
+  /** Active conversation when it is not on the loaded rail page. */
+  pinnedConversation?: ConversationSummary | null;
   activeId: string | null;
   list: { total: number; page: number; totalPages: number };
   thread: ConversationThread | null;
@@ -116,6 +120,10 @@ export function MessagesWorkspace({
   // post-paint effect and never flashes the previous person's details.
   const infoOpen = currentId !== null && infoOpenId === currentId;
   const shared = useConversationSharedContent(currentId, infoOpen);
+  const railConversations = useMemo(
+    () => withPinnedConversation(conversations, pinnedConversation),
+    [conversations, pinnedConversation],
+  );
 
   const closeInfo = useCallback(() => {
     setInfoOpenId(null);
@@ -125,7 +133,7 @@ export function MessagesWorkspace({
   return (
     <div className="flex h-[calc(100dvh-7rem)] min-h-[28rem] w-full overflow-hidden rounded-xl border border-border bg-card shadow-xs">
       <ConversationRail
-        conversations={conversations}
+        conversations={railConversations}
         activeId={currentId}
         total={list.total}
         page={list.page}
@@ -133,7 +141,7 @@ export function MessagesWorkspace({
         pathname={pathname}
         searchParams={searchParams}
         showViewAll={Boolean(thread)}
-        className={thread ? "hidden md:flex" : "flex"}
+        className={railClassName(Boolean(thread), infoOpen)}
       />
 
       {thread ? (

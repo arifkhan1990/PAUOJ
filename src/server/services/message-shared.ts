@@ -3,8 +3,10 @@ import { getDb } from "@/server/db";
 import { messageAttachments, messages } from "@/server/db/schema";
 import type {
   ConversationSharedContent,
+  ConversationSharedDocument,
   ConversationSharedLink,
   ConversationSharedMedia,
+  MessageDocumentMime,
   MessageImageMime,
   MessageParticipantProfile,
 } from "@/lib/message-types";
@@ -21,6 +23,8 @@ import { isBlockedEitherWay } from "./user-blocks";
 
 /** Newest images shown in the info panel's media grid. */
 export const SHARED_MEDIA_LIMIT = 24;
+/** Newest uploaded documents shown in the info panel's document list. */
+export const SHARED_DOCUMENT_LIMIT = 24;
 /** Bounded scan of recent messages that mention a URL. */
 export const SHARED_LINK_MESSAGE_WINDOW = 200;
 export const SHARED_LINK_LIMIT = 40;
@@ -222,20 +226,82 @@ async function sharedMediaRows(
     .where(
       and(
         eq(messages.conversationId, conversationId),
+        eq(messageAttachments.kind, "IMAGE"),
         isNull(messages.deletedAt),
       ),
     )
     .orderBy(desc(messages.createdAt), desc(messageAttachments.id))
     .limit(SHARED_MEDIA_LIMIT);
 
-  return rows.map((row) => ({
-    id: row.id,
-    url: messageAttachmentUrl(row.id),
-    mime: row.mime as MessageImageMime,
-    width: row.width,
-    height: row.height,
-    createdAt: row.createdAt.toISOString(),
-  }));
+  return rows.flatMap((row) => {
+    if (row.width === null || row.height === null) return [];
+    return [
+      {
+        id: row.id,
+        url: messageAttachmentUrl(row.id),
+        mime: row.mime as MessageImageMime,
+        width: row.width,
+        height: row.height,
+        createdAt: row.createdAt.toISOString(),
+      },
+    ];
+  });
+}
+
+export type SharedDocumentSourceRow = {
+  id: string;
+  fileName: string | null;
+  mime: string;
+  sizeBytes: number;
+  senderId: string;
+  createdAt: Date;
+};
+
+/** Newest-first document rows become the panel payload, viewer-aware. */
+export function toSharedDocuments(
+  rows: SharedDocumentSourceRow[],
+  viewerId: string,
+): ConversationSharedDocument[] {
+  return rows.flatMap((row) =>
+    row.fileName
+      ? [
+          {
+            id: row.id,
+            url: messageAttachmentUrl(row.id),
+            fileName: row.fileName,
+            mime: row.mime as MessageDocumentMime,
+            sizeBytes: row.sizeBytes,
+            createdAt: row.createdAt.toISOString(),
+            mine: row.senderId === viewerId,
+          },
+        ]
+      : [],
+  );
+}
+
+async function sharedDocumentRows(
+  conversationId: string,
+): Promise<SharedDocumentSourceRow[]> {
+  return getDb()
+    .select({
+      id: messageAttachments.id,
+      fileName: messageAttachments.fileName,
+      mime: messageAttachments.mime,
+      sizeBytes: messageAttachments.sizeBytes,
+      senderId: messages.senderId,
+      createdAt: messages.createdAt,
+    })
+    .from(messageAttachments)
+    .innerJoin(messages, eq(messages.id, messageAttachments.messageId))
+    .where(
+      and(
+        eq(messages.conversationId, conversationId),
+        eq(messageAttachments.kind, "DOCUMENT"),
+        isNull(messages.deletedAt),
+      ),
+    )
+    .orderBy(desc(messages.createdAt), desc(messageAttachments.id))
+    .limit(SHARED_DOCUMENT_LIMIT);
 }
 
 async function sharedLinkRows(
@@ -260,9 +326,9 @@ async function sharedLinkRows(
 }
 
 /**
- * Shared media and links for the info panel. Visibility mirrors the thread:
- * malformed ids, non-participants, a banned counterpart and either-side blocks
- * all behave like a missing conversation.
+ * Shared media, uploaded documents and links for the info panel. Visibility
+ * mirrors the thread: malformed ids, non-participants, a banned counterpart and
+ * either-side blocks all behave like a missing conversation.
  */
 export async function getConversationSharedContent(
   viewerId: string,
@@ -277,9 +343,14 @@ export async function getConversationSharedContent(
   if (participant.isBanned) return null;
   if (await isBlockedEitherWay(viewerId, participant.id)) return null;
 
-  const [media, linkRows] = await Promise.all([
+  const [media, documentRows, linkRows] = await Promise.all([
     sharedMediaRows(conversationId),
+    sharedDocumentRows(conversationId),
     sharedLinkRows(conversationId),
   ]);
-  return { media, links: buildSharedLinks(linkRows, viewerId) };
+  return {
+    media,
+    documents: toSharedDocuments(documentRows, viewerId),
+    links: buildSharedLinks(linkRows, viewerId),
+  };
 }

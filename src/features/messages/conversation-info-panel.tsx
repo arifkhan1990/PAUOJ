@@ -35,7 +35,7 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Right-hand conversation details. In-flow column at >=1280px and an
+ * Right-hand conversation details. In-flow column at >=768px and an
  * accessible slide-in dialog below that. Content is fetched by the workspace
  * so closing and reopening the panel stays instant.
  */
@@ -56,8 +56,8 @@ export function ConversationInfoPanel({
   onRetryShared: () => void;
   onClose: () => void;
 }) {
-  const isDesktop = useMediaQuery("(min-width: 1280px)");
-  const drawer = !isDesktop;
+  const inFlow = useMediaQuery("(min-width: 768px)");
+  const drawer = !inFlow;
   const panelRef = useRef<HTMLElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const [entered, setEntered] = useState(false);
@@ -154,7 +154,7 @@ export function ConversationInfoPanel({
                 "fixed inset-y-0 right-0 z-50 w-[min(22rem,88vw)] border-l shadow-2xl motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
                 entered ? "translate-x-0" : "translate-x-full",
               )
-            : "w-[340px] shrink-0 border-l 2xl:w-[360px]",
+            : "w-[300px] shrink-0 border-l lg:w-[340px] 2xl:w-[360px]",
         )}
       >
         <div className="flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-border px-3 py-1.5">

@@ -1,24 +1,47 @@
 import { errors } from "@/server/api/errors";
 import { messageAttachments, messages } from "@/server/db/schema";
-import type { MessageImageMime, MessageItem } from "@/lib/message-types";
+import type {
+  MessageAttachment,
+  MessageDocumentMime,
+  MessageImageMime,
+  MessageItem,
+} from "@/lib/message-types";
 import { messageReferencePreview } from "@/lib/message-references";
 
 export const CONVERSATION_BODY_MAX_LENGTH = 2000;
 export const NOTIFICATION_PREVIEW_LENGTH = 120;
 export const MAX_MESSAGE_PAGE = 10_000;
 export const PHOTO_NOTIFICATION_BODY = "📷 Photo";
+export const DOCUMENT_NOTIFICATION_PREFIX = "📎 ";
+export const DOCUMENT_NOTIFICATION_FALLBACK = "📎 Document";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ConversationPair = { userAId: string; userBId: string };
 
-export type MessageAttachmentRow = {
+export type MessageAttachmentKind = "IMAGE" | "DOCUMENT";
+
+export type MessageImageAttachmentRow = {
+  kind: "IMAGE";
   id: string;
   mime: MessageImageMime;
   width: number;
   height: number;
 };
+
+export type MessageDocumentAttachmentRow = {
+  kind: "DOCUMENT";
+  id: string;
+  mime: MessageDocumentMime;
+  fileName: string;
+  sizeBytes: number;
+};
+
+/** Attachment row joined onto a message; never carries the bytes. */
+export type MessageAttachmentRow =
+  | MessageImageAttachmentRow
+  | MessageDocumentAttachmentRow;
 
 export type MessageRow = {
   id: string;
@@ -36,6 +59,8 @@ export type LastMessagePreview = {
   createdAt: string;
   deleted: boolean;
   hasAttachment: boolean;
+  attachmentKind: "IMAGE" | "DOCUMENT" | null;
+  attachmentName: string | null;
 };
 
 /** Selected message columns shared by thread and last-message queries. */
@@ -51,9 +76,12 @@ export const messageFields = {
 /** Selected attachment columns for the LEFT JOIN, kept flat for mapping. */
 export const attachmentFields = {
   attachmentId: messageAttachments.id,
+  attachmentKind: messageAttachments.kind,
   attachmentMime: messageAttachments.mime,
   attachmentWidth: messageAttachments.width,
   attachmentHeight: messageAttachments.height,
+  attachmentFileName: messageAttachments.fileName,
+  attachmentSizeBytes: messageAttachments.sizeBytes,
 };
 
 export type MessageFlatRow = {
@@ -64,25 +92,61 @@ export type MessageFlatRow = {
   readAt: Date | null;
   deletedAt: Date | null;
   attachmentId: string | null;
+  attachmentKind: MessageAttachmentKind | null;
   attachmentMime: string | null;
   attachmentWidth: number | null;
   attachmentHeight: number | null;
+  attachmentFileName: string | null;
+  attachmentSizeBytes: number | null;
 };
+
+export type AttachmentFlatColumns = Pick<
+  MessageFlatRow,
+  | "attachmentId"
+  | "attachmentKind"
+  | "attachmentMime"
+  | "attachmentWidth"
+  | "attachmentHeight"
+  | "attachmentFileName"
+  | "attachmentSizeBytes"
+>;
+
+/**
+ * Flat attachment columns from the LEFT JOIN become the discriminated row.
+ * A row that does not match its kind is dropped instead of being half-mapped.
+ */
+export function toAttachmentRow(
+  row: AttachmentFlatColumns,
+): MessageAttachmentRow | null {
+  if (row.attachmentId === null || row.attachmentMime === null) return null;
+  if (row.attachmentKind === "DOCUMENT") {
+    if (row.attachmentFileName === null) return null;
+    return {
+      kind: "DOCUMENT",
+      id: row.attachmentId,
+      mime: row.attachmentMime as MessageDocumentMime,
+      fileName: row.attachmentFileName,
+      sizeBytes: row.attachmentSizeBytes ?? 0,
+    };
+  }
+  if (
+    row.attachmentKind !== "IMAGE" ||
+    row.attachmentWidth === null ||
+    row.attachmentHeight === null
+  ) {
+    return null;
+  }
+  return {
+    kind: "IMAGE",
+    id: row.attachmentId,
+    mime: row.attachmentMime as MessageImageMime,
+    width: row.attachmentWidth,
+    height: row.attachmentHeight,
+  };
+}
 
 /** Flat attachment columns from the LEFT JOIN become the nested row shape. */
 export function toMessageRow(row: MessageFlatRow): MessageRow {
-  const attachment =
-    row.attachmentId !== null &&
-    row.attachmentMime !== null &&
-    row.attachmentWidth !== null &&
-    row.attachmentHeight !== null
-      ? {
-          id: row.attachmentId,
-          mime: row.attachmentMime as MessageImageMime,
-          width: row.attachmentWidth,
-          height: row.attachmentHeight,
-        }
-      : null;
   return {
     id: row.id,
     body: row.body,
@@ -90,7 +154,7 @@ export function toMessageRow(row: MessageFlatRow): MessageRow {
     createdAt: row.createdAt,
     readAt: row.readAt,
     deletedAt: row.deletedAt,
-    attachment,
+    attachment: toAttachmentRow(row),
   };
 }
 
@@ -147,8 +211,8 @@ export function normalizeMessageBody(body: string): string {
 }
 
 /**
- * An image message may have an empty caption, so unlike text the lower bound
- * is 0; it still shares the same upper bound.
+ * An image or document message may have an empty caption, so unlike text the
+ * lower bound is 0; it still shares the same upper bound.
  */
 export function normalizeMessageCaption(caption: string): string {
   const trimmed = caption.trim();
@@ -176,16 +240,38 @@ export function messagePreview(body: string): string {
 }
 
 /**
- * Notification body for a freshly sent message. An image without a caption
- * has no text preview, so the notice says what was sent instead.
+ * Preview substitute for an attachment without a caption: `📷 Photo` for an
+ * image, `📎 <fileName>` for a document (capped like any other preview).
+ */
+export function attachmentPreviewLabel(
+  kind: MessageAttachmentKind | null,
+  fileName: string | null,
+): string {
+  if (kind === "DOCUMENT") {
+    return fileName
+      ? truncatePreview(`${DOCUMENT_NOTIFICATION_PREFIX}${fileName}`)
+      : DOCUMENT_NOTIFICATION_FALLBACK;
+  }
+  return PHOTO_NOTIFICATION_BODY;
+}
+
+/**
+ * Notification body for a freshly sent message. A caption always wins; an
+ * attachment without text shows what was sent instead.
  */
 export function messageNotificationBody(input: {
   body: string;
   hasAttachment: boolean;
+  attachmentKind?: MessageAttachmentKind | null;
+  attachmentName?: string | null;
 }): string {
   const preview = messagePreview(input.body.trim());
   if (preview.length > 0) return preview;
-  return input.hasAttachment ? PHOTO_NOTIFICATION_BODY : preview;
+  if (!input.hasAttachment) return preview;
+  return attachmentPreviewLabel(
+    input.attachmentKind ?? "IMAGE",
+    input.attachmentName ?? null,
+  );
 }
 
 export function messageAttachmentUrl(attachmentId: string): string {
@@ -243,15 +329,34 @@ export function maskDeletedBody(row: {
     : { body: row.body, deleted: false };
 }
 
+function toAttachmentItem(attachment: MessageAttachmentRow): MessageAttachment {
+  const url = messageAttachmentUrl(attachment.id);
+  if (attachment.kind === "DOCUMENT") {
+    return {
+      kind: "DOCUMENT",
+      id: attachment.id,
+      mime: attachment.mime,
+      fileName: attachment.fileName,
+      sizeBytes: attachment.sizeBytes,
+      url,
+    };
+  }
+  return {
+    kind: "IMAGE",
+    id: attachment.id,
+    mime: attachment.mime,
+    width: attachment.width,
+    height: attachment.height,
+    url,
+  };
+}
+
 export function toMessageItem(row: MessageRow, viewerId: string): MessageItem {
   const masked = maskDeletedBody(row);
   const attachment =
     masked.deleted || !row.attachment
       ? null
-      : {
-          ...row.attachment,
-          url: messageAttachmentUrl(row.attachment.id),
-        };
+      : toAttachmentItem(row.attachment);
   return {
     id: row.id,
     body: masked.body,
@@ -269,11 +374,17 @@ export function toLastMessagePreview(
 ): LastMessagePreview | null {
   if (!row) return null;
   const masked = maskDeletedBody(row);
+  const hasAttachment = !masked.deleted && Boolean(row.attachment);
   return {
     body: messagePreview(masked.body),
     mine: row.senderId === viewerId,
     createdAt: row.createdAt.toISOString(),
     deleted: masked.deleted,
-    hasAttachment: !masked.deleted && Boolean(row.attachment),
+    hasAttachment,
+    attachmentKind: hasAttachment ? row.attachment?.kind ?? null : null,
+    attachmentName:
+      hasAttachment && row.attachment?.kind === "DOCUMENT"
+        ? row.attachment.fileName
+        : null,
   };
 }

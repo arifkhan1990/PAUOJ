@@ -1122,9 +1122,11 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
 
 - `GET /messages/conversations?page=1` — 20 per page, newest activity first, with
   the other participant, presence, `muted`, unread count, last-message preview
-  (including "Message deleted", plus `hasAttachment` — an image-only last
-  message previews as "📷 Photo") and `unreadTotal`. Muted conversations stay
-  listed but contribute zero unread and send no notices.
+  (`body`, `mine`, `createdAt`, `deleted`, `hasAttachment`, `attachmentKind`,
+  `attachmentName`) and `unreadTotal`. A body-less image previews as "📷 Photo",
+  a body-less document as "📎 <fileName>", and deleted messages as "Message
+  deleted". Muted conversations stay listed but contribute zero unread and send
+  no notices.
 - `POST /messages/conversations` with `{ "username": "nusrat" }` — opens (or
   returns) the pair conversation; `201 { "id": "..." }`. `403` without an
   accepted follow or when blocked, `422` self, `404` unknown/banned user, `429`
@@ -1136,20 +1138,23 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
   fields used by the info panel (`bio`, institution, country, current status,
   company, job title, skills, rating, role, member-since, website/GitHub/
   LinkedIn); private contact, swag and account fields are never selected.
-  `attachment` is always present and is either
-  `{ "id", "mime", "width", "height", "url" }` or `null`; `url` is the
-  participant-only attachment route below. Deleted messages expose neither body
-  nor attachment (blank body, `attachment: null`); malformed or foreign ids are
-  `404`.
+  `attachment` is always present and is either an image
+  `{ "kind": "IMAGE", "id", "mime", "width", "height", "url" }` or a document
+  `{ "kind": "DOCUMENT", "id", "mime", "fileName", "sizeBytes", "url" }`;
+  `url` is the participant-only attachment route below. Deleted messages expose
+  neither body nor attachment (blank body, `attachment: null`); malformed or
+  foreign ids are `404`.
 - `GET /messages/conversations/:id/info` — lazy conversation-info payload for
   the sender panel. Participant-only, `private, no-store`, `120` per minute;
   `404` for malformed ids, non-participants, blocked pairs and banned
-  counterparts. Returns `{ "media": [...], "links": [...] }`: the newest 24
-  non-deleted images (id, attachment URL, MIME, dimensions, createdAt) and up to
-  40 deduped http(s) URLs from the newest 200 non-deleted message bodies. Links
-  ending in a common document extension (`.pdf`, `.doc[x]`, `.xls[x]`,
-  `.ppt[x]`, `.txt`, `.csv`, `.zip`, `.rar`, `.7z`) are tagged `DOCUMENT` and
-  back the panel's Documents section; every other URL is `LINK`. Only
+  counterparts. Returns `{ "media": [...], "documents": [...], "links": [...] }`:
+  the newest 24 non-deleted images (id, attachment URL, MIME, dimensions,
+  createdAt), the newest 24 non-deleted uploaded documents (id, download URL,
+  fileName, MIME, sizeBytes, createdAt, mine) and up to 40 deduped http(s) URLs
+  from the newest 200 non-deleted message bodies. Links ending in a common
+  document extension (`.pdf`, `.doc[x]`, `.xls[x]`, `.ppt[x]`, `.txt`, `.csv`,
+  `.zip`, `.rar`, `.7z`) are tagged `DOCUMENT` and appear alongside uploaded
+  files in the panel's Documents section; every other URL is `LINK`. Only
   http/https is accepted, fragments and display labels are normalised, and
   `mine`/`createdAt` come from the newest mention.
 - `POST /messages/conversations/:id/messages` with `{ "body": "..." }` — sends a
@@ -1170,10 +1175,24 @@ stored body check is 0–2000 so an image-only message may carry an empty captio
   (`422` when exceeded). `422` for an empty file, an unsupported or oversized
   image, or an overlong caption; `403` blocked, `404` non-participant/banned.
   Same-origin, session-cookie auth like the other message writes.
+- `POST /messages/conversations/:id/documents` — multipart form with `file` and
+  an optional `caption` (empty allowed, trimmed, max 2000 characters); returns
+  `201` with the usual `MessageItem` whose attachment is `kind: "DOCUMENT"`.
+  One document per message; allow-listed PDF/TXT/CSV/ZIP/DOCX/XLSX/PPTX up to
+  5 MiB. The MIME type comes from the extension, then the bytes are checked
+  (PDF `%PDF-`, ZIP family `PK\x03\x04`, text strict UTF-8 with no NUL); file
+  names reject path separators/`..`/NUL, strip controls and cap at 120
+  characters. Uploads are 10 per minute and share the 50-attachment/24h and
+  250 MiB per-sender caps with images. `422` for an empty, unsupported,
+  mismatched or oversized file; `403` blocked; `404` non-participant/banned.
+  The same 6 MiB pre-parse `Content-Length` guard applies. Documents can never
+  execute in the app origin: they are served as opaque downloads.
 - `GET /messages/attachments/:id` — streams the stored bytes so a browser `<img>`
-  works with the session cookie. Participant-only: `404` for a malformed id, a
-  foreign conversation, a deleted message, or a blocked/banned pair, so the
-  bytes never leak. `200` with the stored MIME, `Content-Disposition: inline`,
+  works with the session cookie. Images keep their image MIME and
+  `Content-Disposition: inline`; documents use `application/octet-stream` and
+  `Content-Disposition: attachment; filename*=UTF-8''<encoded>`. Participant-only:
+  `404` for a malformed id, a foreign conversation, a deleted message, or a
+  blocked/banned pair, so the bytes never leak. `200` with
   `Cache-Control: private, no-store` (so a delete, block or ban takes effect on
   the next reload instead of a year-long immutable cache) and
   `X-Content-Type-Options: nosniff`; 240 per minute.

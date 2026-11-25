@@ -5,8 +5,13 @@ import {
   replaceSelection,
 } from "./composer-insert";
 import {
+  MESSAGE_DOCUMENT_ACCEPT,
+  MESSAGE_DOCUMENT_MAX_BYTES,
   formatFileSize,
+  messageDocumentExtension,
+  messageDocumentMime,
   messageImageMime,
+  validateMessageDocument,
   validateMessageImage,
 } from "./message-format";
 import {
@@ -263,5 +268,72 @@ describe("image validation", () => {
     expect(formatFileSize(900)).toBe("1 KB");
     expect(formatFileSize(2048)).toBe("2 KB");
     expect(formatFileSize(5 * 1024 * 1024)).toBe("5.0 MB");
+  });
+});
+
+describe("document validation", () => {
+  it("accepts every allow-listed extension regardless of casing", () => {
+    for (const name of [
+      "notes.pdf",
+      "NOTES.TXT",
+      "scores.csv",
+      "bundle.zip",
+      "report.docx",
+      "sheet.xlsx",
+      "deck.pptx",
+    ]) {
+      expect(validateMessageDocument({ name, size: 4096 })).toBeNull();
+    }
+  });
+
+  it("rejects other extensions with the allow-list message", () => {
+    const message = "Choose a PDF, TXT, CSV, ZIP, DOCX, XLSX, or PPTX file.";
+    expect(validateMessageDocument({ name: "photo.png", size: 4096 })).toBe(
+      message,
+    );
+    expect(validateMessageDocument({ name: "archive.rar", size: 4096 })).toBe(
+      message,
+    );
+    expect(validateMessageDocument({ name: "no-extension", size: 4096 })).toBe(
+      message,
+    );
+    expect(
+      validateMessageDocument({ name: "legacy.doc", size: 4096 }),
+    ).toBe(message);
+  });
+
+  it("rejects empty and oversized files", () => {
+    expect(validateMessageDocument({ name: "empty.pdf", size: 0 })).toBe(
+      "That file looks empty. Choose another file.",
+    );
+    expect(
+      validateMessageDocument({
+        name: "huge.pdf",
+        size: MESSAGE_DOCUMENT_MAX_BYTES + 1,
+      }),
+    ).toBe("Documents must be 5 MB or smaller.");
+  });
+
+  it("infers the MIME from the file name", () => {
+    expect(messageDocumentMime("notes.pdf")).toBe("application/pdf");
+    expect(messageDocumentMime("scores.CSV")).toBe("text/csv");
+    expect(
+      messageDocumentMime("/tmp/some.dir/final deck.pptx"),
+    ).toBe(
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    );
+    expect(messageDocumentMime("photo.png")).toBeNull();
+    expect(messageDocumentMime("no-extension")).toBeNull();
+  });
+
+  it("normalises the extension lookup", () => {
+    expect(messageDocumentExtension(" Report.PDF ")).toBe("pdf");
+    expect(messageDocumentExtension("archive.tar.gz")).toBeNull();
+  });
+
+  it("exposes an accept list for the hidden input", () => {
+    expect(MESSAGE_DOCUMENT_ACCEPT).toBe(
+      ".pdf,.txt,.csv,.zip,.docx,.xlsx,.pptx",
+    );
   });
 });

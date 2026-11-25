@@ -768,11 +768,22 @@ in either direction and neither side blocked the other.
 `conversations` stores exactly one row per unordered pair (`user_a_id <
 user_b_id` check plus a unique pair index) and `messages` stores plain-text
 bodies constrained to 0–2000 characters. The lower bound dropped from 1 so an
-image-only message can store an empty caption; the text send path still trims
-and enforces 1–2000 before the row is written. Sending requires participation
-and no
+image-only or document-only message can store an empty caption; the text send
+path still trims and enforces 1–2000 before the row is written. Sending requires
+participation and no
 block in either direction; a new conversation additionally needs an accepted
 follow edge, while an existing conversation remains replyable after an unfollow.
+`message_attachments` stores one attachment per message behind a kind
+discriminator: `IMAGE` rows keep PNG/JPEG/WebP bytes and dimensions, `DOCUMENT`
+rows keep an allow-listed PDF/TXT/CSV/ZIP/DOCX/XLSX/PPTX file name, exact byte
+size and opaque bytes. Kind-aware database checks keep the two shapes apart.
+Document MIME comes from the extension, then the service verifies PDF/ZIP
+signatures or strict UTF-8 text; file names reject traversal separators and are
+capped at 120 characters. Images and documents share one 50-file/24h and 250 MiB
+per-sender quota, serialized by a transaction-scoped advisory lock. Downloads
+are authenticated, participant-only and `private, no-store`; documents are
+served as `application/octet-stream` with an RFC 5987 attachment disposition so
+they cannot execute in the app origin, while images stay inline.
 `conversation_mutes` is a per-user toggle that keeps the conversation listed but
 zeroes its unread count and suppresses its MESSAGE notices. When either side
 blocks — or the counterpart is banned — the conversation disappears from the
@@ -794,12 +805,17 @@ deleting a message replaces the notice preview with "This message was deleted.".
 The dashboard messages routes render one shared three-pane workspace (rail,
 thread, contact panel); the contact panel stays closed until the sender name is
 clicked. Its profile block reads only the public `users` columns already
-rendered on a profile. Media and shared links are lazy: `GET
-/messages/conversations/:id/info` returns the newest 24 non-deleted images and
-up to 40 deduped http(s) URLs parsed from the newest 200 non-deleted bodies,
-with common document extensions tagged as `DOCUMENT`. The same participant,
+rendered on a profile. Media, uploaded documents and shared links are lazy:
+`GET /messages/conversations/:id/info` returns the newest 24 images, the newest
+24 uploaded documents and up to 40 deduped http(s) URLs parsed from the newest
+200 non-deleted bodies, with common document extensions tagged as `DOCUMENT`.
+The panel refetches when reopened and polls every 20 seconds while open and
+visible; background failures keep the last good payload. The same participant,
 block and banned-counterpart gates as the thread return `404`, and the response
-is `private, no-store`.
+is `private, no-store`. At 1024px the panel is an in-flow column and the rail is
+hidden while it is open; below 768px it becomes a focus-trapped modal drawer. An
+older active thread missing from the rail's first page gets one pinned summary
+via `getConversationSummary`, using the same visibility gates.
 All message mutations are same-origin, rate limited and participant-scoped
 (foreign ids return `404`).
 

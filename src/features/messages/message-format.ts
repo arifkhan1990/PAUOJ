@@ -1,6 +1,7 @@
 import { messageReferencePreview } from "@/lib/message-references";
 import type {
   ConversationSummary,
+  MessageDocumentMime,
   MessageImageMime,
   MessageItem,
 } from "@/lib/message-types";
@@ -25,6 +26,92 @@ export const MESSAGE_IMAGE_MIME_TYPES = [
 export function messageImageMime(type: string): MessageImageMime | null {
   const normalized = type.trim().toLowerCase();
   return MESSAGE_IMAGE_MIME_TYPES.find((mime) => mime === normalized) ?? null;
+}
+
+/** Hard limits mirrored by the document upload route. */
+export const MESSAGE_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024;
+export const MESSAGE_DOCUMENT_EXTENSIONS = [
+  "pdf",
+  "txt",
+  "csv",
+  "zip",
+  "docx",
+  "xlsx",
+  "pptx",
+] as const;
+export type MessageDocumentExtension =
+  (typeof MESSAGE_DOCUMENT_EXTENSIONS)[number];
+
+/** `accept` attribute for the composer's hidden document input. */
+export const MESSAGE_DOCUMENT_ACCEPT = MESSAGE_DOCUMENT_EXTENSIONS.map(
+  (extension) => `.${extension}`,
+).join(",");
+
+const DOCUMENT_MIME_BY_EXTENSION: ReadonlyMap<
+  MessageDocumentExtension,
+  MessageDocumentMime
+> = new Map([
+  ["pdf", "application/pdf"],
+  ["txt", "text/plain"],
+  ["csv", "text/csv"],
+  ["zip", "application/zip"],
+  [
+    "docx",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ],
+  [
+    "xlsx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ],
+  [
+    "pptx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ],
+]);
+
+/** Lowercased extension without the dot, or null when the name has none. */
+export function messageDocumentExtension(
+  fileName: string,
+): MessageDocumentExtension | null {
+  const match = /\.([a-z0-9]+)\s*$/i.exec(fileName.trim());
+  const extension = match?.[1]?.toLowerCase();
+  if (!extension) return null;
+  return (
+    MESSAGE_DOCUMENT_EXTENSIONS.find((item) => item === extension) ?? null
+  );
+}
+
+/**
+ * MIME inferred from the file name. The browser often reports an empty (or
+ * `application/octet-stream`) type for zips and Office documents, so the
+ * extension is the source of truth for both uploads and optimistic bubbles.
+ */
+export function messageDocumentMime(
+  fileName: string,
+): MessageDocumentMime | null {
+  const extension = messageDocumentExtension(fileName);
+  if (!extension) return null;
+  return DOCUMENT_MIME_BY_EXTENSION.get(extension) ?? null;
+}
+
+/**
+ * Client-side counterpart of the document upload route's validation. Returns
+ * a user-facing error message, or null when the file is acceptable.
+ */
+export function validateMessageDocument(file: {
+  name: string;
+  size: number;
+}): string | null {
+  if (!messageDocumentExtension(file.name)) {
+    return "Choose a PDF, TXT, CSV, ZIP, DOCX, XLSX, or PPTX file.";
+  }
+  if (!Number.isFinite(file.size) || file.size <= 0) {
+    return "That file looks empty. Choose another file.";
+  }
+  if (file.size > MESSAGE_DOCUMENT_MAX_BYTES) {
+    return "Documents must be 5 MB or smaller.";
+  }
+  return null;
 }
 
 /**
@@ -158,8 +245,24 @@ export function conversationPreview(
   if (lastMessage.deleted) return "Message deleted";
   // Reference tokens expand to "@Label" before truncating so the inbox stays readable.
   const body = truncatePreview(messageReferencePreview(lastMessage.body), max);
-  const preview = body || (lastMessage.hasAttachment ? "📷 Photo" : "Message");
+  const preview = body || attachmentPreview(lastMessage, max);
   return lastMessage.mine ? `You: ${preview}` : preview;
+}
+
+/** Body-less fallback for an attachment-only message. */
+function attachmentPreview(
+  lastMessage: NonNullable<ConversationSummary["lastMessage"]>,
+  max: number,
+): string {
+  if (lastMessage.attachmentKind === "DOCUMENT") {
+    const name = lastMessage.attachmentName?.trim();
+    return name ? truncatePreview(`📎 ${name}`, max) : "📎 Document";
+  }
+  // Images and legacy payloads that only flag `hasAttachment`.
+  if (lastMessage.attachmentKind === "IMAGE" || lastMessage.hasAttachment) {
+    return "📷 Photo";
+  }
+  return "Message";
 }
 
 /** "1 unread message" / "4 unread messages"; null when there is nothing unread. */

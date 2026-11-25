@@ -275,6 +275,8 @@ describe("deleted message masking", () => {
       createdAt: "2026-01-02T03:04:05.000Z",
       deleted: true,
       hasAttachment: false,
+      attachmentKind: null,
+      attachmentName: null,
     });
   });
 

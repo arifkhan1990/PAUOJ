@@ -6,6 +6,15 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Message document sharing and live conversation info: PDF/TXT/CSV/ZIP/DOCX/
+  XLSX/PPTX files up to 5 MiB now upload from the composer (magic-byte
+  validated, opaque participant-only downloads), render as document bubbles and
+  appear under Documents in the sender panel alongside document links. The panel
+  refetches on reopen and polls every 20s while open, older active conversations
+  are pinned into the rail, and the panel is an in-flow column at 1024px
+  (rail hidden while open) with the phone drawer unchanged. Adds migration 0052
+  (`message_attachments.kind/file_name/size_bytes`) and keeps one shared
+  50-file/24h + 250 MiB sender quota for images and documents.
 - Messages workspace: `/dashboard/messages` and `/dashboard/messages/[id]` now
   share a three-pane, WhatsApp-style layout with a searchable All/Unread
   conversation rail, grouped day dividers, a pinned sender header and a contact

@@ -7,7 +7,11 @@ import {
   userBlocks,
 } from "@/server/db/schema";
 import { errors } from "@/server/api/errors";
-import type { MessageImageMime, MessageItem } from "@/lib/message-types";
+import type {
+  MessageDocumentMime,
+  MessageImageMime,
+  MessageItem,
+} from "@/lib/message-types";
 import { logger } from "@/server/logger";
 import {
   conversationHref,
@@ -27,7 +31,10 @@ import {
   type ConversationUserRow,
 } from "./message-queries";
 import { isMuted } from "./conversation-mutes";
-import { assertImageQuota, lockImageQuota } from "./message-image-quota";
+import {
+  assertAttachmentQuota,
+  lockAttachmentQuota,
+} from "./message-attachment-quota";
 import { notifyUser } from "./notifications";
 import { lockUserPair } from "./social-lock";
 import { isBlockedEitherWay } from "./user-blocks";
@@ -46,9 +53,9 @@ export type MessageSendTarget = {
 };
 
 /**
- * Shared send preconditions for text and image messages: the conversation
- * exists, the viewer participates, the counterpart is not banned, and no block
- * exists in either direction.
+ * Shared send preconditions for text, image and document messages: the
+ * conversation exists, the viewer participates, the counterpart is not banned,
+ * and no block exists in either direction.
  */
 export async function loadMessageSendTarget(
   viewerId: string,
@@ -75,12 +82,25 @@ export async function loadMessageSendTarget(
   return { conversationId, recipientId, recipient };
 }
 
-export type NewMessageAttachment = {
+export type NewMessageImageAttachment = {
+  kind: "IMAGE";
   mime: MessageImageMime;
   width: number;
   height: number;
   bytes: Uint8Array;
 };
+
+export type NewMessageDocumentAttachment = {
+  kind: "DOCUMENT";
+  mime: MessageDocumentMime;
+  fileName: string;
+  sizeBytes: number;
+  bytes: Uint8Array;
+};
+
+export type NewMessageAttachment =
+  | NewMessageImageAttachment
+  | NewMessageDocumentAttachment;
 
 /**
  * Writes the message row, optional attachment, and conversation timestamp in
@@ -126,10 +146,11 @@ export async function deliverMessage(input: {
       throw errors.forbidden("You cannot send messages in this conversation.");
     }
     // The quota gate sits inside the transaction, after the pair lock/block
-    // re-check, so concurrent image sends for one sender cannot overshoot.
+    // re-check, so concurrent uploads for one sender cannot overshoot. Images
+    // and documents share the same table, so they share both caps.
     if (attachment) {
-      await lockImageQuota(tx, viewer.id);
-      await assertImageQuota(tx, viewer.id, attachment.bytes.byteLength);
+      await lockAttachmentQuota(tx, viewer.id);
+      await assertAttachmentQuota(tx, viewer.id, attachment.bytes.byteLength);
     }
     const [inserted] = await tx
       .insert(messages)
@@ -171,6 +192,9 @@ export async function deliverMessage(input: {
         body: messageNotificationBody({
           body,
           hasAttachment: Boolean(attachment),
+          attachmentKind: attachment?.kind ?? null,
+          attachmentName:
+            attachment?.kind === "DOCUMENT" ? attachment.fileName : null,
         }),
         href: conversationHref(target.conversationId),
         dedupeKey: messageDedupeKey(message.id),
@@ -198,23 +222,58 @@ async function insertAttachment(
 ): Promise<MessageAttachmentRow> {
   const [row] = await tx
     .insert(messageAttachments)
-    .values({
-      messageId,
-      mime: attachment.mime,
-      width: attachment.width,
-      height: attachment.height,
-      bytes: Buffer.from(attachment.bytes),
-    })
+    .values(
+      attachment.kind === "DOCUMENT"
+        ? {
+            messageId,
+            kind: "DOCUMENT",
+            mime: attachment.mime,
+            width: null,
+            height: null,
+            fileName: attachment.fileName,
+            sizeBytes: attachment.sizeBytes,
+            bytes: Buffer.from(attachment.bytes),
+          }
+        : {
+            messageId,
+            kind: "IMAGE",
+            mime: attachment.mime,
+            width: attachment.width,
+            height: attachment.height,
+            fileName: null,
+            sizeBytes: 0,
+            bytes: Buffer.from(attachment.bytes),
+          },
+    )
     .returning({
       id: messageAttachments.id,
+      kind: messageAttachments.kind,
       mime: messageAttachments.mime,
       width: messageAttachments.width,
       height: messageAttachments.height,
+      fileName: messageAttachments.fileName,
+      sizeBytes: messageAttachments.sizeBytes,
     });
   if (!row) {
+    throw errors.unavailable("Could not store the file. Please retry.");
+  }
+  if (row.kind === "DOCUMENT") {
+    if (!row.fileName) {
+      throw errors.unavailable("Could not store the file. Please retry.");
+    }
+    return {
+      kind: "DOCUMENT",
+      id: row.id,
+      mime: row.mime as MessageDocumentMime,
+      fileName: row.fileName,
+      sizeBytes: row.sizeBytes,
+    };
+  }
+  if (row.width === null || row.height === null) {
     throw errors.unavailable("Could not store the image. Please retry.");
   }
   return {
+    kind: "IMAGE",
     id: row.id,
     mime: row.mime as MessageImageMime,
     width: row.width,

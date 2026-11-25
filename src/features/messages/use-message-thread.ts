@@ -16,6 +16,7 @@ import type {
 } from "@/lib/message-types";
 import {
   mergeMessages,
+  messageDocumentMime,
   messageImageMime,
   newIncomingMessages,
 } from "./message-format";
@@ -207,6 +208,7 @@ export function useMessageThread({
       const url = URL.createObjectURL(file);
       objectUrls.current.add(url);
       const optimistic = pendingMessage(caption, {
+        kind: "IMAGE",
         id: `local:${crypto.randomUUID()}`,
         mime,
         width: 0,
@@ -244,6 +246,55 @@ export function useMessageThread({
     [conversationId, releaseObjectUrl, router],
   );
 
+  const sendDocument = useCallback(
+    async (file: File, caption: string) => {
+      const mime = messageDocumentMime(file.name);
+      if (!mime) {
+        throw new ApiClientError(
+          "UNSUPPORTED_DOCUMENT",
+          "Choose a PDF, TXT, CSV, ZIP, DOCX, XLSX, or PPTX file.",
+          400,
+        );
+      }
+
+      const optimistic = pendingMessage(caption, {
+        kind: "DOCUMENT",
+        id: `local:${crypto.randomUUID()}`,
+        mime,
+        fileName: file.name,
+        sizeBytes: file.size,
+        // Pending documents stay unlinkable until the server returns bytes.
+        url: "",
+      });
+      stickToBottom.current = true;
+      setItems((current) => [...current, optimistic]);
+
+      const form = new FormData();
+      form.append("file", file);
+      if (caption) form.append("caption", caption);
+
+      try {
+        const created = await apiPostForm<MessageItem>(
+          `/api/v1/messages/conversations/${conversationId}/documents`,
+          form,
+        );
+        setItems((current) =>
+          mergeMessages(
+            current.filter((item) => item.id !== optimistic.id),
+            [created],
+          ),
+        );
+        router.refresh();
+      } catch (error) {
+        setItems((current) =>
+          current.filter((item) => item.id !== optimistic.id),
+        );
+        throw error;
+      }
+    },
+    [conversationId, router],
+  );
+
   return {
     items,
     announcement,
@@ -251,6 +302,7 @@ export function useMessageThread({
     handleScroll,
     sendMessage,
     sendImage,
+    sendDocument,
     removeMessage,
   };
 }

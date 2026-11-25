@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type {
+  ConversationSharedDocument,
   ConversationSharedLink,
   ConversationSharedMedia,
 } from "@/lib/message-types";
 import {
+  sharedDocumentTotal,
   sharedLinkLabel,
   sharedMediaThumbnails,
   splitSharedLinks,
@@ -31,6 +33,26 @@ function media(id: string): ConversationSharedMedia {
     createdAt: "2026-11-25T10:00:00.000Z",
   };
 }
+
+function file(id: string): ConversationSharedDocument {
+  return {
+    id,
+    url: `/api/v1/messages/attachments/${id}`,
+    fileName: `${id}.pdf`,
+    mime: "application/pdf",
+    sizeBytes: 2048,
+    createdAt: "2026-11-25T10:00:00.000Z",
+    mine: false,
+  };
+}
+
+describe("sharedDocumentTotal", () => {
+  it("counts uploaded files and document links together", () => {
+    expect(sharedDocumentTotal([], [])).toBe(0);
+    expect(sharedDocumentTotal([file("a")], [])).toBe(1);
+    expect(sharedDocumentTotal([file("a"), file("b")], [link()])).toBe(3);
+  });
+});
 
 describe("splitSharedLinks", () => {
   it("routes documents and plain links into separate sections", () => {

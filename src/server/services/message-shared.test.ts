@@ -7,8 +7,10 @@ import {
   sharedLinkKind,
   sharedLinkLabel,
   toParticipantProfile,
+  toSharedDocuments,
   SHARED_LINK_LABEL_MAX,
   SHARED_LINK_LIMIT,
+  type SharedDocumentSourceRow,
   type SharedLinkSourceRow,
 } from "./message-shared";
 
@@ -229,6 +231,64 @@ describe("buildSharedLinks", () => {
   it("returns nothing for bodies without absolute URLs", () => {
     expect(
       buildSharedLinks([linkRow("@[Problem](/problems/two-sum)")], VIEWER),
+    ).toEqual([]);
+  });
+});
+
+describe("toSharedDocuments", () => {
+  function documentRow(
+    overrides: Partial<SharedDocumentSourceRow> = {},
+  ): SharedDocumentSourceRow {
+    return {
+      id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      fileName: "Lab report.pdf",
+      mime: "application/pdf",
+      sizeBytes: 4096,
+      senderId: VIEWER,
+      createdAt: new Date("2026-02-04T09:30:00.000Z"),
+      ...overrides,
+    };
+  }
+
+  it("maps documents to download URLs and honours ownership", () => {
+    const documents = toSharedDocuments(
+      [
+        documentRow(),
+        documentRow({
+          id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+          fileName: "sheet.xlsx",
+          mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          senderId: PEER,
+        }),
+      ],
+      VIEWER,
+    );
+
+    expect(documents).toEqual([
+      {
+        id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        url: "/api/v1/messages/attachments/dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+        fileName: "Lab report.pdf",
+        mime: "application/pdf",
+        sizeBytes: 4096,
+        createdAt: "2026-02-04T09:30:00.000Z",
+        mine: true,
+      },
+      {
+        id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        url: "/api/v1/messages/attachments/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+        fileName: "sheet.xlsx",
+        mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        sizeBytes: 4096,
+        createdAt: "2026-02-04T09:30:00.000Z",
+        mine: false,
+      },
+    ]);
+  });
+
+  it("drops rows without a stored file name", () => {
+    expect(
+      toSharedDocuments([documentRow({ fileName: null as unknown as string })], VIEWER),
     ).toEqual([]);
   });
 });

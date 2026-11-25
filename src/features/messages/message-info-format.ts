@@ -1,4 +1,5 @@
 import type {
+  ConversationSharedDocument,
   ConversationSharedLink,
   ConversationSharedMedia,
 } from "@/lib/message-types";
@@ -16,6 +17,17 @@ export function splitSharedLinks(
     documents: links.filter((link) => link.kind === "DOCUMENT"),
     links: links.filter((link) => link.kind !== "DOCUMENT"),
   };
+}
+
+/**
+ * Documents header count: uploaded files plus links that point at documents.
+ * Kept pure so the mixed list stays easy to verify.
+ */
+export function sharedDocumentTotal(
+  files: readonly ConversationSharedDocument[],
+  documentLinks: readonly ConversationSharedLink[],
+): number {
+  return files.length + documentLinks.length;
 }
 
 /**

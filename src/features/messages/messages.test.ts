@@ -138,6 +138,8 @@ describe("conversationPreview", () => {
     createdAt: "2026-11-25T11:00:00.000Z",
     deleted: false,
     hasAttachment: false,
+    attachmentKind: null,
+    attachmentName: null,
   };
 
   it("handles an empty conversation", () => {
@@ -161,18 +163,88 @@ describe("conversationPreview", () => {
   });
 
   it("labels image-only messages as a photo", () => {
-    expect(conversationPreview({ ...base, body: "", hasAttachment: true })).toBe(
-      "📷 Photo",
-    );
     expect(
-      conversationPreview({ ...base, body: "", hasAttachment: true, mine: true }),
+      conversationPreview({
+        ...base,
+        body: "",
+        hasAttachment: true,
+        attachmentKind: "IMAGE",
+      }),
+    ).toBe("📷 Photo");
+    expect(
+      conversationPreview({
+        ...base,
+        body: "",
+        hasAttachment: true,
+        attachmentKind: "IMAGE",
+        mine: true,
+      }),
     ).toBe("You: 📷 Photo");
   });
 
-  it("keeps the caption for an image that has one", () => {
+  it("labels document-only messages with the file name", () => {
     expect(
-      conversationPreview({ ...base, body: "Look at this", hasAttachment: true }),
+      conversationPreview({
+        ...base,
+        body: "",
+        hasAttachment: true,
+        attachmentKind: "DOCUMENT",
+        attachmentName: "solutions.pdf",
+      }),
+    ).toBe("📎 solutions.pdf");
+    expect(
+      conversationPreview({
+        ...base,
+        body: "",
+        hasAttachment: true,
+        attachmentKind: "DOCUMENT",
+        attachmentName: "solutions.pdf",
+        mine: true,
+      }),
+    ).toBe("You: 📎 solutions.pdf");
+  });
+
+  it("truncates a long document name and falls back without one", () => {
+    const longName = `${"a".repeat(200)}.pdf`;
+    const preview = conversationPreview({
+      ...base,
+      body: "",
+      hasAttachment: true,
+      attachmentKind: "DOCUMENT",
+      attachmentName: longName,
+    });
+    expect(Array.from(preview)).toHaveLength(120);
+    expect(preview.startsWith("📎 ")).toBe(true);
+    expect(preview.endsWith("…")).toBe(true);
+    expect(
+      conversationPreview({
+        ...base,
+        body: "",
+        hasAttachment: true,
+        attachmentKind: "DOCUMENT",
+        attachmentName: null,
+      }),
+    ).toBe("📎 Document");
+  });
+
+  it("keeps the caption for an attachment that has one", () => {
+    expect(
+      conversationPreview({
+        ...base,
+        body: "Look at this",
+        hasAttachment: true,
+        attachmentKind: "IMAGE",
+      }),
     ).toBe("Look at this");
+    expect(
+      conversationPreview({
+        ...base,
+        body: "My submission",
+        hasAttachment: true,
+        attachmentKind: "DOCUMENT",
+        attachmentName: "main.cpp.pdf",
+      }),
+    ).toBe("My submission");
   });
 
   it("expands reference tokens before truncating", () => {

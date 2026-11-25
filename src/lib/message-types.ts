@@ -4,6 +4,51 @@ import type { UserRole } from "./types";
 
 export type MessageImageMime = "image/png" | "image/jpeg" | "image/webp";
 
+/** Allow-listed document types; legacy Office binaries are intentionally out. */
+export type MessageDocumentMime =
+  | "application/pdf"
+  | "text/plain"
+  | "text/csv"
+  | "application/zip"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+  | "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  | "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+export type MessageImageAttachment = {
+  kind: "IMAGE";
+  id: string;
+  mime: MessageImageMime;
+  width: number;
+  height: number;
+  /** Same-origin, participant-only URL that streams the image. */
+  url: string;
+};
+
+export type MessageDocumentAttachment = {
+  kind: "DOCUMENT";
+  id: string;
+  mime: MessageDocumentMime;
+  fileName: string;
+  sizeBytes: number;
+  /** Same-origin, participant-only URL that downloads the document. */
+  url: string;
+};
+
+/** At most one attachment per message: an image or a document. */
+export type MessageAttachment =
+  | MessageImageAttachment
+  | MessageDocumentAttachment;
+
+export type MessageItem = {
+  id: string;
+  body: string;
+  mine: boolean;
+  createdAt: string;
+  readAt: string | null;
+  deleted: boolean;
+  attachment: MessageAttachment | null;
+};
+
 /**
  * Public profile details shown in the conversation info panel. Only fields
  * that already render on a public profile are included; private contact,
@@ -26,26 +71,38 @@ export type MessageParticipantProfile = {
   linkedin: string | null;
 };
 
-/** One image attached to a message; bytes stay behind an auth-checked route. */
-export type MessageAttachment = {
+/** One uploaded document shared anywhere in the conversation, newest first. */
+export type ConversationSharedDocument = {
   id: string;
-  mime: MessageImageMime;
-  width: number;
-  height: number;
-  /** Same-origin, participant-only URL that streams the image. */
+  /** Same-origin, participant-only download URL. */
   url: string;
-};
-
-export type MessageItem = {
-  id: string;
-  body: string;
-  mine: boolean;
+  fileName: string;
+  mime: MessageDocumentMime;
+  sizeBytes: number;
   createdAt: string;
-  readAt: string | null;
-  deleted: boolean;
-  attachment: MessageAttachment | null;
+  mine: boolean;
 };
 
+/**
+ * An http(s) URL found in a message body. `DOCUMENT` links end in a common
+ * document extension and back the info panel's Documents section.
+ */
+export type ConversationSharedLink = {
+  url: string;
+  host: string;
+  /** Human readable host + path, already truncated for display. */
+  label: string;
+  kind: "LINK" | "DOCUMENT";
+  createdAt: string;
+  mine: boolean;
+};
+
+/** Lazy payload for the conversation info panel. */
+export type ConversationSharedContent = {
+  media: ConversationSharedMedia[];
+  documents: ConversationSharedDocument[];
+  links: ConversationSharedLink[];
+};
 export type ConversationSummary = {
   id: string;
   username: string;
@@ -57,6 +114,8 @@ export type ConversationSummary = {
     createdAt: string;
     deleted: boolean;
     hasAttachment: boolean;
+    attachmentKind: "IMAGE" | "DOCUMENT" | null;
+    attachmentName: string | null;
   } | null;
   lastMessageAt: string;
   presence: PresenceInfo;
@@ -103,26 +162,6 @@ export type ConversationSharedMedia = {
   width: number;
   height: number;
   createdAt: string;
-};
-
-/**
- * An http(s) URL found in a message body. `DOCUMENT` links end in a common
- * document extension and back the info panel's Documents section.
- */
-export type ConversationSharedLink = {
-  url: string;
-  host: string;
-  /** Human readable host + path, already truncated for display. */
-  label: string;
-  kind: "LINK" | "DOCUMENT";
-  createdAt: string;
-  mine: boolean;
-};
-
-/** Lazy payload for the conversation info panel. */
-export type ConversationSharedContent = {
-  media: ConversationSharedMedia[];
-  links: ConversationSharedLink[];
 };
 
 export type MessageSuggestionKind = "contest" | "problem" | "learn";

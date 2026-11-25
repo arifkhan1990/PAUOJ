@@ -1,4 +1,4 @@
-import type { MessageAttachment } from "@/lib/message-types";
+import type { MessageImageAttachment } from "@/lib/message-types";
 
 /**
  * One image inside a message bubble. Pending uploads use a local blob URL and
@@ -8,7 +8,7 @@ import type { MessageAttachment } from "@/lib/message-types";
 export function MessageAttachmentImage({
   attachment,
 }: {
-  attachment: MessageAttachment;
+  attachment: MessageImageAttachment;
 }) {
   const pending = attachment.url.startsWith("blob:");
   const width = attachment.width > 0 ? attachment.width : undefined;

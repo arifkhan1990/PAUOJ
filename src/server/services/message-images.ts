@@ -6,7 +6,11 @@ import {
   messageAttachments,
   messages,
 } from "@/server/db/schema";
-import type { MessageItem } from "@/lib/message-types";
+import type {
+  MessageDocumentMime,
+  MessageImageMime,
+  MessageItem,
+} from "@/lib/message-types";
 import { detectAvatarImage, type DetectedAvatarImage } from "./avatar-image";
 import {
   isUuid,
@@ -90,18 +94,32 @@ export async function sendMessageImage(
     viewer,
     target,
     body: normalizedCaption,
-    attachment: { ...image, bytes },
+    attachment: { kind: "IMAGE", ...image, bytes },
   });
 }
 
-export type MessageAttachmentBytes = {
-  mime: DetectedAvatarImage["mime"];
+export type MessageImageAttachmentBytes = {
+  kind: "IMAGE";
+  mime: MessageImageMime;
+  fileName: null;
   bytes: Uint8Array;
 };
 
+export type MessageDocumentAttachmentBytes = {
+  kind: "DOCUMENT";
+  mime: MessageDocumentMime;
+  fileName: string;
+  bytes: Uint8Array;
+};
+
+export type MessageAttachmentBytes =
+  | MessageImageAttachmentBytes
+  | MessageDocumentAttachmentBytes;
+
 /**
  * Bytes stay hidden for malformed ids, deleted messages, and blocked pairs.
- * The viewer must be a participant of the attachment's conversation.
+ * The viewer must be a participant of the attachment's conversation. Both
+ * image and document rows resolve here so the download route has one gate.
  */
 export async function getMessageAttachment(
   viewerId: string,
@@ -110,7 +128,9 @@ export async function getMessageAttachment(
   if (!isUuid(attachmentId)) return null;
   const [row] = await getDb()
     .select({
+      kind: messageAttachments.kind,
       mime: messageAttachments.mime,
+      fileName: messageAttachments.fileName,
       bytes: messageAttachments.bytes,
     })
     .from(messageAttachments)
@@ -130,5 +150,19 @@ export async function getMessageAttachment(
     )
     .limit(1);
   if (!row) return null;
-  return { mime: row.mime as DetectedAvatarImage["mime"], bytes: row.bytes };
+  if (row.kind === "DOCUMENT") {
+    if (!row.fileName) return null;
+    return {
+      kind: "DOCUMENT",
+      mime: row.mime as MessageDocumentMime,
+      fileName: row.fileName,
+      bytes: row.bytes,
+    };
+  }
+  return {
+    kind: "IMAGE",
+    mime: row.mime as MessageImageMime,
+    fileName: null,
+    bytes: row.bytes,
+  };
 }

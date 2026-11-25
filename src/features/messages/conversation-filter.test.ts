@@ -19,6 +19,8 @@ function conversation(
       createdAt: "2026-11-25T10:00:00.000Z",
       deleted: false,
       hasAttachment: false,
+      attachmentKind: null,
+      attachmentName: null,
     },
     lastMessageAt: "2026-11-25T10:00:00.000Z",
     presence: { state: "HIDDEN", label: null },
@@ -45,6 +47,8 @@ const BOB = conversation({
     createdAt: "2026-11-25T09:00:00.000Z",
     deleted: false,
     hasAttachment: false,
+    attachmentKind: null,
+    attachmentName: null,
   },
 });
 const MUTED = conversation({

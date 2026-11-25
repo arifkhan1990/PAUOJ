@@ -8,18 +8,23 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
-import { ImagePlus, Loader2, Send, X } from "lucide-react";
+import { ImagePlus, Loader2, Paperclip, Send } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiClientError } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { insertEmoji, type TextInsertion } from "./composer-insert";
+import {
+  DocumentDraftPreview,
+  ImageDraftPreview,
+} from "./composer-attachment-preview";
 import { EmojiPicker } from "./emoji-picker";
 import {
+  MESSAGE_DOCUMENT_ACCEPT,
   MESSAGE_IMAGE_MIME_TYPES,
   MESSAGE_MAX_LENGTH,
-  formatFileSize,
+  validateMessageDocument,
   validateMessageImage,
 } from "./message-format";
 import { MessageSuggestionDrawer } from "./message-suggestion-drawer";
@@ -39,20 +44,24 @@ export function MessageComposer({
   blocked,
   onSend,
   onSendImage,
+  onSendDocument,
 }: {
   blocked: boolean;
   onSend: (body: string) => Promise<void>;
   onSendImage: (file: File, caption: string) => Promise<void>;
+  onSendDocument: (file: File, caption: string) => Promise<void>;
 }) {
   const { toast } = useToast();
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [image, setImage] = useState<SelectedImage | null>(null);
+  const [document, setDocument] = useState<File | null>(null);
   const [caretRequest, setCaretRequest] = useState(0);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const pendingCaret = useRef<number | null>(null);
 
   // Every replacement bubble gets its own blob URL; the previous one is freed.
@@ -82,7 +91,7 @@ export function MessageComposer({
   const submit = async () => {
     if (sending || blocked) return;
     const caption = body.trim();
-    if (!image && !caption) return;
+    if (!image && !document && !caption) return;
 
     suggestions.reset();
     setSending(true);
@@ -91,6 +100,9 @@ export function MessageComposer({
       if (image) {
         await onSendImage(image.file, caption);
         setImage(null);
+      } else if (document) {
+        await onSendDocument(document, caption);
+        setDocument(null);
       } else {
         await onSend(caption);
       }
@@ -99,7 +111,11 @@ export function MessageComposer({
       const description = describeError(requestError);
       setError(description);
       toast({
-        title: image ? "Image not sent" : "Message not sent",
+        title: image
+          ? "Image not sent"
+          : document
+            ? "Document not sent"
+            : "Message not sent",
         description,
         variant: "error",
       });
@@ -138,11 +154,32 @@ export function MessageComposer({
       return;
     }
     setError(null);
+    // At most one attachment per message, so picking an image drops a document.
+    setDocument(null);
     setImage({ file, url: URL.createObjectURL(file) });
+  };
+
+  const handleDocumentFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+    const problem = validateMessageDocument(file);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setError(null);
+    setImage(null);
+    setDocument(file);
   };
 
   const removeImage = () => {
     setImage(null);
+    setError(null);
+  };
+
+  const removeDocument = () => {
+    setDocument(null);
     setError(null);
   };
 
@@ -169,7 +206,8 @@ export function MessageComposer({
 
   const nearLimit = body.length >= COUNTER_THRESHOLD;
   const disabled = blocked || sending;
-  const canSend = !disabled && (image !== null || body.trim().length > 0);
+  const canSend =
+    !disabled && (image !== null || document !== null || body.trim().length > 0);
 
   return (
     <form
@@ -184,33 +222,20 @@ export function MessageComposer({
       ) : null}
 
       {image ? (
-        <div className="mb-2 flex items-center gap-3 rounded-md border border-border bg-muted/40 p-2">
-          {/* Local blob preview for the file about to be sent. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={image.url}
-            alt=""
-            className="size-12 shrink-0 rounded object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium">{image.file.name}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {formatFileSize(image.file.size)} ·{" "}
-              {image.file.type.replace("image/", "").toUpperCase()}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={removeImage}
-            disabled={sending}
-            aria-label="Remove image"
-            className="min-h-11 min-w-11 shrink-0 text-muted-foreground"
-          >
-            <X className="size-4" aria-hidden="true" />
-          </Button>
-        </div>
+        <ImageDraftPreview
+          file={image.file}
+          url={image.url}
+          disabled={sending}
+          onRemove={removeImage}
+        />
+      ) : null}
+
+      {document ? (
+        <DocumentDraftPreview
+          file={document}
+          disabled={sending}
+          onRemove={removeDocument}
+        />
       ) : null}
 
       <label htmlFor="message-body" className="sr-only">
@@ -231,7 +256,7 @@ export function MessageComposer({
         maxLength={MESSAGE_MAX_LENGTH}
         rows={2}
         placeholder={
-          image ? "Add a caption (optional)…" : "Write a message…"
+          image || document ? "Add a caption (optional)…" : "Write a message…"
         }
         disabled={disabled}
         aria-describedby={
@@ -268,6 +293,26 @@ export function MessageComposer({
             tabIndex={-1}
             aria-hidden="true"
           />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => documentInputRef.current?.click()}
+            disabled={disabled}
+            aria-label={document ? "Replace document" : "Attach document"}
+            className="min-h-11 min-w-11 text-muted-foreground"
+          >
+            <Paperclip className="size-4" aria-hidden="true" />
+          </Button>
+          <input
+            ref={documentInputRef}
+            type="file"
+            accept={MESSAGE_DOCUMENT_ACCEPT}
+            onChange={handleDocumentFile}
+            className="hidden"
+            tabIndex={-1}
+            aria-hidden="true"
+          />
         </div>
         <div className="flex min-w-0 items-center gap-2">
           <p
@@ -292,6 +337,7 @@ export function MessageComposer({
             type="submit"
             className="min-h-11 shrink-0 px-4"
             disabled={!canSend}
+            aria-label="Send message"
           >
             {sending ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />

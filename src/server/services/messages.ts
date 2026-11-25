@@ -22,7 +22,6 @@ import {
   messageDedupeKey,
   normalizeMessageBody,
   otherParticipantId,
-  toLastMessagePreview,
   toMessageItem,
 } from "./message-helpers";
 import {
@@ -42,6 +41,7 @@ import {
 } from "./message-queries";
 import { loadPresenceMap } from "./presence";
 import { toParticipantProfile } from "./message-shared";
+import { toConversationSummary } from "./message-summary";
 import { isBlockedEitherWay } from "./user-blocks";
 import { isMuted, mutedConversationIds } from "./conversation-mutes";
 import {
@@ -125,20 +125,19 @@ export async function listConversations(
 
   const items: ConversationSummary[] = rows.map((row) => {
     const participant = otherUser(row, viewerId);
-    const muted = mutedIds.has(row.id);
-    return {
-      id: row.id,
-      username: participant.username,
-      displayName: participant.displayName,
-      unreadCount: muted ? 0 : unreadCounts.get(row.id) ?? 0,
-      lastMessage: toLastMessagePreview(lastMessages.get(row.id) ?? null, viewerId),
-      lastMessageAt: (row.lastMessageAt ?? row.createdAt).toISOString(),
-      presence: presenceOf(presence, participant.id),
-      muted,
-      avatarPreset: participant.avatarPreset,
-      avatarImageUpdatedAt:
-        participant.avatarImageUpdatedAt?.toISOString() ?? null,
-    };
+    return toConversationSummary(
+      {
+        id: row.id,
+        participant,
+        lastMessageAt: row.lastMessageAt,
+        createdAt: row.createdAt,
+        lastMessage: lastMessages.get(row.id) ?? null,
+        unreadCount: unreadCounts.get(row.id) ?? 0,
+        presence: presenceOf(presence, participant.id),
+        muted: mutedIds.has(row.id),
+      },
+      viewerId,
+    );
   });
 
   return {
@@ -150,6 +149,12 @@ export async function listConversations(
     unreadTotal,
   };
 }
+
+/**
+ * The same summary shape as one inbox row, for pinning an older active thread
+ * in the rail; the mapping lives with the inbox summary it must match.
+ */
+export { getConversationSummary } from "./message-summary";
 
 export async function getConversationThread(
   viewerId: string,

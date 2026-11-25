@@ -12,10 +12,20 @@ export type SharedContentState = {
 
 const IDLE: SharedContentState = { status: "idle", data: null, error: null };
 
+/** Shared media/links/documents refresh while the info panel stays open. */
+export const SHARED_CONTENT_POLL_INTERVAL_MS = 20_000;
+
+function describeSharedError(error: unknown): string {
+  return error instanceof ApiClientError
+    ? error.message
+    : "Could not load shared media and links.";
+}
+
 /**
- * Lazily loads the conversation info panel payload once the panel opens. The
- * last payload stays cached while the panel is closed, but reopening refreshes
- * it so media or links shared in the meantime appear without a page reload.
+ * Loads the conversation info panel payload when the panel opens, refreshes it
+ * as soon as it is reopened, then polls every 20s while it stays open and the
+ * tab is visible. The last good payload is cached while the panel is closed so
+ * reopening stays instant; background failures never clear it.
  */
 export function useConversationSharedContent(
   conversationId: string | null,
@@ -23,52 +33,72 @@ export function useConversationSharedContent(
 ) {
   const [state, setState] = useState<SharedContentState>(IDLE);
   const [request, setRequest] = useState(0);
-  const handled = useRef<{ id: string | null; request: number }>({
-    id: null,
-    request: 0,
-  });
-
-  useEffect(() => {
-    // A closed panel invalidates the cache marker; the next open refetches.
-    if (!enabled) {
-      handled.current = { id: null, request: handled.current.request };
-    }
-  }, [enabled]);
+  const cached = useRef<ConversationSharedContent | null>(null);
+  const owner = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled || !conversationId) return;
-    if (
-      handled.current.id === conversationId &&
-      handled.current.request === request
-    ) {
-      return;
-    }
-    handled.current = { id: conversationId, request };
-    let active = true;
-    setState({ status: "loading", data: null, error: null });
+    const id = conversationId;
 
-    void (async () => {
+    // Switching conversations must never show the previous person's files.
+    if (owner.current !== id) {
+      owner.current = id;
+      cached.current = null;
+      setState(IDLE);
+    }
+
+    let cancelled = false;
+    let inFlight = false;
+    const controller = new AbortController();
+
+    const pull = async (initial: boolean) => {
+      // Never overlap requests; an in-flight fetch already covers this payload.
+      if (inFlight) return;
+      inFlight = true;
+      if (initial && cached.current === null) {
+        setState({ status: "loading", data: null, error: null });
+      }
       try {
         const data = await apiRequest<ConversationSharedContent>(
-          `/api/v1/messages/conversations/${conversationId}/info`,
+          `/api/v1/messages/conversations/${id}/info`,
+          { signal: controller.signal },
         );
-        if (!active) return;
+        if (cancelled) return;
+        cached.current = data;
         setState({ status: "ready", data, error: null });
       } catch (error) {
-        if (!active) return;
-        setState({
-          status: "error",
-          data: null,
-          error:
-            error instanceof ApiClientError
-              ? error.message
-              : "Could not load shared media and links.",
-        });
+        if (cancelled) return;
+        // A failed refresh keeps the last good payload on screen.
+        if (cached.current === null) {
+          setState({
+            status: "error",
+            data: null,
+            error: describeSharedError(error),
+          });
+        }
+      } finally {
+        inFlight = false;
       }
-    })();
+    };
+
+    void pull(true);
+
+    const interval = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void pull(false);
+    }, SHARED_CONTENT_POLL_INTERVAL_MS);
+
+    // Catch up immediately when the tab comes back instead of waiting a tick.
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void pull(false);
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
-      active = false;
+      cancelled = true;
+      controller.abort();
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, [conversationId, enabled, request]);
 

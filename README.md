@@ -80,12 +80,14 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   deletion, per-conversation mute, in-app message/follow notice preferences, blocking, rate limits
   and strict participant-only access. The messages workspace uses a three-pane layout;
   clicking the sender's name opens a contact panel with public profile details,
-  shared images, document links and external links (loaded lazily, participant-only).
-  The composer has a searchable emoji picker
-  (120+ curated emoji, matched by name), one image per
-  message (PNG/JPEG/WebP up to 5 MB and 4096×4096, optional caption, served only to
-  participants; capped at 50 images per day and 250 MiB stored per sender) and
-  `@contest`/`@problem`/`@learn` suggestions that insert shareable
+  shared images, documents and external links (loaded lazily, participant-only, refreshed
+  while open). At 1024px the panel stays in-flow and the rail steps aside; phones get a
+  focus-trapped drawer. Older active conversations are pinned into the rail. The composer has a searchable emoji picker
+  (120+ curated emoji, matched by name), one image (PNG/JPEG/WebP up to 5 MB and
+  4096×4096) or document (PDF/TXT/CSV/ZIP/DOCX/XLSX/PPTX up to 5 MB, magic-byte
+  validated, downloaded as opaque bytes) per message with an optional caption, both served only to
+  participants; images and files share a 50-attachment per day and 250 MiB stored
+  cap per sender. `@contest`/`@problem`/`@learn` suggestions insert shareable
   reference links. Blocked conversations disappear from the inbox
   and their direct links return 404 until unblock.
 - **Social reports** — report a message, conversation, follow request or profile with a

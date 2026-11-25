@@ -31,7 +31,7 @@ describe("GET /api/v1/messages/conversations/[id]/info", () => {
     enforceRateLimit.mockResolvedValue({ allowed: true });
   });
 
-  it("returns shared media and links without caching", async () => {
+  it("returns shared media, documents and links without caching", async () => {
     requireApiUser.mockResolvedValue({ id: "user-1" });
     const content = {
       media: [
@@ -42,6 +42,17 @@ describe("GET /api/v1/messages/conversations/[id]/info", () => {
           width: 800,
           height: 600,
           createdAt: "2026-02-01T10:00:00.000Z",
+        },
+      ],
+      documents: [
+        {
+          id: "attachment-2",
+          url: "/api/v1/messages/attachments/attachment-2",
+          fileName: "Lab report.pdf",
+          mime: "application/pdf",
+          sizeBytes: 2048,
+          createdAt: "2026-02-01T10:05:00.000Z",
+          mine: true,
         },
       ],
       links: [],

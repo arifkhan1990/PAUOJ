@@ -11,6 +11,7 @@ import { MessageComposer } from "./message-composer";
 import { formatMessageTime, groupMessagesByDay } from "./message-format";
 import { MessageAttachmentImage } from "./message-attachment";
 import { MessageBody } from "./message-body";
+import { MessageDocument } from "./message-document";
 import { isPendingMessage, useMessageThread } from "./use-message-thread";
 
 function MessageBubble({
@@ -136,8 +137,14 @@ function MessageBubble({
           isPendingMessage(item) && "opacity-60",
         )}
       >
-        {item.attachment ? (
+        {item.attachment?.kind === "IMAGE" ? (
           <MessageAttachmentImage attachment={item.attachment} />
+        ) : null}
+        {item.attachment?.kind === "DOCUMENT" ? (
+          <MessageDocument
+            attachment={item.attachment}
+            pending={isPendingMessage(item)}
+          />
         ) : null}
         {item.body ? (
           <div className={cn(item.attachment && "px-2.5 py-1.5")}>
@@ -170,6 +177,7 @@ export function MessageThread({
     handleScroll,
     sendMessage,
     sendImage,
+    sendDocument,
     removeMessage,
   } = useMessageThread({
     conversationId,
@@ -305,6 +313,7 @@ export function MessageThread({
         blocked={blocked}
         onSend={sendMessage}
         onSendImage={sendImage}
+        onSendDocument={sendDocument}
       />
 
       <ReportDialog

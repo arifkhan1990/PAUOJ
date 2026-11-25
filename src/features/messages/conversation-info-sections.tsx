@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import {
+  Download,
   ExternalLink,
   FileText,
   RotateCw,
@@ -9,10 +10,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   ConversationSharedContent,
+  ConversationSharedDocument,
   ConversationSharedLink,
 } from "@/lib/message-types";
-import { formatMessageTime } from "./message-format";
+import { formatFileSize, formatMessageTime } from "./message-format";
 import {
+  sharedDocumentTotal,
   sharedLinkLabel,
   sharedMediaThumbnails,
   splitSharedLinks,
@@ -61,14 +64,61 @@ export function DetailRow({
   );
 }
 
+function SharedLinkRows({ items }: { items: ConversationSharedLink[] }) {
+  return (
+    <ul className="mt-2 divide-y divide-border/70 overflow-hidden rounded-lg border border-border/70">
+      {items.map((link) => (
+        <li key={`${link.url}-${link.createdAt}`}>
+          <a
+            href={link.url}
+            target="_blank"
+            rel="noopener noreferrer nofollow ugc"
+            title={link.url}
+            className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <ExternalLink
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium">
+                {sharedLinkLabel(link)}
+              </span>
+              <span className="block truncate text-[10px] text-muted-foreground">
+                {link.host}
+              </span>
+            </span>
+            <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
+              {formatMessageTime(link.createdAt)}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SharedSubheading({
+  label,
+  count,
+}: {
+  label: string;
+  count: number;
+}) {
+  return (
+    <p className="flex items-baseline justify-between gap-2 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+      {label}
+      <span className="tabular-nums normal-case tracking-normal">{count}</span>
+    </p>
+  );
+}
+
 function SharedLinkList({
   items,
-  icon: Icon,
   empty,
   label,
 }: {
   items: ConversationSharedLink[];
-  icon: LucideIcon;
   empty: string;
   label: string;
 }) {
@@ -83,37 +133,52 @@ function SharedLinkList({
       {items.length === 0 ? (
         <p className="mt-1.5 text-xs text-muted-foreground">{empty}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border/70 overflow-hidden rounded-lg border border-border/70">
-          {items.map((link) => (
-            <li key={`${link.url}-${link.createdAt}`}>
-              <a
-                href={link.url}
-                target="_blank"
-                rel="noopener noreferrer nofollow ugc"
-                title={link.url}
-                className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-              >
-                <Icon
-                  className="size-4 shrink-0 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-xs font-medium">
-                    {sharedLinkLabel(link)}
-                  </span>
-                  <span className="block truncate text-[10px] text-muted-foreground">
-                    {link.host}
-                  </span>
-                </span>
-                <span className="shrink-0 whitespace-nowrap text-[10px] text-muted-foreground">
-                  {formatMessageTime(link.createdAt)}
-                </span>
-              </a>
-            </li>
-          ))}
-        </ul>
+        <SharedLinkRows items={items} />
       )}
     </div>
+  );
+}
+
+function SharedFileList({ items }: { items: ConversationSharedDocument[] }) {
+  if (items.length === 0) {
+    return (
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        No files uploaded yet.
+      </p>
+    );
+  }
+  return (
+    <ul className="mt-2 divide-y divide-border/70 overflow-hidden rounded-lg border border-border/70">
+      {items.map((file) => (
+        <li key={file.id}>
+          <a
+            href={file.url}
+            download={file.fileName}
+            title={file.fileName}
+            aria-label={`Download ${file.fileName} (${formatFileSize(file.sizeBytes)})`}
+            className="flex min-h-11 items-center gap-2.5 px-2.5 py-2 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <FileText
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-medium">
+                {file.fileName}
+              </span>
+              <span className="block truncate text-[10px] text-muted-foreground">
+                {formatFileSize(file.sizeBytes)} ·{" "}
+                {formatMessageTime(file.createdAt)}
+              </span>
+            </span>
+            <Download
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -125,7 +190,8 @@ function SharedSections({
   participantName: string;
 }) {
   const media = sharedMediaThumbnails(data.media);
-  const { documents, links } = splitSharedLinks(data.links);
+  const { documents: documentLinks, links } = splitSharedLinks(data.links);
+  const files = data.documents;
 
   return (
     <div className="mt-3 space-y-5">
@@ -169,15 +235,36 @@ function SharedSections({
         )}
       </div>
 
-      <SharedLinkList
-        items={documents}
-        icon={FileText}
-        label="Documents"
-        empty="No documents shared yet."
-      />
+      <div>
+        <div className="flex items-baseline justify-between gap-2">
+          <SectionTitle>Documents</SectionTitle>
+          <span className="text-[10px] tabular-nums text-muted-foreground">
+            {sharedDocumentTotal(files, documentLinks)}
+          </span>
+        </div>
+        <div className="mt-2 space-y-3">
+          <div>
+            <SharedSubheading label="Files" count={files.length} />
+            <SharedFileList items={files} />
+          </div>
+          <div>
+            <SharedSubheading
+              label="Document links"
+              count={documentLinks.length}
+            />
+            {documentLinks.length === 0 ? (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                No document links shared yet.
+              </p>
+            ) : (
+              <SharedLinkRows items={documentLinks} />
+            )}
+          </div>
+        </div>
+      </div>
+
       <SharedLinkList
         items={links}
-        icon={ExternalLink}
         label="Links"
         empty="No links shared yet."
       />

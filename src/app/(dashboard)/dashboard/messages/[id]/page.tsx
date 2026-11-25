@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { requireUser } from "@/server/auth/guards";
 import { rateLimit } from "@/server/api/rate-limit";
 import {
+  getConversationSummary,
   getConversationThread,
   listConversations,
   MESSAGES_PAGE_RATE_WINDOW_SECONDS,
@@ -67,11 +68,17 @@ export default async function ConversationPage({
   ]);
   if (!thread) notFound();
 
+  // Older conversations are not on the rail's first page: pin the active one.
+  const pinnedConversation = list.items.some((item) => item.id === thread.id)
+    ? null
+    : await getConversationSummary(user.id, thread.id);
+
   return (
     <div className="w-full">
       <h1 className="sr-only">Conversation with {thread.participant.displayName}</h1>
       <MessagesWorkspace
         conversations={list.items}
+        pinnedConversation={pinnedConversation}
         activeId={thread.id}
         list={{
           total: list.total,
