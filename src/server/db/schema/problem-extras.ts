@@ -50,6 +50,8 @@ export const problemReferenceSolutions = pgTable(
       .references(() => problems.id, { onDelete: "cascade" }),
     language: text("language").notNull(),
     source: text("source").notNull(),
+    /** SQL script labs need the multi-statement runner. */
+    script: boolean("script").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

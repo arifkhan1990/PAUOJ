@@ -1,0 +1,1 @@
+ALTER TABLE "problem_reference_solutions" ADD COLUMN "script" boolean DEFAULT false NOT NULL;
