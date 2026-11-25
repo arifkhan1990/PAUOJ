@@ -316,6 +316,15 @@ export type RunResult = {
   runtimeMs: number | null;
   memoryKb: number | null;
   finished: boolean;
+  /**
+   * Expected output generated from the problem's reference solution for a
+   * custom input. Null when no reference is available (or none was requested).
+   */
+  expectedOutput?: string | null;
+  /** True/false only when stdout and expectedOutput were compared. */
+  matchesExpected?: boolean | null;
+  /** Why expected output is missing or was not compared. */
+  expectedNote?: string | null;
 };
 
 export type { RankFacet, RankFacets, RankRow, RankSort, RankStanding } from "./rank-types";
