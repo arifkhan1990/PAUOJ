@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  customType,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -10,6 +12,13 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { users } from "./auth";
+
+/** Same bytea mapping as the avatar table, kept local to this module. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 /**
  * Two-person direct messages. `userAId` is always the lexicographically
@@ -69,7 +78,7 @@ export const messages = pgTable(
   (table) => [
     check(
       "messages_body_check",
-      sql`char_length(${table.body}) between 1 and 2000`,
+      sql`char_length(${table.body}) between 0 and 2000`,
     ),
     index("messages_conversation_created_idx").on(
       table.conversationId,
@@ -84,6 +93,45 @@ export const messages = pgTable(
 );
 
 export type Message = typeof messages.$inferSelect;
+
+/**
+ * At most one image per message. Bytes stay in Postgres behind an
+ * auth-checked route; the row is removed with its message.
+ */
+export const messageAttachments = pgTable(
+  "message_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    messageId: uuid("message_id")
+      .notNull()
+      .unique()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    mime: text("mime").notNull(),
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    bytes: bytea("bytes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "message_attachments_mime_check",
+      sql`${table.mime} in ('image/png', 'image/jpeg', 'image/webp')`,
+    ),
+    check(
+      "message_attachments_dimensions_check",
+      sql`${table.width} between 1 and 4096 and ${table.height} between 1 and 4096`,
+    ),
+    check(
+      "message_attachments_size_check",
+      sql`octet_length(${table.bytes}) between 1 and 5242880`,
+    ),
+  ],
+);
+
+export type MessageAttachmentRecord =
+  typeof messageAttachments.$inferSelect;
 
 /** Per-user mute: suppresses unread badges and new-message notices. */
 export const conversationMutes = pgTable(

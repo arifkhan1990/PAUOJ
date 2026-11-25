@@ -1,14 +1,24 @@
 import { errors } from "@/server/api/errors";
-import type { MessageItem } from "@/lib/message-types";
+import { messageAttachments, messages } from "@/server/db/schema";
+import type { MessageImageMime, MessageItem } from "@/lib/message-types";
+import { messageReferencePreview } from "@/lib/message-references";
 
 export const CONVERSATION_BODY_MAX_LENGTH = 2000;
 export const NOTIFICATION_PREVIEW_LENGTH = 120;
 export const MAX_MESSAGE_PAGE = 10_000;
+export const PHOTO_NOTIFICATION_BODY = "Sent a photo";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type ConversationPair = { userAId: string; userBId: string };
+
+export type MessageAttachmentRow = {
+  id: string;
+  mime: MessageImageMime;
+  width: number;
+  height: number;
+};
 
 export type MessageRow = {
   id: string;
@@ -17,6 +27,7 @@ export type MessageRow = {
   createdAt: Date;
   readAt: Date | null;
   deletedAt: Date | null;
+  attachment: MessageAttachmentRow | null;
 };
 
 export type LastMessagePreview = {
@@ -24,7 +35,64 @@ export type LastMessagePreview = {
   mine: boolean;
   createdAt: string;
   deleted: boolean;
+  hasAttachment: boolean;
 };
+
+/** Selected message columns shared by thread and last-message queries. */
+export const messageFields = {
+  id: messages.id,
+  body: messages.body,
+  senderId: messages.senderId,
+  createdAt: messages.createdAt,
+  readAt: messages.readAt,
+  deletedAt: messages.deletedAt,
+};
+
+/** Selected attachment columns for the LEFT JOIN, kept flat for mapping. */
+export const attachmentFields = {
+  attachmentId: messageAttachments.id,
+  attachmentMime: messageAttachments.mime,
+  attachmentWidth: messageAttachments.width,
+  attachmentHeight: messageAttachments.height,
+};
+
+export type MessageFlatRow = {
+  id: string;
+  body: string;
+  senderId: string;
+  createdAt: Date;
+  readAt: Date | null;
+  deletedAt: Date | null;
+  attachmentId: string | null;
+  attachmentMime: string | null;
+  attachmentWidth: number | null;
+  attachmentHeight: number | null;
+};
+
+/** Flat attachment columns from the LEFT JOIN become the nested row shape. */
+export function toMessageRow(row: MessageFlatRow): MessageRow {
+  const attachment =
+    row.attachmentId !== null &&
+    row.attachmentMime !== null &&
+    row.attachmentWidth !== null &&
+    row.attachmentHeight !== null
+      ? {
+          id: row.attachmentId,
+          mime: row.attachmentMime as MessageImageMime,
+          width: row.attachmentWidth,
+          height: row.attachmentHeight,
+        }
+      : null;
+  return {
+    id: row.id,
+    body: row.body,
+    senderId: row.senderId,
+    createdAt: row.createdAt,
+    readAt: row.readAt,
+    deletedAt: row.deletedAt,
+    attachment,
+  };
+}
 
 export function isUuid(value: string): boolean {
   return UUID_PATTERN.test(value);
@@ -78,11 +146,50 @@ export function normalizeMessageBody(body: string): string {
   return trimmed;
 }
 
+/**
+ * An image message may have an empty caption, so unlike text the lower bound
+ * is 0; it still shares the same upper bound.
+ */
+export function normalizeMessageCaption(caption: string): string {
+  const trimmed = caption.trim();
+  if (trimmed.length > CONVERSATION_BODY_MAX_LENGTH) {
+    throw errors.validation(
+      `Captions can be at most ${CONVERSATION_BODY_MAX_LENGTH} characters.`,
+    );
+  }
+  return trimmed;
+}
+
 export function truncatePreview(
   body: string,
   max = NOTIFICATION_PREVIEW_LENGTH,
 ): string {
   return body.length <= max ? body : body.slice(0, max);
+}
+
+/**
+ * Reference tokens are stored as `@[Label](/path)`; previews show them as
+ * `@Label` and then respect the notification length cap.
+ */
+export function messagePreview(body: string): string {
+  return truncatePreview(messageReferencePreview(body));
+}
+
+/**
+ * Notification body for a freshly sent message. An image without a caption
+ * has no text preview, so the notice says what was sent instead.
+ */
+export function messageNotificationBody(input: {
+  body: string;
+  hasAttachment: boolean;
+}): string {
+  const preview = messagePreview(input.body.trim());
+  if (preview.length > 0) return preview;
+  return input.hasAttachment ? PHOTO_NOTIFICATION_BODY : preview;
+}
+
+export function messageAttachmentUrl(attachmentId: string): string {
+  return `/api/v1/messages/attachments/${attachmentId}`;
 }
 
 export function messageDedupeKey(messageId: string): string {
@@ -138,6 +245,13 @@ export function maskDeletedBody(row: {
 
 export function toMessageItem(row: MessageRow, viewerId: string): MessageItem {
   const masked = maskDeletedBody(row);
+  const attachment =
+    masked.deleted || !row.attachment
+      ? null
+      : {
+          ...row.attachment,
+          url: messageAttachmentUrl(row.attachment.id),
+        };
   return {
     id: row.id,
     body: masked.body,
@@ -145,6 +259,7 @@ export function toMessageItem(row: MessageRow, viewerId: string): MessageItem {
     createdAt: row.createdAt.toISOString(),
     readAt: row.readAt?.toISOString() ?? null,
     deleted: masked.deleted,
+    attachment,
   };
 }
 
@@ -155,9 +270,10 @@ export function toLastMessagePreview(
   if (!row) return null;
   const masked = maskDeletedBody(row);
   return {
-    body: masked.body,
+    body: messagePreview(masked.body),
     mine: row.senderId === viewerId,
     createdAt: row.createdAt.toISOString(),
     deleted: masked.deleted,
+    hasAttachment: !masked.deleted && Boolean(row.attachment),
   };
 }

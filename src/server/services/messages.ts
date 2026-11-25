@@ -1,11 +1,6 @@
-import { and, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { getDb } from "@/server/db";
-import {
-  conversations,
-  messages,
-  notifications,
-  userBlocks,
-} from "@/server/db/schema";
+import { messages, notifications } from "@/server/db/schema";
 import { errors } from "@/server/api/errors";
 import { enforceRateLimit } from "@/server/api/rate-limit";
 import type { PresenceInfo } from "@/lib/follow-types";
@@ -15,21 +10,16 @@ import type {
   ConversationThread,
   MessageItem,
 } from "@/lib/message-types";
-import { logger } from "@/server/logger";
 import {
   clampPage,
-  conversationHref,
   conversationHrefVariants,
   isParticipant,
   isUuid,
   messageDedupeKey,
-  messageNotificationTitle,
   normalizeMessageBody,
   otherParticipantId,
-  shouldNotifyMessage,
   toLastMessagePreview,
   toMessageItem,
-  truncatePreview,
 } from "./message-helpers";
 import {
   blockedCounterpartIds,
@@ -38,7 +28,6 @@ import {
   countViewerConversations,
   countViewerUnreadMessages,
   findMessageForSender,
-  hasUnreadFromSender,
   lastMessageRows,
   listConversationRows,
   threadMessageRows,
@@ -50,12 +39,17 @@ import {
 import { loadPresenceMap } from "./presence";
 import { isBlockedEitherWay } from "./user-blocks";
 import { isMuted, mutedConversationIds } from "./conversation-mutes";
-import { notifyUser } from "./notifications";
-import { lockUserPair } from "./social-lock";
 import {
   cachedUnreadMessageCount,
   invalidateUnreadCache,
 } from "./message-unread-cache";
+import {
+  deliverMessage,
+  loadMessageSendTarget,
+  type MessageViewer,
+} from "./message-send";
+
+export type { MessageViewer } from "./message-send";
 
 export const CONVERSATIONS_PAGE_SIZE = 20;
 export const THREAD_PAGE_SIZE = 30;
@@ -73,12 +67,6 @@ const DELETE_RATE_LIMIT = 60;
 const DELETE_RATE_WINDOW_SECONDS = 60;
 
 const HIDDEN_PRESENCE: PresenceInfo = { state: "HIDDEN", label: null };
-
-export type MessageViewer = {
-  id: string;
-  username: string;
-  displayName: string;
-};
 
 function otherUser(
   row: ConversationPageRow | ConversationWithParticipants,
@@ -225,110 +213,14 @@ export async function sendMessage(
   body: string,
 ): Promise<MessageItem> {
   const normalizedBody = normalizeMessageBody(body);
-  if (!isUuid(conversationId)) {
-    throw errors.notFound("Conversation not found.");
-  }
-  const conversation = await conversationForViewer(conversationId, viewer.id);
-  if (!conversation || !isParticipant(conversation, viewer.id)) {
-    throw errors.notFound("Conversation not found.");
-  }
-  const recipientId = otherParticipantId(conversation, viewer.id);
-  if (!recipientId) throw errors.notFound("Conversation not found.");
-  const recipient = otherUser(conversation, viewer.id);
-  if (recipient.isBanned) {
-    throw errors.notFound("Conversation not found.");
-  }
-  if (await isBlockedEitherWay(viewer.id, recipientId)) {
-    throw errors.forbidden("You cannot send messages in this conversation.");
-  }
+  const target = await loadMessageSendTarget(viewer.id, conversationId);
   await enforceRateLimit(
     `message-send:${viewer.id}`,
     SEND_RATE_LIMIT,
     SEND_RATE_WINDOW_SECONDS,
     "You are sending messages too quickly. Please slow down.",
   );
-
-  // Only the first unread message of a burst sends a notification, and a muted
-  // conversation or a recipient who turned message notices off sends none.
-  const [recipientMuted, hasUnread] = await Promise.all([
-    isMuted(recipientId, conversationId),
-    hasUnreadFromSender(conversationId, viewer.id),
-  ]);
-  const shouldNotify = shouldNotifyMessage({
-    recipientNotifyMessages: recipient.notifyMessages,
-    recipientMuted,
-    hasUnreadFromSender: hasUnread,
-  });
-  const db = getDb();
-  const message = await db.transaction(async (tx) => {
-    await lockUserPair(tx, viewer.id, recipientId);
-    const [blocked] = await tx
-      .select({ blockerId: userBlocks.blockerId })
-      .from(userBlocks)
-      .where(
-        or(
-          and(
-            eq(userBlocks.blockerId, viewer.id),
-            eq(userBlocks.blockedId, recipientId),
-          ),
-          and(
-            eq(userBlocks.blockerId, recipientId),
-            eq(userBlocks.blockedId, viewer.id),
-          ),
-        ),
-      )
-      .limit(1);
-    if (blocked) {
-      throw errors.forbidden("You cannot send messages in this conversation.");
-    }
-    const [inserted] = await tx
-      .insert(messages)
-      .values({
-        conversationId,
-        senderId: viewer.id,
-        body: normalizedBody,
-      })
-      .returning({
-        id: messages.id,
-        body: messages.body,
-        senderId: messages.senderId,
-        createdAt: messages.createdAt,
-        readAt: messages.readAt,
-        deletedAt: messages.deletedAt,
-      });
-    if (!inserted) {
-      throw errors.unavailable("Could not send the message. Please retry.");
-    }
-    await tx
-      .update(conversations)
-      .set({ lastMessageAt: inserted.createdAt, updatedAt: new Date() })
-      .where(eq(conversations.id, conversationId));
-    return inserted;
-  });
-
-  // The recipient's badge must not keep a pre-send count for the cache window.
-  await invalidateUnreadCache(recipientId);
-
-  if (shouldNotify) {
-    try {
-      await notifyUser({
-        userId: recipientId,
-        type: "MESSAGE",
-        title: messageNotificationTitle(viewer.displayName),
-        body: truncatePreview(normalizedBody),
-        href: conversationHref(conversationId),
-        dedupeKey: messageDedupeKey(message.id),
-      });
-    } catch (error) {
-      logger.warn("Message notification failed", {
-        userId: recipientId,
-        conversationId,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  return toMessageItem(message, viewer.id);
+  return deliverMessage({ viewer, target, body: normalizedBody });
 }
 
 export async function markConversationRead(

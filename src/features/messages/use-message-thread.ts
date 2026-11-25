@@ -2,10 +2,21 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiDelete, apiPost, apiRequest } from "@/lib/api-client";
-import type { ConversationThread, MessageItem } from "@/lib/message-types";
+import {
+  ApiClientError,
+  apiDelete,
+  apiPost,
+  apiPostForm,
+  apiRequest,
+} from "@/lib/api-client";
+import type {
+  ConversationThread,
+  MessageAttachment,
+  MessageItem,
+} from "@/lib/message-types";
 import {
   mergeMessages,
+  messageImageMime,
   newIncomingMessages,
 } from "./message-format";
 
@@ -14,7 +25,10 @@ const PENDING_PREFIX = "pending:";
 
 type PollPayload = ConversationThread | MessageItem[];
 
-function pendingMessage(body: string): MessageItem {
+function pendingMessage(
+  body: string,
+  attachment: MessageAttachment | null = null,
+): MessageItem {
   return {
     id: `${PENDING_PREFIX}${crypto.randomUUID()}`,
     body,
@@ -22,6 +36,7 @@ function pendingMessage(body: string): MessageItem {
     createdAt: new Date().toISOString(),
     readAt: null,
     deleted: false,
+    attachment,
   };
 }
 
@@ -43,10 +58,20 @@ export function useMessageThread({
   const itemsRef = useRef<MessageItem[]>(initialItems);
   const stickToBottom = useRef(true);
   const initialScrolled = useRef(false);
+  // Blob URLs created for optimistic image bubbles, revoked on unmount.
+  const objectUrls = useRef(new Set<string>());
 
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+
+  useEffect(() => {
+    const urls = objectUrls.current;
+    return () => {
+      for (const url of urls) URL.revokeObjectURL(url);
+      urls.clear();
+    };
+  }, []);
 
   // Server data (refresh, read receipts) is folded into local polled state.
   useEffect(() => {
@@ -124,7 +149,7 @@ export function useMessageThread({
       setItems((current) =>
         current.map((item) =>
           item.id === messageId
-            ? { ...item, deleted: true, body: "" }
+            ? { ...item, deleted: true, body: "", attachment: null }
             : item,
         ),
       );
@@ -132,6 +157,14 @@ export function useMessageThread({
     },
     [router],
   );
+
+  const releaseObjectUrl = useCallback((url: string) => {
+    // Let React commit the replacement bubble before the blob goes away.
+    window.setTimeout(() => {
+      URL.revokeObjectURL(url);
+      objectUrls.current.delete(url);
+    }, 0);
+  }, []);
 
   const sendMessage = useCallback(
     async (body: string) => {
@@ -160,12 +193,64 @@ export function useMessageThread({
     [conversationId, router],
   );
 
+  const sendImage = useCallback(
+    async (file: File, caption: string) => {
+      const mime = messageImageMime(file.type);
+      if (!mime) {
+        throw new ApiClientError(
+          "UNSUPPORTED_IMAGE",
+          "Choose a PNG, JPEG, or WebP image.",
+          400,
+        );
+      }
+
+      const url = URL.createObjectURL(file);
+      objectUrls.current.add(url);
+      const optimistic = pendingMessage(caption, {
+        id: `local:${crypto.randomUUID()}`,
+        mime,
+        width: 0,
+        height: 0,
+        url,
+      });
+      stickToBottom.current = true;
+      setItems((current) => [...current, optimistic]);
+
+      const form = new FormData();
+      form.append("file", file);
+      if (caption) form.append("caption", caption);
+
+      try {
+        const created = await apiPostForm<MessageItem>(
+          `/api/v1/messages/conversations/${conversationId}/images`,
+          form,
+        );
+        setItems((current) =>
+          mergeMessages(
+            current.filter((item) => item.id !== optimistic.id),
+            [created],
+          ),
+        );
+        router.refresh();
+      } catch (error) {
+        setItems((current) =>
+          current.filter((item) => item.id !== optimistic.id),
+        );
+        throw error;
+      } finally {
+        releaseObjectUrl(url);
+      }
+    },
+    [conversationId, releaseObjectUrl, router],
+  );
+
   return {
     items,
     announcement,
     listRef,
     handleScroll,
     sendMessage,
+    sendImage,
     removeMessage,
   };
 }

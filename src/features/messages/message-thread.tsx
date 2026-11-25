@@ -9,6 +9,8 @@ import type { MessageItem } from "@/lib/message-types";
 import { cn } from "@/lib/utils";
 import { MessageComposer } from "./message-composer";
 import { formatMessageTime } from "./message-format";
+import { MessageAttachmentImage } from "./message-attachment";
+import { MessageBody } from "./message-body";
 import { isPendingMessage, useMessageThread } from "./use-message-thread";
 
 function MessageBubble({
@@ -126,14 +128,22 @@ function MessageBubble({
       {label}
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2 text-sm sm:max-w-[75%]",
+          "max-w-[85%] rounded-2xl text-sm sm:max-w-[75%]",
           item.mine
             ? "rounded-br-sm bg-primary text-primary-foreground"
             : "rounded-bl-sm bg-muted text-foreground",
+          item.attachment ? "p-1" : "px-3.5 py-2",
           isPendingMessage(item) && "opacity-60",
         )}
       >
-        <p className="whitespace-pre-wrap break-words">{item.body}</p>
+        {item.attachment ? (
+          <MessageAttachmentImage attachment={item.attachment} />
+        ) : null}
+        {item.body ? (
+          <div className={cn(item.attachment && "px-2.5 py-1.5")}>
+            <MessageBody body={item.body} mine={item.mine} />
+          </div>
+        ) : null}
       </div>
       {time}
     </li>
@@ -153,13 +163,20 @@ export function MessageThread({
   participant: { username: string; displayName: string };
   blocked: boolean;
 }) {
-  const { items, announcement, listRef, handleScroll, sendMessage, removeMessage } =
-    useMessageThread({
-      conversationId,
-      initialItems,
-      page,
-      participantName: participant.displayName,
-    });
+  const {
+    items,
+    announcement,
+    listRef,
+    handleScroll,
+    sendMessage,
+    sendImage,
+    removeMessage,
+  } = useMessageThread({
+    conversationId,
+    initialItems,
+    page,
+    participantName: participant.displayName,
+  });
   const { toast } = useToast();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -243,7 +260,11 @@ export function MessageThread({
         </div>
       ) : null}
 
-      <MessageComposer blocked={blocked} onSend={sendMessage} />
+      <MessageComposer
+        blocked={blocked}
+        onSend={sendMessage}
+        onSendImage={sendImage}
+      />
 
       <ReportDialog
         open={reportId !== null}

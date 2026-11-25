@@ -1,4 +1,9 @@
-import type { ConversationSummary, MessageItem } from "@/lib/message-types";
+import { messageReferencePreview } from "@/lib/message-references";
+import type {
+  ConversationSummary,
+  MessageImageMime,
+  MessageItem,
+} from "@/lib/message-types";
 import { formatDate } from "@/lib/utils";
 
 const MINUTE = 60_000;
@@ -7,6 +12,49 @@ const DAY = 24 * HOUR;
 
 export const MESSAGE_MAX_LENGTH = 2000;
 export const PREVIEW_MAX_LENGTH = 120;
+
+/** Hard limits mirrored by the upload route. */
+export const MESSAGE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const MESSAGE_IMAGE_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+] as const;
+
+/** Normalised allow-listed image MIME, or null when the file is not an image we accept. */
+export function messageImageMime(type: string): MessageImageMime | null {
+  const normalized = type.trim().toLowerCase();
+  return MESSAGE_IMAGE_MIME_TYPES.find((mime) => mime === normalized) ?? null;
+}
+
+/**
+ * Client-side counterpart of the upload route's validation. Returns a
+ * user-facing error message, or null when the file is acceptable.
+ */
+export function validateMessageImage(file: {
+  type: string;
+  size: number;
+}): string | null {
+  if (!messageImageMime(file.type)) {
+    return "Choose a PNG, JPEG, or WebP image.";
+  }
+  if (!Number.isFinite(file.size) || file.size <= 0) {
+    return "That image looks empty. Choose another file.";
+  }
+  if (file.size > MESSAGE_IMAGE_MAX_BYTES) {
+    return "Images must be 5 MB or smaller.";
+  }
+  return null;
+}
+
+/** "820 KB" / "4.2 MB" for the composer preview. */
+export function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
 
 function toDate(value: Date | string): Date {
   return typeof value === "string" ? new Date(value) : value;
@@ -48,8 +96,10 @@ export function conversationPreview(
 ): string {
   if (!lastMessage) return "No messages yet";
   if (lastMessage.deleted) return "Message deleted";
-  const body = truncatePreview(lastMessage.body, max);
-  return lastMessage.mine ? `You: ${body}` : body;
+  // Reference tokens expand to "@Label" before truncating so the inbox stays readable.
+  const body = truncatePreview(messageReferencePreview(lastMessage.body), max);
+  const preview = body || (lastMessage.hasAttachment ? "📷 Photo" : "Message");
+  return lastMessage.mine ? `You: ${preview}` : preview;
 }
 
 /** "1 unread message" / "4 unread messages"; null when there is nothing unread. */

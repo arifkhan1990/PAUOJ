@@ -24,6 +24,7 @@ import {
   toLastMessagePreview,
   toMessageItem,
   truncatePreview,
+  type MessageRow,
 } from "./message-helpers";
 import {
   notBannedCounterpart,
@@ -45,7 +46,12 @@ import {
 const VIEWER = "6f8a1f34-3d4b-4f7e-9a51-2d3c4b5a6e70";
 const PEER = "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e";
 
-function messageRow(overrides: Partial<{ deletedAt: Date | null }> = {}) {
+function messageRow(
+  overrides: Partial<{
+    deletedAt: Date | null;
+    attachment: MessageRow["attachment"];
+  }> = {},
+) {
   return {
     id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
     body: "  hello there  ",
@@ -53,6 +59,7 @@ function messageRow(overrides: Partial<{ deletedAt: Date | null }> = {}) {
     createdAt: new Date("2026-01-02T03:04:05.000Z"),
     readAt: null,
     deletedAt: overrides.deletedAt ?? null,
+    attachment: overrides.attachment ?? null,
   };
 }
 
@@ -253,10 +260,12 @@ describe("deleted message masking", () => {
       mine: true,
       deleted: false,
       readAt: null,
+      attachment: null,
     });
     expect(toMessageItem(messageRow({ deletedAt: new Date() }), VIEWER)).toMatchObject({
       body: "",
       deleted: true,
+      attachment: null,
     });
     expect(
       toLastMessagePreview(messageRow({ deletedAt: new Date() }), PEER),
@@ -265,6 +274,7 @@ describe("deleted message masking", () => {
       mine: false,
       createdAt: "2026-01-02T03:04:05.000Z",
       deleted: true,
+      hasAttachment: false,
     });
   });
 

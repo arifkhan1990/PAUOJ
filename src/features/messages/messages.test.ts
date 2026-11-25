@@ -21,6 +21,7 @@ function message(overrides: Partial<MessageItem> & { id: string }): MessageItem 
     createdAt: "2026-11-25T11:00:00.000Z",
     readAt: null,
     deleted: false,
+    attachment: null,
     ...overrides,
   };
 }
@@ -65,6 +66,7 @@ describe("conversationPreview", () => {
     mine: false,
     createdAt: "2026-11-25T11:00:00.000Z",
     deleted: false,
+    hasAttachment: false,
   };
 
   it("handles an empty conversation", () => {
@@ -75,6 +77,9 @@ describe("conversationPreview", () => {
     expect(conversationPreview({ ...base, deleted: true })).toBe(
       "Message deleted",
     );
+    expect(
+      conversationPreview({ ...base, deleted: true, hasAttachment: true }),
+    ).toBe("Message deleted");
   });
 
   it("prefixes the viewer's own messages with You:", () => {
@@ -82,6 +87,47 @@ describe("conversationPreview", () => {
       "You: See you at the contest",
     );
     expect(conversationPreview(base)).toBe("See you at the contest");
+  });
+
+  it("labels image-only messages as a photo", () => {
+    expect(conversationPreview({ ...base, body: "", hasAttachment: true })).toBe(
+      "📷 Photo",
+    );
+    expect(
+      conversationPreview({ ...base, body: "", hasAttachment: true, mine: true }),
+    ).toBe("You: 📷 Photo");
+  });
+
+  it("keeps the caption for an image that has one", () => {
+    expect(
+      conversationPreview({ ...base, body: "Look at this", hasAttachment: true }),
+    ).toBe("Look at this");
+  });
+
+  it("expands reference tokens before truncating", () => {
+    expect(
+      conversationPreview({
+        ...base,
+        body: "Join @[PAU Cup 2026](/contests/pau-cup-2026) now",
+      }),
+    ).toBe("Join @PAU Cup 2026 now");
+  });
+
+  it("truncates the expanded reference preview, not the raw token", () => {
+    const preview = conversationPreview(
+      {
+        ...base,
+        body: "Join @[PAU Cup 2026](/contests/pau-cup-2026) now",
+      },
+      12,
+    );
+    expect(Array.from(preview)).toHaveLength(12);
+    expect(preview.endsWith("…")).toBe(true);
+    expect(preview).not.toContain("](/");
+  });
+
+  it("falls back to a neutral label for an empty non-photo body", () => {
+    expect(conversationPreview({ ...base, body: "   " })).toBe("Message");
   });
 });
 

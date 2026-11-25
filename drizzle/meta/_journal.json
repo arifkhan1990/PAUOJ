@@ -351,6 +351,13 @@
       "when": 1795616528810,
       "tag": "0049_public_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795618649417,
+      "tag": "0050_big_wallow",
+      "breakpoints": true
     }
   ]
 }

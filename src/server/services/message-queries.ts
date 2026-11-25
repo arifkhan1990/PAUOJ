@@ -15,13 +15,19 @@ import { getDb } from "@/server/db";
 import {
   conversationMutes,
   conversations,
+  messageAttachments,
   messages,
   userBlocks,
   userFollows,
   users,
 } from "@/server/db/schema";
 import type { PresenceVisibility } from "./presence";
-import type { MessageRow } from "./message-helpers";
+import {
+  attachmentFields,
+  messageFields,
+  toMessageRow,
+  type MessageRow,
+} from "./message-helpers";
 
 const userA = alias(users, "conversation_user_a");
 const userB = alias(users, "conversation_user_b");
@@ -308,21 +314,26 @@ export async function lastMessageRows(
   const rows = await getDb()
     .selectDistinctOn([messages.conversationId], {
       conversationId: messages.conversationId,
-      id: messages.id,
-      body: messages.body,
-      senderId: messages.senderId,
-      createdAt: messages.createdAt,
-      readAt: messages.readAt,
-      deletedAt: messages.deletedAt,
+      ...messageFields,
+      ...attachmentFields,
     })
     .from(messages)
+    .leftJoin(
+      messageAttachments,
+      eq(messageAttachments.messageId, messages.id),
+    )
     .where(inArray(messages.conversationId, conversationIds))
     .orderBy(
       messages.conversationId,
       desc(messages.createdAt),
       desc(messages.id),
     );
-  return new Map(rows.map((row) => [row.conversationId, row]));
+  return new Map(
+    rows.map((row) => [
+      row.conversationId,
+      { ...toMessageRow(row), conversationId: row.conversationId },
+    ]),
+  );
 }
 
 export async function conversationForViewer(
@@ -364,20 +375,18 @@ export async function threadMessageRows(
   limit: number,
   offset: number,
 ): Promise<MessageRow[]> {
-  return getDb()
-    .select({
-      id: messages.id,
-      body: messages.body,
-      senderId: messages.senderId,
-      createdAt: messages.createdAt,
-      readAt: messages.readAt,
-      deletedAt: messages.deletedAt,
-    })
+  const rows = await getDb()
+    .select({ ...messageFields, ...attachmentFields })
     .from(messages)
+    .leftJoin(
+      messageAttachments,
+      eq(messageAttachments.messageId, messages.id),
+    )
     .where(eq(messages.conversationId, conversationId))
     .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(limit)
     .offset(offset);
+  return rows.map(toMessageRow);
 }
 
 export async function hasUnreadFromSender(
@@ -404,16 +413,18 @@ export async function findMessageForSender(
 ): Promise<(MessageRow & { conversationId: string }) | null> {
   const [row] = await getDb()
     .select({
-      id: messages.id,
-      body: messages.body,
-      senderId: messages.senderId,
+      ...messageFields,
       conversationId: messages.conversationId,
-      createdAt: messages.createdAt,
-      readAt: messages.readAt,
-      deletedAt: messages.deletedAt,
+      ...attachmentFields,
     })
     .from(messages)
+    .leftJoin(
+      messageAttachments,
+      eq(messageAttachments.messageId, messages.id),
+    )
     .where(and(eq(messages.id, messageId), eq(messages.senderId, senderId)))
     .limit(1);
-  return row ?? null;
+  return row
+    ? { ...toMessageRow(row), conversationId: row.conversationId }
+    : null;
 }

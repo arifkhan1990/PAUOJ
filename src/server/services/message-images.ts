@@ -1,0 +1,118 @@
+import { and, eq, isNull, or } from "drizzle-orm";
+import { errors } from "@/server/api/errors";
+import { getDb } from "@/server/db";
+import {
+  conversations,
+  messageAttachments,
+  messages,
+} from "@/server/db/schema";
+import type { MessageItem } from "@/lib/message-types";
+import { detectAvatarImage, type DetectedAvatarImage } from "./avatar-image";
+import {
+  isUuid,
+  normalizeMessageCaption,
+} from "./message-helpers";
+import {
+  notBannedCounterpart,
+  notBlockedWithViewer,
+} from "./message-queries";
+import {
+  deliverMessage,
+  loadMessageSendTarget,
+  type MessageViewer,
+} from "./message-send";
+
+export const MESSAGE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+export const MESSAGE_IMAGE_MAX_DIMENSION = 4096;
+export const MESSAGE_IMAGE_RATE_LIMIT = 10;
+export const MESSAGE_IMAGE_RATE_WINDOW_SECONDS = 60;
+export const MESSAGE_ATTACHMENT_RATE_LIMIT = 240;
+export const MESSAGE_ATTACHMENT_RATE_WINDOW_SECONDS = 60;
+
+/**
+ * Validates an uploaded message image from its bytes, never from the client
+ * MIME type or filename. The same detector backs community avatars.
+ */
+export function validateMessageImageBytes(
+  bytes: Uint8Array,
+): DetectedAvatarImage {
+  if (bytes.byteLength === 0) {
+    throw errors.validation("That file is empty.");
+  }
+  if (bytes.byteLength > MESSAGE_IMAGE_MAX_BYTES) {
+    throw errors.validation("Images must be at most 5 MB.");
+  }
+  const detected = detectAvatarImage(bytes);
+  if (!detected) {
+    throw errors.validation("Use a PNG, JPG or WebP image.");
+  }
+  if (
+    detected.width > MESSAGE_IMAGE_MAX_DIMENSION ||
+    detected.height > MESSAGE_IMAGE_MAX_DIMENSION
+  ) {
+    throw errors.validation(
+      `Images must be at most ${MESSAGE_IMAGE_MAX_DIMENSION}×${MESSAGE_IMAGE_MAX_DIMENSION} pixels.`,
+    );
+  }
+  return detected;
+}
+
+/**
+ * Mirrors sendMessage: same uuid/participant/banned/block checks, one
+ * transaction, one unread burst notification. The caption may be empty.
+ */
+export async function sendMessageImage(
+  viewer: MessageViewer,
+  conversationId: string,
+  bytes: Uint8Array,
+  caption: string,
+): Promise<MessageItem> {
+  const image = validateMessageImageBytes(bytes);
+  const normalizedCaption = normalizeMessageCaption(caption);
+  const target = await loadMessageSendTarget(viewer.id, conversationId);
+  return deliverMessage({
+    viewer,
+    target,
+    body: normalizedCaption,
+    attachment: { ...image, bytes },
+  });
+}
+
+export type MessageAttachmentBytes = {
+  mime: DetectedAvatarImage["mime"];
+  bytes: Uint8Array;
+};
+
+/**
+ * Bytes stay hidden for malformed ids, deleted messages, and blocked pairs.
+ * The viewer must be a participant of the attachment's conversation.
+ */
+export async function getMessageAttachment(
+  viewerId: string,
+  attachmentId: string,
+): Promise<MessageAttachmentBytes | null> {
+  if (!isUuid(attachmentId)) return null;
+  const [row] = await getDb()
+    .select({
+      mime: messageAttachments.mime,
+      bytes: messageAttachments.bytes,
+    })
+    .from(messageAttachments)
+    .innerJoin(messages, eq(messages.id, messageAttachments.messageId))
+    .innerJoin(conversations, eq(conversations.id, messages.conversationId))
+    .where(
+      and(
+        eq(messageAttachments.id, attachmentId),
+        or(
+          eq(conversations.userAId, viewerId),
+          eq(conversations.userBId, viewerId),
+        ),
+        notBlockedWithViewer(viewerId),
+        notBannedCounterpart(viewerId),
+        isNull(messages.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!row) return null;
+  return { mime: row.mime as DetectedAvatarImage["mime"], bytes: row.bytes };
+}
