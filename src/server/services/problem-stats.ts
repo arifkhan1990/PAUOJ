@@ -164,6 +164,8 @@ export async function getProblemRankboard(
       .groupBy(
         users.username,
         users.displayName,
+        users.avatarPreset,
+        users.avatarImageUpdatedAt,
         firstAccepted.solvedAt,
         acceptedSubmission.language,
         acceptedSubmission.runtimeMs,
