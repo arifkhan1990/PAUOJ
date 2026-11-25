@@ -113,7 +113,17 @@ export const VERDICT_META: Record<Verdict, VerdictMeta> = {
   },
 };
 
+const EXECUTED_META: VerdictMeta = {
+  label: "Ran",
+  short: "Ran",
+  className: "border-border bg-muted text-muted-foreground",
+  dotClassName: "bg-muted-foreground",
+  chartColor: "#94a3b8",
+  description: "The program ran. Custom runs are not judged.",
+};
+
 export function verdictMeta(status: string): VerdictMeta {
+  if (status === "EXECUTED") return EXECUTED_META;
   return VERDICT_META[status as Verdict] ?? VERDICT_META.SYSTEM_ERROR;
 }
 

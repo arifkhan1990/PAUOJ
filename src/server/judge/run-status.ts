@@ -1,4 +1,4 @@
-import type { RunStatus } from "@/lib/types";
+import type { RunResult, RunStatus } from "@/lib/types";
 import type { Verdict } from "@/lib/verdicts";
 
 /**
@@ -8,4 +8,18 @@ import type { Verdict } from "@/lib/verdicts";
  */
 export function runStatusForOutcome(status: Verdict): RunStatus {
   return status === "ACCEPTED" ? "EXECUTED" : status;
+}
+
+type StoredRunResult = Omit<RunResult, "status"> & { status: string };
+
+/**
+ * Run results live in Redis for 15 minutes. Results written before the
+ * EXECUTED rollout can still say ACCEPTED, so normalize them on read instead
+ * of showing a false AC until the cache expires.
+ */
+export function normalizeStoredRunResult(stored: StoredRunResult): RunResult {
+  return {
+    ...stored,
+    status: stored.status === "ACCEPTED" ? "EXECUTED" : (stored.status as RunStatus),
+  };
 }

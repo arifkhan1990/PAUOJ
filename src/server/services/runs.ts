@@ -3,6 +3,7 @@ import { errors } from "@/server/api/errors";
 import type { RunResult } from "@/lib/types";
 import type { JudgeLanguage } from "@/server/judge/types";
 import { enqueueRun } from "@/server/judge/queue";
+import { normalizeStoredRunResult } from "@/server/judge/run-status";
 import { getRedis } from "@/server/redis";
 
 const RUN_TTL_SECONDS = 900;
@@ -60,7 +61,7 @@ export async function getRun(
   const raw = await getRedis().get(key(userId, runId));
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as RunResult;
+    return normalizeStoredRunResult(JSON.parse(raw) as RunResult);
   } catch {
     return null;
   }
