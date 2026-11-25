@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 export function ProfileShareButton({
   username,
   displayName,
+  iconOnly = false,
 }: {
   username: string;
   displayName?: string;
+  /** Icon-only hero action; the accessible name still describes it. */
+  iconOnly?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const { toast } = useToast();
@@ -58,14 +61,19 @@ export function ProfileShareButton({
       disabled={pending}
       aria-busy={pending}
       aria-label={`Share @${username}'s profile`}
-      className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+      title={iconOnly ? "Share profile" : undefined}
+      className={
+        iconOnly
+          ? "h-11 w-11 rounded-lg px-0 sm:h-9 sm:w-9"
+          : "h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+      }
     >
       {pending ? (
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
       ) : (
         <Share2 className="size-4" aria-hidden="true" />
       )}
-      Share
+      {iconOnly ? null : "Share"}
     </Button>
   );
 }

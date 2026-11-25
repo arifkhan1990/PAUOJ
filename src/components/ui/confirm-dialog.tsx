@@ -15,6 +15,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
+  pendingLabel = "Deleting…",
   pending = false,
   destructive = true,
   onConfirm,
@@ -25,6 +26,7 @@ export function ConfirmDialog({
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  pendingLabel?: string;
   pending?: boolean;
   destructive?: boolean;
   onConfirm: () => void;
@@ -97,7 +99,7 @@ export function ConfirmDialog({
           {pending ? (
             <Loader2 className="animate-spin" aria-hidden="true" />
           ) : null}
-          {pending ? "Deleting…" : confirmLabel}
+          {pending ? pendingLabel : confirmLabel}
         </Button>
       </div>
     </dialog>

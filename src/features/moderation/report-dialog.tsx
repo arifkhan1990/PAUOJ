@@ -219,6 +219,7 @@ export function ReportButton({
         onClick={() => setOpen(true)}
         aria-label={ariaLabel ?? label}
         aria-haspopup="dialog"
+        title={iconOnly ? (ariaLabel ?? label) : undefined}
         className={cn(
           "inline-flex min-h-11 items-center justify-center gap-1.5 rounded-md text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
           iconOnly ? "min-w-11 px-0" : "px-2.5",

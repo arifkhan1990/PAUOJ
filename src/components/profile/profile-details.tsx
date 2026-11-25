@@ -24,7 +24,7 @@ export function SkillChips({ skills }: { skills: readonly string[] }) {
     <ul aria-label="Skills" className="flex flex-wrap gap-1.5">
       {items.map((skill, index) => (
         <li key={`${skill}-${index}`} className="max-w-full">
-          <span className="inline-block max-w-full break-words rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+          <span className="inline-block max-w-full break-words rounded-md border border-border/70 bg-muted/30 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
             {skill}
           </span>
         </li>
@@ -53,26 +53,28 @@ export function ProfileDetails({
   const StatusIcon = status === "STUDENT" ? GraduationCap : Briefcase;
 
   return (
-    <div className="mt-3 space-y-2">
-      {status ? (
-        <p>
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
-            <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
-            <span className="break-words">
-              <span className="sr-only">Current status: </span>
-              {USER_STATUS_LABELS[status]}
+    <div className="mt-3 space-y-2.5">
+      {status || workLine ? (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          {status ? (
+            <span className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-0.5 text-[11px] font-medium text-secondary-foreground">
+              <StatusIcon className="size-3.5 shrink-0" aria-hidden="true" />
+              <span className="break-words">
+                <span className="sr-only">Current status: </span>
+                {USER_STATUS_LABELS[status]}
+              </span>
             </span>
-          </span>
-        </p>
-      ) : null}
-      {workLine ? (
-        <p className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
-          <Building2
-            className="mt-0.5 size-3.5 shrink-0"
-            aria-hidden="true"
-          />
-          <span className="min-w-0 break-words">{workLine}</span>
-        </p>
+          ) : null}
+          {workLine ? (
+            <span className="flex min-w-0 items-start gap-1.5 text-xs text-muted-foreground">
+              <Building2
+                className="mt-0.5 size-3.5 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="min-w-0 break-words">{workLine}</span>
+            </span>
+          ) : null}
+        </div>
       ) : null}
       <SkillChips skills={items} />
     </div>

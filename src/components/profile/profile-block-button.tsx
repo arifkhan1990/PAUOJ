@@ -1,42 +1,36 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Ban, Loader2, ShieldCheck } from "lucide-react";
 import { useToast } from "@/components/providers/toast-provider";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ApiClientError, apiDelete, apiPost } from "@/lib/api-client";
-import { cn } from "@/lib/utils";
 
 type BlockResult = { blocked: boolean };
 
 /**
- * Block/unblock lives in the hero. Blocking needs an inline confirmation that
- * replaces the trigger, so the trigger and its confirm are never on screen at
- * the same time.
+ * Blocking is a destructive account action, so the hero trigger opens a
+ * focused confirmation dialog instead of growing an inline form.
  */
 export function ProfileBlockButton({
   username,
   blockedByViewer,
+  iconOnly = false,
 }: {
   username: string;
   blockedByViewer: boolean;
+  /** Icon-only hero action; the accessible name still describes it. */
+  iconOnly?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
-  const [openedOnce, setOpenedOnce] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const confirmRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (confirming) {
-      confirmRef.current?.focus();
-    } else if (openedOnce) {
-      triggerRef.current?.focus();
-    }
-  }, [confirming, openedOnce]);
+  const compactClass = iconOnly
+    ? "h-11 min-w-11 rounded-lg px-0 text-muted-foreground sm:h-9 sm:min-w-9"
+    : "h-11 gap-1.5 rounded-lg px-3.5 text-sm text-muted-foreground";
 
   const path = `/api/v1/users/${encodeURIComponent(username)}/block`;
 
@@ -74,91 +68,54 @@ export function ProfileBlockButton({
     }
   };
 
-  const cancel = () => {
-    if (pending) return;
-    setConfirming(false);
-  };
-
   if (blockedByViewer) {
     return (
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         onClick={() => void submit()}
         disabled={pending}
         aria-busy={pending}
         aria-label={`Unblock @${username}`}
-        className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+        title={iconOnly ? "Unblock" : undefined}
+        className={compactClass}
       >
         {pending ? (
           <Loader2 className="size-4 animate-spin" aria-hidden="true" />
         ) : (
           <ShieldCheck className="size-4" aria-hidden="true" />
         )}
-        Unblock
+        {iconOnly ? null : "Unblock"}
       </Button>
     );
   }
 
-  if (confirming) {
-    return (
-      <div
-        role="group"
-        aria-label={`Confirm blocking @${username}`}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            cancel();
-          }
-        }}
-        className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/40 px-2 py-1"
-      >
-        <span className="px-1 text-xs text-muted-foreground">
-          Block @{username}?
-        </span>
-        <button
-          ref={confirmRef}
-          type="button"
-          onClick={() => void submit()}
-          disabled={pending}
-          aria-busy={pending}
-          aria-label={`Confirm block of @${username}`}
-          className={cn(
-            buttonVariants({ variant: "destructive" }),
-            "h-11 px-3 text-xs",
-          )}
-        >
-          {pending ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : null}
-          Block
-        </button>
-        <button
-          type="button"
-          onClick={cancel}
-          disabled={pending}
-          className={cn(buttonVariants({ variant: "ghost" }), "h-11 px-3 text-xs")}
-        >
-          Cancel
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <Button
-      ref={triggerRef}
-      type="button"
-      variant="ghost"
-      onClick={() => {
-        setOpenedOnce(true);
-        setConfirming(true);
-      }}
-      aria-label={`Block @${username}`}
-      className="h-11 gap-1.5 rounded-lg px-3.5 text-sm text-muted-foreground"
-    >
-      <Ban className="size-4" aria-hidden="true" />
-      Block
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => setConfirming(true)}
+        aria-label={`Block @${username}`}
+        aria-haspopup="dialog"
+        title={iconOnly ? "Block" : undefined}
+        className={compactClass}
+      >
+        <Ban className="size-4" aria-hidden="true" />
+        {iconOnly ? null : "Block"}
+      </Button>
+      <ConfirmDialog
+        open={confirming}
+        title={`Block @${username}?`}
+        description="They will no longer be able to follow or message you, and any follow connection between you will be removed."
+        confirmLabel="Block"
+        pendingLabel="Blocking…"
+        pending={pending}
+        onCancel={() => {
+          if (!pending) setConfirming(false);
+        }}
+        onConfirm={() => void submit()}
+      />
+    </>
   );
 }

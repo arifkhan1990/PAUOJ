@@ -55,7 +55,7 @@ export function ProfileSocialLinks({
 
   return (
     <ul
-      className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1"
+      className="mt-2.5 flex flex-wrap items-center gap-x-1 gap-y-1"
       aria-label="Profile links"
     >
       {links.map((link) => {
@@ -67,7 +67,7 @@ export function ProfileSocialLinks({
               target="_blank"
               rel="me ugc nofollow noopener noreferrer"
               aria-label={link.accessibleName}
-              className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-md px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-8 sm:text-xs"
             >
               <Icon className="size-3.5 shrink-0" aria-hidden="true" />
               <span className="truncate">{link.text}</span>

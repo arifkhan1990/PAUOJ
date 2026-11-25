@@ -14,14 +14,20 @@ type PendingAction = "follow" | "accept" | "decline";
 export function FollowButton({
   username,
   initialState,
+  compact = false,
 }: {
   username: string;
   initialState: FollowState;
+  /** Denser hero treatment; mobile keeps a 44px touch target. */
+  compact?: boolean;
 }) {
   const [state, setState] = useState(initialState);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const router = useRouter();
   const { toast } = useToast();
+  const buttonClass = compact
+    ? "h-11 min-w-0 gap-1.5 rounded-lg px-3 text-xs sm:h-9"
+    : "h-11 min-w-28 gap-1.5 rounded-lg px-4 text-sm";
 
   useEffect(() => {
     setState(initialState);
@@ -106,7 +112,7 @@ export function FollowButton({
           disabled={pending !== null}
           aria-busy={pending === "accept"}
           aria-label={followActionAriaLabel("incoming", username)}
-          className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+          className={buttonClass}
         >
           {pending === "accept" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -122,7 +128,7 @@ export function FollowButton({
           disabled={pending !== null}
           aria-busy={pending === "decline"}
           aria-label={`Decline follow request from @${username}`}
-          className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+          className={buttonClass}
         >
           {pending === "decline" ? (
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -147,7 +153,7 @@ export function FollowButton({
       aria-pressed={mode === "following"}
       aria-label={followActionAriaLabel(mode, username)}
       variant={mode === "none" ? "default" : "outline"}
-      className="h-11 min-w-28 gap-1.5 rounded-lg px-4 text-sm"
+      className={buttonClass}
     >
       {pending !== null ? (
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />

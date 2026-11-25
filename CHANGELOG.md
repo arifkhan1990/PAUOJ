@@ -105,6 +105,13 @@ All notable changes to PAU OJ are documented here. The format follows
   rejected with 413.
 
 ### Changed
+- Profile hero refresh: the identity card now has an ambient glow, a larger
+  avatar, compact metadata chips and a tighter two-line work/skills block. The
+  follow, message, share, block and report actions are 36px on desktop (44px on
+  mobile), share/block/report collapse to an icon toolbar, and blocking uses a
+  focused confirmation dialog instead of an inline form. Stat tiles moved to a
+  light four-tile strip with icon accents; light and dark themes both use the
+  same token palette.
 - Contest ratings finalize one hour after a contest ends instead of on the first
   contest page view. The hour is a review/rejudge window; the Redis-locked worker
   sweep waits for pending verdicts, finalizes in `(end_at, id)` order, and defers

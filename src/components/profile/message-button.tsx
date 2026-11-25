@@ -7,7 +7,13 @@ import { useToast } from "@/components/providers/toast-provider";
 import { Button } from "@/components/ui/button";
 import { ApiClientError, apiPost } from "@/lib/api-client";
 
-export function MessageButton({ username }: { username: string }) {
+export function MessageButton({
+  username,
+  compact = false,
+}: {
+  username: string;
+  compact?: boolean;
+}) {
   const [pending, setPending] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -20,7 +26,7 @@ export function MessageButton({ username }: { username: string }) {
         "/api/v1/messages/conversations",
         { username },
       );
-      router.push(`/messages/${conversation.id}`);
+      router.push(`/dashboard/messages/${conversation.id}`);
     } catch (error) {
       toast({
         title: "Could not start a conversation",
@@ -43,7 +49,11 @@ export function MessageButton({ username }: { username: string }) {
       disabled={pending}
       aria-busy={pending}
       aria-label={`Message @${username}`}
-      className="h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+      className={
+        compact
+          ? "h-11 gap-1.5 rounded-lg px-3 text-xs sm:h-9"
+          : "h-11 gap-1.5 rounded-lg px-3.5 text-sm"
+      }
     >
       {pending ? (
         <Loader2 className="size-4 animate-spin" aria-hidden="true" />
