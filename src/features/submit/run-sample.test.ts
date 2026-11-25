@@ -3,6 +3,7 @@ import {
   findMatchingSample,
   normalizeRunText,
   outputsMatch,
+  shouldShowNoOutputNotice,
 } from "./run-sample";
 
 describe("normalizeRunText", () => {
@@ -60,5 +61,30 @@ describe("findMatchingSample", () => {
   it("can match an empty sample input", () => {
     const match = findMatchingSample([{ input: "", output: "0" }], "\n\n");
     expect(match?.index).toBe(0);
+  });
+});
+
+describe("shouldShowNoOutputNotice", () => {
+  const base = { finished: true, stdout: "", stderr: "" };
+
+  it("shows only for a clean empty custom run", () => {
+    expect(shouldShowNoOutputNotice({ ...base, status: "EXECUTED" })).toBe(true);
+    expect(shouldShowNoOutputNotice({ ...base, status: "ACCEPTED" })).toBe(true);
+    expect(shouldShowNoOutputNotice({ ...base, status: "EXECUTED", stdout: "hi" })).toBe(false);
+    expect(shouldShowNoOutputNotice({ ...base, status: "EXECUTED", stderr: "warn" })).toBe(false);
+    expect(shouldShowNoOutputNotice({ ...base, status: "EXECUTED", finished: false })).toBe(false);
+  });
+
+  it("hides the note for failed runs even with empty output", () => {
+    for (const status of [
+      "COMPILATION_ERROR",
+      "RUNTIME_ERROR",
+      "TIME_LIMIT_EXCEEDED",
+      "MEMORY_LIMIT_EXCEEDED",
+      "OUTPUT_LIMIT_EXCEEDED",
+      "SYSTEM_ERROR",
+    ]) {
+      expect(shouldShowNoOutputNotice({ ...base, status })).toBe(false);
+    }
   });
 });

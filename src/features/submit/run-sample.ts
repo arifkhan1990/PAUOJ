@@ -27,3 +27,25 @@ export function findMatchingSample(
 export function outputsMatch(stdout: string, expected: string): boolean {
   return normalizeRunText(stdout) === normalizeRunText(expected);
 }
+
+export type RunNoticeInput = {
+  status: string;
+  finished: boolean;
+  stdout: string;
+  stderr: string;
+};
+
+/**
+ * The “no output” note belongs only to a clean custom run. A failed run
+ * (compile error, runtime error, etc.) already has a verdict and must not claim
+ * it finished with no output.
+ */
+export function shouldShowNoOutputNotice(run: RunNoticeInput): boolean {
+  const executed = run.status === "EXECUTED" || run.status === "ACCEPTED";
+  return (
+    run.finished &&
+    executed &&
+    run.stdout.length === 0 &&
+    run.stderr.length === 0
+  );
+}

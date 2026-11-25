@@ -14,6 +14,7 @@ import { formatMemory, formatRuntime } from "@/lib/utils";
 import {
   findMatchingSample,
   outputsMatch,
+  shouldShowNoOutputNotice,
   type RunSample,
 } from "./run-sample";
 
@@ -200,7 +201,7 @@ export function CustomRunCard({
                 <RunOutcomeChip matched={Boolean(matched)} passed={passed} />
               ) : null
             ) : (
-              <VerdictBadge status={result.status} short />
+              <VerdictBadge status={result.status} />
             )}
             <span className="font-mono text-muted-foreground">
               {formatRuntime(result.runtimeMs)}
@@ -263,7 +264,7 @@ export function CustomRunCard({
               </pre>
             </div>
           ) : null}
-          {result.finished && !result.stdout && !result.stderr ? (
+          {shouldShowNoOutputNotice(result) ? (
             <p className="text-xs text-muted-foreground">
               Program finished with no output.
             </p>
