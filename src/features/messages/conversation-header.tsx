@@ -7,7 +7,7 @@ import { ReportButton } from "@/features/moderation/report-dialog";
 import type { ConversationThread } from "@/lib/message-types";
 import { cn } from "@/lib/utils";
 import { ConversationMuteButton } from "./conversation-mute-button";
-import { PresenceDot, PresenceLabel } from "./presence-dot";
+import { PresenceLabel } from "./presence-dot";
 
 /**
  * Pinned thread header. The name/avatar is the single trigger for the info
@@ -53,18 +53,13 @@ export function ConversationHeader({
           infoOpen ? "bg-muted" : "hover:bg-muted/60",
         )}
       >
-        <span className="relative shrink-0">
-          <UserAvatar
-            name={participant.displayName}
-            username={participant.username}
-            size="md"
-            avatarPreset={participant.avatarPreset}
-            avatarImageAt={participant.avatarImageUpdatedAt}
-          />
-          <span className="absolute -bottom-0.5 -right-0.5 grid place-items-center">
-            <PresenceDot presence={participant.presence} className="ring-card" />
-          </span>
-        </span>
+        <UserAvatar
+          name={participant.displayName}
+          username={participant.username}
+          size="md"
+          avatarPreset={participant.avatarPreset}
+          avatarImageAt={participant.avatarImageUpdatedAt}
+        />
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-semibold">
             {participant.displayName}

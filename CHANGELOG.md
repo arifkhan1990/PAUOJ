@@ -10,6 +10,8 @@ All notable changes to PAU OJ are documented here. The format follows
   each detail as a label/value row, binds the profile link to
   “Name (@username)”, and removes the duplicate Actions block (mute/report stay
   in the thread header).
+- The thread header shows a single presence indicator; the duplicate avatar
+  overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
 - Message document sharing and live conversation info: PDF/TXT/CSV/ZIP/DOCX/
