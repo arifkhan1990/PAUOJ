@@ -42,6 +42,15 @@ async function seedAdmin(): Promise<string> {
     return existing.id;
   }
 
+  if (
+    env.NODE_ENV === "production" &&
+    env.SEED_ADMIN_PASSWORD === "ChangeMe123!"
+  ) {
+    throw new Error(
+      "Refusing to create a production administrator with the default password. Set SEED_ADMIN_PASSWORD to a long random value in the deploy env before seeding.",
+    );
+  }
+
   const passwordHash = await hashPassword(env.SEED_ADMIN_PASSWORD);
   const [created] = await db
     .insert(users)

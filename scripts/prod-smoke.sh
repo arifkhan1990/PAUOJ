@@ -65,5 +65,55 @@ note "$(echo "$announcement_cache" | grep -q 'max-age=60' && echo 1 || echo 0)" 
 code="$(status /admin/lesson-reports)"
 note "$([ "$code" = 307 ] || [ "$code" = 302 ] && echo 1 || echo 0)" "admin queue protected" "$code"
 
+# Optional signed-in smoke. Enable with a disposable non-admin account:
+#   SMOKE_USER=user@example.com SMOKE_PASSWORD=... bash scripts/prod-smoke.sh
+if [ -n "${SMOKE_USER:-}" ] && [ -n "${SMOKE_PASSWORD:-}" ]; then
+  COOKIE_JAR="$TMP_DIR/smoke-cookies"
+  login_payload=$(SMOKE_USER="$SMOKE_USER" SMOKE_PASSWORD="$SMOKE_PASSWORD" python3 -c \
+    'import json, os; print(json.dumps({"identifier": os.environ["SMOKE_USER"], "password": os.environ["SMOKE_PASSWORD"]}))')
+
+  login_code=$(printf '%s' "$login_payload" | curl -sS -m 15 -o "$TMP_DIR/login-body" -w '%{http_code}' \
+    -c "$COOKIE_JAR" -X POST \
+    -H "Origin: $BASE_URL" \
+    -H 'Content-Type: application/json' \
+    --data-binary @- \
+    "$BASE_URL/api/v1/auth/login" || echo 000)
+  note "$([ "$login_code" = 200 ] && echo 1 || echo 0)" "signed-in login 200" "$login_code"
+
+  authed_status() {
+    curl -sS -m 15 -b "$COOKIE_JAR" -o "$TMP_DIR/smoke-body" -w '%{http_code}' "$BASE_URL$1" || echo 000
+  }
+
+  code=$(authed_status /)
+  note "$([ "$code" = 200 ] && grep -q 'aria-label="Open notifications' "$TMP_DIR/smoke-body" && echo 1 || echo 0)" "signed-in header bell rendered" "$code"
+
+  code=$(authed_status /dashboard)
+  note "$([ "$code" = 200 ] && echo 1 || echo 0)" "signed-in dashboard 200" "$code"
+
+  code=$(authed_status '/api/v1/notifications?filter=unread')
+  note "$([ "$code" = 200 ] && grep -Eq '"meta"[[:space:]]*:[[:space:]]*\{[^}]*"unread"[[:space:]]*:[[:space:]]*[0-9]+' "$TMP_DIR/smoke-body" && echo 1 || echo 0)" "signed-in notifications unread numeric" "$code"
+
+  code=$(authed_status /api/v1/social/counts)
+  note "$([ "$code" = 200 ] && grep -Eq '"notifications"[[:space:]]*:[[:space:]]*[0-9]+' "$TMP_DIR/smoke-body" && echo 1 || echo 0)" "signed-in social counts numeric" "$code"
+
+  logout_code=$(curl -sS -m 15 -o "$TMP_DIR/logout-body" -w '%{http_code}' \
+    -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X POST \
+    -H "Origin: $BASE_URL" \
+    "$BASE_URL/api/v1/auth/logout" || echo 000)
+  logout_ok=0
+  case "$logout_code" in 200 | 204) logout_ok=1 ;; esac
+  note "$logout_ok" "signed-in logout 200/204" "$logout_code"
+
+  after_dashboard=$(authed_status /dashboard)
+  after_notifications=$(curl -sS -m 15 -b "$COOKIE_JAR" -o /dev/null -w '%{http_code}' \
+    "$BASE_URL/api/v1/notifications" || echo 000)
+  revoked=0
+  case "$after_dashboard" in 3??) revoked=1 ;; esac
+  if [ "$after_notifications" = 401 ]; then revoked=1; fi
+  note "$revoked" "signed-in session revoked" "dashboard=$after_dashboard notifications=$after_notifications"
+else
+  echo "SKIP signed-in smoke (SMOKE_USER/SMOKE_PASSWORD not set)"
+fi
+
 echo "SMOKE RESULT $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -119,6 +119,8 @@ jobs:
         if: steps.guard.outputs.skip != 'true' && steps.token.outputs.configured == 'true'
         env:
           SHORT: ${{ steps.target.outputs.short }}
+          SMOKE_USER: ${{ secrets.SMOKE_USER }}
+          SMOKE_PASSWORD: ${{ secrets.SMOKE_PASSWORD }}
         run: |
           set -euo pipefail
           if [ -z "${SHORT:-}" ]; then

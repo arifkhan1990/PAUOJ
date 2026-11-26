@@ -67,6 +67,17 @@ All notable changes to PAU OJ are documented here. The format follows
   and production smoke covers the guest bell, the announcements endpoint and
   both queue fields, so a stuck fan-out is visible instead of silently hiding
   public notices.
+- Offline admin recovery: `pnpm admin:reset -- --confirm` (also built as
+  `dist/reset-admin.js` for the production image) creates or resets the seeded
+  admin from `SEED_ADMIN_*`, verifies the email, clears a ban, revokes sessions
+  and pending auth tokens, and writes an `admin.recovery` audit row. It refuses
+  the default password,
+  anything under 12 characters, identifiers that belong to two accounts, and
+  silently promoting a non-admin match unless `--promote` is explicit. The
+  production seed now refuses the default admin password outright.
+  The production smoke also accepts optional non-admin `SMOKE_USER`/
+  `SMOKE_PASSWORD` to verify the signed-in bell, dashboard, notification API
+  and logout; it skips cleanly when unset.
 - Custom-test expected output: for a practice problem with a stored reference
   solution, a non-sample custom run now also runs the reference on the same
   stdin and shows **Your output** beside **Expected output (reference)**.

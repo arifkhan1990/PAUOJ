@@ -209,7 +209,11 @@ Automated operations on the same host:
   `ALERT_WEBHOOK` in the cron line to POST failures to a chat webhook.
 - After every deploy run `bash scripts/prod-smoke.sh` (health/version/
   migrations/worker/`broadcastQueue`, key pages, guest bell + announcements API,
-  markers and the admin gate).
+  markers and the admin gate). Set `SMOKE_USER`/`SMOKE_PASSWORD` to also verify
+  the signed-in bell, dashboard, notification API/counts and logout. Use a
+  normal non-admin account created through `/register`; never use an admin
+  account. The block is skipped when either variable is empty, and the deploy
+  workflow passes the optional `SMOKE_USER`/`SMOKE_PASSWORD` repository secrets.
 - After deploying rating changes, run `pnpm ratings:audit` (read-only) and
   confirm `critical: 0` and `warnings: 0`; `--strict` also fails on warnings.
   The worker must be running (or page views/`pnpm ratings:finalize` can drain
@@ -330,6 +334,53 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
 `announcements:203.0.113.9` means the edge forwarded the client-supplied hop
 (needs an overwrite rule); a real client/edge address means it overwrote
 correctly. `announcements:global` is the instance-wide backstop.
+
+## 3d. Lost admin access (offline recovery)
+
+There is no web-accessible password reset for an admin who cannot sign in. Use
+the offline recovery CLI on the server; it creates the account if it is missing
+or resets the existing one.
+
+1. Put a new long random value (at least 12 characters, not the default
+   `ChangeMe123!`) in `SEED_ADMIN_PASSWORD` in the deploy env file. Keep the file
+   mode `0600`; do not paste the password into shell history.
+2. With the database running, run the recovery command for your topology.
+
+**srv-managed host:**
+
+```bash
+cd /home/naba/server/projects/pauoj
+docker compose -p srv-pauoj -f compose.yml --env-file .env \
+  --profile seed run --rm --no-deps seed \
+  node dist/reset-admin.js --confirm
+```
+
+**Standalone Compose:**
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  --profile seed run --rm --no-deps seed \
+  node dist/reset-admin.js --confirm
+```
+
+The command looks up `SEED_ADMIN_USERNAME` and `SEED_ADMIN_EMAIL`, creates the
+account when neither exists, or updates the single matching account. It sets
+`role = ADMIN`, verifies the email, clears a ban, replaces the password, revokes
+every session and pending auth token for that account, and writes an
+`admin.recovery` audit row. It prints only the username, email and revocation
+counts — never the password.
+It refuses to run without `--confirm`, with the default or a sub-12-character
+password, when the username and email already belong to two different accounts,
+or when the matched account is not currently an admin. For an intentionally
+demoted admin, add `--promote` to the command; a mistyped identifier then cannot
+silently turn an ordinary user into an administrator. Set all three
+`SEED_ADMIN_*` values explicitly in the deploy env rather than relying on the
+fallback defaults.
+
+After it succeeds, sign in with `SEED_ADMIN_USERNAME` (or the email) and the new
+password. Rotate the password from Settings if the value in `.env` was only a
+temporary recovery secret. The CLI is **never** run automatically by a deploy;
+`dist/reset-admin.js` is only built into the app image for this manual step.
 
 ## 4. Backups
 

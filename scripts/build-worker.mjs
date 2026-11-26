@@ -33,3 +33,9 @@ await build({
   entryPoints: ["src/server/db/seed.ts"],
   outfile: "dist/seed.js",
 });
+
+await build({
+  ...shared,
+  entryPoints: ["src/server/db/reset-admin.ts"],
+  outfile: "dist/reset-admin.js",
+});

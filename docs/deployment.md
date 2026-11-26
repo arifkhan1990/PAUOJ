@@ -142,6 +142,10 @@ delivery.
   read `0` if the tables are missing, and `deploy/healthcheck.sh` treats an
   oldest pending age above 10 minutes as a failure so cron/webhooks catch a
   stuck row.
+- `scripts/prod-smoke.sh` optionally verifies the signed-in surface when
+  `SMOKE_USER` and `SMOKE_PASSWORD` are set. Use a normal non-admin account
+  created through `/register`; the check logs in, verifies the bell, dashboard
+  and notification APIs, logs out, and is skipped when the variables are unset.
 - Container logs are JSON with 10 MB × 3 rotation.
 - Watch worker failures, queue depth (`pauoj-judge`), disk space for Docker
   images and judge workdirs, and PostgreSQL connection counts.
@@ -190,6 +194,7 @@ Keep migrations backward compatible so a rollback of the app image is safe.
 | Submissions stay queued | Worker logs, Redis connection, queue name `pauoj-judge` |
 | `EADDRINUSE` on 5432/6379 | Change `POSTGRES_PORT`/`REDIS_PORT` in `.env` |
 | Login succeeds then immediately logs out | `APP_URL` protocol/origin and proxy headers |
+| No admin login / password lost | Set a new long `SEED_ADMIN_PASSWORD` in the deploy env, then run `node dist/reset-admin.js --confirm` through the seed profile; it resets/creates the seeded admin, revokes sessions and audits. See `deploy/README.md` §3d |
 | Health 503 | `docker compose logs db redis app` |
 | Announcements missing after publish | `/health` `broadcastQueue.pending` > 0: worker not draining broadcasts; check `worker` logs, then the `broadcasts` rows (`completed_at is null`) |
 | Rate limits block a whole shared IP | Edge is overwriting `X-Forwarded-For` with the proxy IP (or Cloudflare's first hop is client-controlled); fix the proxy/Cloudflare rule, see `deploy/README.md` section 3c |
