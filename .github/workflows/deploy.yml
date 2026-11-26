@@ -89,7 +89,7 @@ jobs:
             -o /tmp/deploy-response.json -w "%{http_code}" -X POST \
             -H "X-Deploy-Token: $DEPLOY_TOKEN" \
             -H "Content-Type: application/json" \
-            -d "{\"source\":\"github-actions\",\"ref\":\"$REF\"}" \
+            -d "{\"source\":\"github-actions\",\"ref\":\"$REF\",\"branch\":\"main\"}" \
             "$DEPLOY_URL") || code=000
           cat /tmp/deploy-response.json || true
           echo
