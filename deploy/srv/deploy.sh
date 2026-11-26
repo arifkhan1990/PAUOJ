@@ -180,6 +180,21 @@ case "${1:-}" in
       # the deploy instead of reporting a false success.
       caddy_limit="$(docker inspect -f '{{.HostConfig.Memory}}' srv-caddy 2>/dev/null || echo 0)"
       case "$caddy_limit" in ''|*[!0-9]*) caddy_limit=0 ;; esac
+      # Publish before the pass/fail check so `/health` also shows a downgraded
+      # edge (the cron writes the same key, but deploy should not wait for it).
+      if [ "$caddy_limit" -gt 0 ]; then
+        edge_redis_id="$(docker ps -q \
+          --filter label=com.docker.compose.service=redis \
+          --filter name=pauoj 2>/dev/null | head -n1 || true)"
+        if [ -z "$edge_redis_id" ]; then
+          edge_redis_id="$(docker ps -q --filter name=pauoj-redis 2>/dev/null | head -n1 || true)"
+        fi
+        if [ -n "$edge_redis_id" ]; then
+          docker exec "$edge_redis_id" redis-cli SET \
+            pauoj:edge:caddy:memory "$caddy_limit" EX 900 >/dev/null 2>&1 ||
+            echo "! could not publish pauoj:edge:caddy:memory via $edge_redis_id" >&2
+        fi
+      fi
       if [ "$caddy_limit" -gt 0 ] && [ "$caddy_limit" -lt 2097152000 ]; then
         echo "ERROR: srv-caddy memory limit ${caddy_limit}B is below 2000 MiB (2097152000B) required for ~10k proxied SSE. Raise the shared edge cgroup, then redeploy." >&2
         exit 1
