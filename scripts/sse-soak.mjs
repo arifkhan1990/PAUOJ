@@ -23,6 +23,10 @@
  * grows past 1 MiB. The harness proves the app tier only; the Caddy/edge proxy
  * must be soaked separately.
  *
+ * Pass `--insecure` only for a staging endpoint with a self-signed certificate
+ * (for example Caddy's `tls internal`); certificate verification stays on by
+ * default and the report records the mode.
+ *
  * Output: a compact table on stdout, then one JSON line as the last line
  * (`| tail -1 | jq .`). Exit 0 on a clean run, 1 when any connection failed to
  * open, fewer than `--concurrency` opened, an opened stream never emitted its
@@ -57,6 +61,7 @@ const HELP = `Usage: node scripts/sse-soak.mjs --url <origin> --ids-file <path> 
   --ramp-ms <ms>            delay between connection launches (default 0 = batches of 100);
                             use ~5 for 10k to spread the ramp over ~50s
   --cookie <header>         optional raw Cookie header, for private submissions
+  --insecure                skip TLS certificate verification (staging/self-signed only; off by default)
   -h, --help                show this text
 
 Connections are opened in batches of ${BATCH_SIZE}; ids are cycled when there are fewer ids than connections.
@@ -125,6 +130,7 @@ function parseArgs(argv) {
     timeoutMs: DEFAULTS.timeoutMs,
     rampMs: DEFAULTS.rampMs,
     cookie: null,
+    insecure: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -133,6 +139,7 @@ function parseArgs(argv) {
       console.log(HELP);
       process.exit(0);
     }
+    if (arg === "--insecure") { options.insecure = true; continue; }
     if (!arg.startsWith("--")) usageError(`unexpected argument "${arg}"`);
 
     const separator = arg.indexOf("=");
@@ -389,6 +396,7 @@ function buildReport(config, stats, idCount, elapsedMs, activeSockets) {
 
   return {
     target: config.origin,
+    insecure: config.insecure,
     concurrency: config.concurrency,
     holdSeconds: config.hold,
     timeoutMs: config.timeoutMs,
@@ -420,7 +428,7 @@ function printSummary(report) {
     `target       ${report.target}  x${report.concurrency} connection(s), ${report.ids} id(s) cycled`,
   );
   console.log(
-    `window       hold ${report.holdSeconds}s, ramp ${report.rampMs}ms/connection, open timeout ${report.timeoutMs}ms, elapsed ${report.durationSeconds}s`,
+    `window       hold ${report.holdSeconds}s, ramp ${report.rampMs}ms/connection, open timeout ${report.timeoutMs}ms, elapsed ${report.durationSeconds}s${report.insecure ? " (TLS verify off)" : ""}`,
   );
   console.log(
     `connections  opened ${report.opened}  failed ${report.failed}  active-at-hold-end ${report.activeSockets}`,
@@ -455,9 +463,11 @@ process.on("SIGINT", () => {
 const config = parseArgs(process.argv.slice(2));
 const ids = loadIds(config.idsFile);
 const transport = config.origin.startsWith("https:") ? https : http;
+// Default stays verifying; --insecure is for staging/self-signed certificates.
 const agent = new transport.Agent({
   keepAlive: true,
   maxSockets: config.concurrency,
+  ...(transport === https && config.insecure ? { rejectUnauthorized: false } : {}),
 });
 const stats = createStats(config.concurrency);
 const active = new Set();

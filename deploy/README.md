@@ -34,7 +34,7 @@ Budget on the recommended 16 GB host:
 
 - `app`: 3 GB / 2 CPU (`mem_limit` now defaults to `3g`; local 10k SSE
   measurement: ~1.1 GB RSS direct and ~1.7 GB RSS through Caddy).
-- `caddy`: 1.5 GB / 1 CPU (`mem_limit` now defaults to `1500m`; local 10k
+- `caddy`: 2000 MiB / 1 CPU (`mem_limit` defaults to `2000m`; local 10k
   proxied SSE measurement: ~0.9 GB RSS). A shared/campus edge proxy outside
   this stack needs the same memory and `nofile` headroom.
 - `db`: 2 GB / 2 CPU with `max_connections=100` (the Postgres 17 default);
@@ -44,10 +44,15 @@ Budget on the recommended 16 GB host:
   uses ~1 CPU.
 
 The SSE numbers are local loopback measurements with 10k connections opened over
-~50s (`--ramp-ms 5`). A one-second 10k SYN burst exceeds the kernel/Node listen
-backlog (511) and is not how browsers load a page; real arrivals should be
-ramped or accepted through the edge proxy. Re-measure on the target host before
-a large round.
+~50s (`--ramp-ms 5`). The app's production server (`scripts/production-server.cjs`,
+shipped as `server.js` in the image and runnable from the repo with
+`pnpm start:standalone`) listens with a backlog of 8192, caps connections at
+20 000, and sets a 65s keep-alive / 66s headers timeout, so the accept queue no
+longer overflows at Node's default 511. The effective backlog is still clamped
+by the host's `net.core.somaxconn` (4096 on the reference host), so a 1s 10k SYN
+burst remains kernel-bound: raise `net.core.somaxconn` (and apply with
+`sysctl --system`) on hosts that must absorb such bursts without an edge proxy.
+Re-measure on the target host before a large round.
 
 Confirm the database ceiling and effective connection limits:
 
@@ -104,6 +109,44 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml exec app
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml exec caddy sh -c 'ulimit -n'
 ```
 
+### Host listen backlog (kernel sysctls)
+
+`net.core.somaxconn` is a per-network-namespace kernel limit; `docker update`
+cannot change it. The app requests an 8192 listen backlog and Caddy's Go
+listener uses the kernel cap directly, but both are still clamped by
+`somaxconn`, so the 4096 reference default drops SYNs during a fast 10k ramp
+even when the app and proxy are healthy. The repository Compose files set
+`sysctls: net.core.somaxconn=16384` / `tcp_max_syn_backlog=16384` on the
+app/edge containers; the srv-managed compose must add the same values, or set
+them as root once per host (they are host state, not repository config):
+
+```bash
+printf '%s\n' \
+  'net.core.somaxconn = 16384' \
+  'net.ipv4.tcp_max_syn_backlog = 16384' \
+  | sudo tee /etc/sysctl.d/60-pauoj-net.conf
+sudo sysctl --system
+```
+
+`net.ipv4.tcp_max_syn_backlog` bounds half-open (SYN) sockets for the same
+listeners; keep it equal to `somaxconn`. Give the Docker daemon and its systemd
+unit `LimitNOFILE=65536` as well (drop-in under
+`/etc/systemd/system/docker.service.d/`), otherwise the daemon caps the
+container `ulimits.nofile` no matter what the Compose file requests. Reboot or
+restart Docker only when that drop-in changes.
+
+Verify without root:
+
+```bash
+sysctl net.core.somaxconn net.ipv4.tcp_max_syn_backlog
+ss -ltn | grep -E ':(443|3000)\b'   # Send-Q = effective backlog per listener
+```
+
+`deploy/srv/deploy.sh pre` prints a warning (not a failure) when
+`/proc/sys/net/core/somaxconn` is below 8192. `deploy/healthcheck.sh` fails when
+the shared `srv-caddy` container exists with a memory limit below 2000 MiB, and
+skips the check when `srv-caddy` or Docker is absent.
+
 ### Judge scale-out
 
 Judge workspaces are unique `mkdtemp` directories per run, so workers scale on
@@ -158,7 +201,7 @@ Redis/BullMQ is unavailable (the probe is bounded to 2 s, so it cannot hang
 `/health` also reports `memory: { rssMb, heapUsedMb, limitMb }`. For 10k SSE
 the app needs ~1.7 GB RSS; `limitMb` must be comfortably above that (the prod
 Compose default is 3 GB). A `0` means no cgroup limit is set. The `srv` deploy
-hook also lifts the running `srv-pauoj` app to 3000m and `srv-caddy` to 1500m
+hook also lifts the running `srv-pauoj` app to 3000m and `srv-caddy` to 2000m
 after compose and restarts the app, because the srv-managed compose can still
 hardcode the old 768m/256m shared defaults. Make those values persistent in
 the srv compose when possible. A growing `waiting`/`prioritized` while `active` is pinned at the workers'
@@ -204,6 +247,38 @@ node scripts/sse-soak.mjs \
   public URL, and check `ulimit -n`, `/proc/<pid>/fd` and established
   connections on the app and proxy while it runs. Never run it from the app
   server, and never against production during a real contest.
+
+#### TLS soak recipe (local or staging)
+
+Exercise TLS termination and compression without a public certificate by
+running a throwaway Caddy on the soak host. Generate a self-signed pair once
+(do not commit it):
+
+```bash
+openssl req -x509 -newkey rsa:2048 -nodes -keyout key.pem -out cert.pem \
+  -days 1 -subj '/CN=localhost'
+```
+
+```caddyfile
+:8443 {
+	tls /path/to/cert.pem /path/to/key.pem
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+}
+```
+
+```bash
+caddy run --config Caddyfile          # leave running in another terminal
+node scripts/sse-soak.mjs --url https://127.0.0.1:8443 --ids-file ids.txt \
+  --insecure --concurrency 10000 --hold 120
+```
+
+`--insecure` disables certificate verification for this self-signed pair; the
+report records `"insecure": true`. The harness uses an HTTPS/1.1 agent, so this
+exercises TLS termination and Caddy's streaming path, not browser HTTP/2.
+Verification stays on by default, so never pass `--insecure` against a real
+endpoint. Compare this run with a direct `http://127.0.0.1:3000` soak to
+separate app failures from proxy ones.
 
 ## 2. Clone and prepare
 
@@ -359,7 +434,7 @@ Memory: the script defaults to `APP_MEM_LIMIT=768m`, `WORKER_MEM_LIMIT=768m`,
 `DB_MEM_LIMIT=384m`, `REDIS_MEM_LIMIT=192m` and `JUDGE_CONCURRENCY=1`, because a
 shared host may have little free RAM. Raise them only after checking `free -h`.
 For a 10k-live-SSE round on a shared host, set `APP_MEM_LIMIT=3g` and give the
-external edge proxy ~1.5 GB and 65k file descriptors; the 768m default only
+external edge proxy ~2 GB and 65k file descriptors; the 768m default only
 fits small rounds. See section 1b.
 
 ### Premium learning payments (manual QR)
@@ -608,9 +683,12 @@ restoring, and read the script before running it.
 
 `deploy/healthcheck.sh` requires `status=ok`, at least one heartbeat from the
 judge worker, and a broadcast queue whose oldest pending row is under 10
-minutes. `server-setup.sh` runs it every five minutes and appends to
-`/var/log/pauoj-health.log`. Set `ALERT_WEBHOOK` in the cron line to post to
-Slack/Discord-compatible webhooks.
+minutes. It also fails when a `srv-caddy` container is present with a memory
+limit below 2000 MiB (2097152000 bytes), and prints a note and skips that check
+when `srv-caddy` or Docker is unavailable — this catches a shared-edge downgrade
+after a deploy, which `/health` cannot see. `server-setup.sh` runs it every five
+minutes and appends to `/var/log/pauoj-health.log`. Set `ALERT_WEBHOOK` in the
+cron line to post to Slack/Discord-compatible webhooks.
 
 Useful commands:
 
@@ -755,7 +833,7 @@ to the runtime. Keep these three pieces in sync:
 1. `deploy/srv/deploy.sh` (`pre`) runs
    `git -C source rev-parse --short=7 HEAD` and writes/updates
    `APP_COMMIT=<short sha>` in the project `.env` (0600 preserved, key never
-   duplicated). The `post` branch is unchanged.
+   duplicated). `post` does not touch `APP_COMMIT`.
 2. `/home/naba/server/projects/pauoj/compose.yml` maps
    `APP_COMMIT: ${APP_COMMIT}` in the `web` and `worker` `environment` maps
    (`env_file: .env` alone also works, but the explicit mapping documents the
@@ -792,13 +870,18 @@ skipped so an older commit cannot overwrite a newer deploy.
 (one-time: `ln -sfn source/deploy/srv/deploy.sh deploy.sh`). `srv deploy` runs
 it around every release:
 
-- `pre`: records the deployed commit (`APP_COMMIT`) for `/health`, then rebuilds
-  `pauoj/judge:latest` when the contents of `source/judge` change, or when the
-  image is missing, using a local `.judge-hash` marker. This prevents the worker
-  from crash-looping when an app-only deploy leaves the judge sandbox image
-  missing. Set `BUILD_SWIFT=1` to build the optional Swift image too.
-- `post`: runs the idempotent seed service after the app is healthy, so new
-  problems/references land with the release.
+- `pre`: records the deployed commit (`APP_COMMIT`) for `/health`, warns when
+  `APP_MEM_LIMIT`/`srv-caddy` memory or host `net.core.somaxconn` is below the
+  10k-SSE target, then rebuilds `pauoj/judge:latest` when the contents of
+  `source/judge` change, or when the image is missing, using a local
+  `.judge-hash` marker. This prevents the worker from crash-looping when an
+  app-only deploy leaves the judge sandbox image missing. Set `BUILD_SWIFT=1` to
+  build the optional Swift image too.
+- `post`: lifts the running app to 3000m, lifts `srv-caddy` to 2000m and then
+  verifies the effective limit — it exits 1 (failing the deploy) if the edge
+  stays above 0 and below 2000 MiB, and logs/skips when `srv-caddy` is absent.
+  After that it runs the idempotent seed service, so new problems/references
+  land with the release.
 
 ### First judge build on a fresh host
 

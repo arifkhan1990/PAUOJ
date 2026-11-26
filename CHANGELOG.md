@@ -17,6 +17,8 @@ All notable changes to PAU OJ are documented here. The format follows
 - A lost verdict pub/sub event is now detected by a jittered 5–7s Redis version
   check instead of waiting for the 15s (now 30s) DB fallback. The version key
   lives for an hour, so a long judge queue does not degrade pending streams.
+- `sse-soak.mjs` supports `--insecure` for a staging self-signed TLS endpoint;
+  certificate verification stays on by default.
 - Sign-in no longer applies a 20-per-15-minute cap to every attempt from one
   address. Only failed passwords are counted against the shared egress IP
   (50 per 15 minutes), so a campus or carrier NAT can sign a whole contest in
@@ -53,6 +55,9 @@ All notable changes to PAU OJ are documented here. The format follows
   operators can see judge saturation and the container memory ceiling; backlog
   never changes the health status, and the queue probe degrades to zeros on a
   Redis or BullMQ error.
+- The edge budget is now 2 GB for `srv-caddy` (measured ~1.1 GB with 10k TLS
+  streams), the deploy hook raises/verifies it, and the host healthcheck fails
+  if the edge is downgraded below 2 GB.
 - Submission SSE checks a per-submission Redis version every 5–7s; a DB poll
   happens only after a version change, with a 30s fallback for Redis outages.
   Contest/assessment jobs still outrank practice work.
@@ -88,6 +93,13 @@ All notable changes to PAU OJ are documented here. The format follows
   overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
+- A production HTTP server (`scripts/production-server.cjs`, shipped as
+  `server.js`) with an 8192 listen backlog, 20k connection cap and 65s/66s
+  keep-alive/header timeouts, plus `pnpm start:standalone`. The Docker image
+  now uses it instead of Node's 511-backlog default.
+- Per-container `sysctls` for `net.core.somaxconn` /
+  `net.ipv4.tcp_max_syn_backlog` (16384) on the app and edge Compose services,
+  with host-level instructions for the srv-managed stack.
 - `scripts/sse-soak.mjs`, a dependency-free SSE soak harness for up to 10k
   connections (opened/failed/initial+subsequent updates/done/errors/RSS) with
   deploy docs for running it against a staging contest and scaling judge

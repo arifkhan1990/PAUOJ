@@ -79,10 +79,20 @@ case "${1:-}" in
     if [ "${available_mb:-0}" -gt 0 ] && [ "$available_mb" -lt 4096 ]; then
       echo "! host MemAvailable=${available_mb}MB; 10k SSE may pressure the shared host" >&2
     fi
+    # Root-owned host sysctl; containers cannot raise it. Node's 511 backlog and
+    # Caddy's listener are clamped to this, so a low value drops SYNs on a ramp.
+    if [ -r /proc/sys/net/core/somaxconn ]; then
+      somaxconn="$(cat /proc/sys/net/core/somaxconn 2>/dev/null || echo 0)"
+      case "$somaxconn" in ''|*[!0-9]*) somaxconn=0 ;; esac
+      if [ "$somaxconn" -gt 0 ] && [ "$somaxconn" -lt 8192 ]; then
+        echo "! host net.core.somaxconn=${somaxconn}; listen backlog is clamped low. Set net.core.somaxconn=16384 and net.ipv4.tcp_max_syn_backlog=16384 (root) before a large round" >&2
+      fi
+    fi
     if docker inspect srv-caddy >/dev/null 2>&1; then
       caddy_limit="$(docker inspect -f '{{.HostConfig.Memory}}' srv-caddy 2>/dev/null || echo 0)"
-      if [ "${caddy_limit:-0}" -gt 0 ] && [ "$caddy_limit" -lt 1610612736 ]; then
-        echo "! srv-caddy memory=${caddy_limit}B; 10k proxied SSE needs ~1.5GB" >&2
+      case "$caddy_limit" in ''|*[!0-9]*) caddy_limit=0 ;; esac
+      if [ "$caddy_limit" -gt 0 ] && [ "$caddy_limit" -lt 2097152000 ]; then
+        echo "! srv-caddy memory=${caddy_limit}B; 10k proxied SSE needs 2000m" >&2
       fi
     fi
 
@@ -160,11 +170,23 @@ case "${1:-}" in
       echo "! no pauoj/app app container found; memory limit unchanged" >&2
     fi
     if docker inspect srv-caddy >/dev/null 2>&1; then
-      if docker update --memory 1500m --memory-swap 1500m srv-caddy >/dev/null 2>&1; then
-        echo "→ srv-caddy memory lifted to 1500m for 10k SSE"
+      if docker update --memory 2000m --memory-swap 2000m srv-caddy >/dev/null 2>&1; then
+        echo "→ srv-caddy memory lifted to 2000m for 10k SSE"
       else
         echo "! could not lift srv-caddy memory; check the shared edge cgroup" >&2
       fi
+      # `docker update` can succeed without the expected limit (or the shared
+      # edge can be recreated below it), so verify the effective value and fail
+      # the deploy instead of reporting a false success.
+      caddy_limit="$(docker inspect -f '{{.HostConfig.Memory}}' srv-caddy 2>/dev/null || echo 0)"
+      case "$caddy_limit" in ''|*[!0-9]*) caddy_limit=0 ;; esac
+      if [ "$caddy_limit" -gt 0 ] && [ "$caddy_limit" -lt 2097152000 ]; then
+        echo "ERROR: srv-caddy memory limit ${caddy_limit}B is below 2000 MiB (2097152000B) required for ~10k proxied SSE. Raise the shared edge cgroup, then redeploy." >&2
+        exit 1
+      fi
+      echo "→ srv-caddy memory limit verified at ${caddy_limit}B"
+    else
+      echo "→ srv-caddy not found; edge memory check skipped"
     fi
 
     echo "→ seeding curriculum (idempotent)"

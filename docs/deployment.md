@@ -74,6 +74,36 @@ curl -fsS http://127.0.0.1:3000/health
 
 The app container runs database migrations before `server.js` starts.
 
+## Host tuning (SSE and listen backlog)
+
+Docker cannot raise host-wide kernel limits from inside a container, so set
+these as root once per host and persist them (for example in
+`/etc/sysctl.d/60-pauoj-net.conf`, then `sysctl --system`):
+
+```bash
+sudo sysctl -w net.core.somaxconn=16384 net.ipv4.tcp_max_syn_backlog=16384
+```
+
+The app requests an 8192 listen backlog and Caddy's Go listener uses the kernel
+cap, so both are still bounded by `net.core.somaxconn`; the 4096 reference
+default drops SYNs during a fast 10k ramp even when the app is healthy.
+`net.ipv4.tcp_max_syn_backlog` bounds half-open sockets for the same listeners —
+keep it equal. Also give the Docker daemon and its systemd unit
+`LimitNOFILE=65536`, otherwise the daemon caps the container `ulimits.nofile`
+regardless of the Compose file.
+
+Verify without root:
+
+```bash
+sysctl net.core.somaxconn net.ipv4.tcp_max_syn_backlog
+ss -ltn | grep -E ':(443|3000)\b'   # Send-Q = effective backlog per listener
+```
+
+The `srv` deploy pre-hook warns when `somaxconn` is below 8192, and
+`deploy/healthcheck.sh` fails when the shared `srv-caddy` container limit is
+above 0 and below 2000 MiB. Both are host checks; see
+`deploy/README.md` section 1b for the full sizing table.
+
 ## Reverse proxy and TLS
 
 Put Caddy or Nginx in front of port 3000. Set `APP_URL` to the public HTTPS
@@ -93,6 +123,11 @@ Rule for the OJ hostname. `GET /api/v1/announcements` additionally has a
 30,000/min instance-wide limit and a 30s in-process cache that bound
 spoofed-key abuse. See section 3c of `deploy/README.md` for per-topology details
 and a Redis-key check.
+
+To soak TLS termination, HTTP/2 and compression, run a throwaway Caddy with
+`tls internal` on `:8443` in front of `127.0.0.1:3000` and point
+`scripts/sse-soak.mjs` at it with `--insecure` (staging only; verification is
+on by default). The recipe is in `deploy/README.md` section 1b.
 
 ## Transactional email
 
