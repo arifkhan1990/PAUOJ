@@ -231,7 +231,14 @@ case "${1:-}" in
     if [ "$worker_replicas" -lt 1 ]; then worker_replicas=2; fi
     if docker compose -p srv-pauoj -f compose.yml --env-file .env \
       up -d --no-deps --scale worker="$worker_replicas" worker >/dev/null; then
-      echo "→ judge workers scaled to $worker_replicas"
+      worker_containers="$(docker ps -q \
+        --filter label=com.docker.compose.service=worker \
+        --filter name=pauoj 2>/dev/null | wc -l | tr -d ' ')"
+      echo "→ judge workers scaled to $worker_replicas (containers=${worker_containers:-0})"
+      if [ "${worker_containers:-0}" -lt "$worker_replicas" ]; then
+        echo "ERROR: only ${worker_containers:-0}/${worker_replicas} judge worker containers are running" >&2
+        exit 1
+      fi
     else
       echo "ERROR: could not scale judge workers to $worker_replicas" >&2
       exit 1

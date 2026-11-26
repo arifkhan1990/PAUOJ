@@ -6,6 +6,9 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- Scaled judge workers now heartbeat per process (`hostname:pid`) instead of
+  per hostname, so two Compose replicas cannot collapse into one worker count.
+  The srv deploy also verifies the running worker-container count after scaling.
 - Registration no longer caps one address at 5 attempts per 15 minutes. The
   per-egress budget is now 1,500/15 min (100/min) with a 6,000/15 min global
   backstop, enough for a 1,200-contestant campus onboarding burst without
