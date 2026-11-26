@@ -63,6 +63,29 @@ case "${1:-}" in
       echo "! source is not a git checkout; APP_COMMIT left unchanged" >&2
     fi
 
+    # 10k live SSE streams measured ~1.7 GB RSS through Caddy. The shared
+    # compose default (768m) would OOM well before that. Preserve an explicit
+    # larger operator value; only lift the old/default small limits.
+    current_app_limit="$(env_value APP_MEM_LIMIT)"
+    case "$current_app_limit" in
+      ""|768m|768M|1g|1G)
+        set_env APP_MEM_LIMIT 3000m
+        echo "→ APP_MEM_LIMIT=3000m for 10k SSE headroom"
+        ;;
+      *) echo "→ APP_MEM_LIMIT=$current_app_limit (operator override)" ;;
+    esac
+
+    available_mb="$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)"
+    if [ "${available_mb:-0}" -gt 0 ] && [ "$available_mb" -lt 4096 ]; then
+      echo "! host MemAvailable=${available_mb}MB; 10k SSE may pressure the shared host" >&2
+    fi
+    if docker inspect srv-caddy >/dev/null 2>&1; then
+      caddy_limit="$(docker inspect -f '{{.HostConfig.Memory}}' srv-caddy 2>/dev/null || echo 0)"
+      if [ "${caddy_limit:-0}" -gt 0 ] && [ "$caddy_limit" -lt 1610612736 ]; then
+        echo "! srv-caddy memory=${caddy_limit}B; 10k proxied SSE needs ~1.5GB" >&2
+      fi
+    fi
+
     JUDGE_IMAGE="$(env_value JUDGE_IMAGE)"
     JUDGE_IMAGE="${JUDGE_IMAGE:-pauoj/judge:latest}"
     HASH="$(judge_hash)"
