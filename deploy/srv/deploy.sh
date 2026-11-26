@@ -118,26 +118,35 @@ case "${1:-}" in
     # APP_MEM_LIMIT is set. Lift the running app to the measured 10k-SSE
     # envelope and restart so Node reads the new cgroup limit; a future
     # compose change should make this persistent.
-    app_id="$(docker ps -q \
-      --filter label=com.docker.compose.project=srv-pauoj \
-      --filter label=com.docker.compose.service=app | head -n 1)"
-    if [ -n "$app_id" ]; then
-      if docker update --memory 3000m --memory-swap 3000m "$app_id" >/dev/null 2>&1; then
-        docker restart "$app_id" >/dev/null 2>&1 || true
-        for _ in $(seq 1 30); do
-          if docker exec "$app_id" node -e \
-            "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" \
-            >/dev/null 2>&1; then
-            break
+    app_ids="$(docker ps -q --filter label=com.docker.compose.service=app)"
+    app_found=0
+    for app_id in $app_ids; do
+      app_image="$(docker inspect -f '{{.Config.Image}}' "$app_id" 2>/dev/null || true)"
+      case "$app_image" in
+        *pauoj/app*)
+          app_found=1
+          if docker update --memory 3000m --memory-swap 3000m "$app_id" >/dev/null 2>&1; then
+            docker restart "$app_id" >/dev/null 2>&1 || true
+            for _ in $(seq 1 30); do
+              if docker exec "$app_id" node -e \
+                "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" \
+                >/dev/null 2>&1; then
+                break
+              fi
+              sleep 1
+            done
+            limit_bytes="$(docker exec "$app_id" node -e \
+              "console.log(process.constrainedMemory ? process.constrainedMemory() : 0)" \
+              2>/dev/null || echo 0)"
+            echo "→ app $app_id memory lifted to 3000m (constrained=${limit_bytes:-0}B)"
+          else
+            echo "! could not lift app $app_id memory; check the srv compose/cgroup" >&2
           fi
-          sleep 1
-        done
-        echo "→ app memory lifted to 3000m for 10k SSE"
-      else
-        echo "! could not lift app memory; check the srv compose/cgroup" >&2
-      fi
-    else
-      echo "! srv-pauoj app container not found; memory limit unchanged" >&2
+          ;;
+      esac
+    done
+    if [ "$app_found" = 0 ]; then
+      echo "! no pauoj/app app container found; memory limit unchanged" >&2
     fi
     if docker inspect srv-caddy >/dev/null 2>&1; then
       if docker update --memory 1500m --memory-swap 1500m srv-caddy >/dev/null 2>&1; then
