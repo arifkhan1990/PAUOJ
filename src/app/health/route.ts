@@ -17,7 +17,7 @@ export async function GET() {
   }
   const migrations = await getMigrationStatus();
   let emailOutboxCounts = { pending: 0, failed: 0 };
-  let broadcastQueueCounts = { pending: 0 };
+  let broadcastQueueCounts = { pending: 0, oldestPendingSeconds: 0 };
   if (database) {
     try {
       const [row] = await getSql()`
@@ -38,12 +38,20 @@ export async function GET() {
     // also degrades to 0.
     try {
       const [row] = await getSql()`
-        select count(*) filter (where completed_at is null)::int as pending
+        select
+          count(*) filter (where completed_at is null)::int as pending,
+          coalesce(
+            extract(epoch from now() - min(created_at) filter (where completed_at is null))::int,
+            0
+          ) as oldest_pending_seconds
         from broadcasts
       `;
-      broadcastQueueCounts = { pending: Number(row?.pending ?? 0) };
+      broadcastQueueCounts = {
+        pending: Number(row?.pending ?? 0),
+        oldestPendingSeconds: Number(row?.oldest_pending_seconds ?? 0),
+      };
     } catch {
-      broadcastQueueCounts = { pending: 0 };
+      broadcastQueueCounts = { pending: 0, oldestPendingSeconds: 0 };
     }
   }
   const redis = await pingRedis();

@@ -105,16 +105,19 @@ pnpm db:check
 `/health` reports two operational counters from the database:
 
 - `emailOutbox: { pending, failed }` — queued/failed transactional mail.
-- `broadcastQueue: { pending }` — broadcast rows whose fan-out has not finished
-  (`broadcasts.completed_at is null`).
+- `broadcastQueue: { pending, oldestPendingSeconds }` — broadcast rows whose
+  fan-out has not finished (`broadcasts.completed_at is null`) and the age of
+  the oldest one.
 
 `broadcastQueue.pending > 0` means the worker's broadcast sweep is behind or
-stuck (it normally drains within ~30 s). It is a warning, not an outage: the
-service stays `ok`/`503`-free on this signal. Public announcements and the guest
-drawer only show rows with `completed_at` set, so a stuck worker leaves freshly
-published announcements invisible rather than half-delivered. Both counters read
-as `0` when the table is missing (pre-migration) or the query fails, so `/health`
-never fails on them. Investigate with:
+stuck (it normally drains within ~30 s); `oldestPendingSeconds` distinguishes a
+fresh burst from a stuck row. It is a warning, not an outage: the service stays
+`ok`/`503`-free on this signal, but `deploy/healthcheck.sh` fails (and alerts)
+once the oldest pending row is older than 10 minutes. Public announcements and
+the guest drawer only show rows with `completed_at` set, so a stuck worker
+leaves freshly published announcements invisible rather than half-delivered.
+Both counters read as `0` when the table is missing (pre-migration) or the query
+fails, so `/health` never fails on them. Investigate with:
 
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs --tail 200 worker | grep -i broadcast
@@ -358,8 +361,9 @@ restoring, and read the script before running it.
 
 ## 5. Monitoring
 
-`deploy/healthcheck.sh` requires `status=ok` and at least one heartbeat from the
-judge worker. `server-setup.sh` runs it every five minutes and appends to
+`deploy/healthcheck.sh` requires `status=ok`, at least one heartbeat from the
+judge worker, and a broadcast queue whose oldest pending row is under 10
+minutes. `server-setup.sh` runs it every five minutes and appends to
 `/var/log/pauoj-health.log`. Set `ALERT_WEBHOOK` in the cron line to post to
 Slack/Discord-compatible webhooks.
 

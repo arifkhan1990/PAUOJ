@@ -62,9 +62,11 @@ All notable changes to PAU OJ are documented here. The format follows
   `PATCH /api/v1/notifications/:id/read`, a `filter` on the notification list,
   and the public `GET /api/v1/announcements` endpoint (completed fan-out only,
   baseline rows excluded, same-origin hrefs, rate limited and cacheable).
-  `/health` now reports `broadcastQueue.pending`, and production smoke covers
-  the guest bell, the announcements endpoint and that queue field, so a stuck
-  fan-out is visible instead of silently hiding public notices.
+  `/health` now reports `broadcastQueue.pending` and `oldestPendingSeconds`, the
+  5-minute healthcheck alerts when a broadcast row has waited over 10 minutes,
+  and production smoke covers the guest bell, the announcements endpoint and
+  both queue fields, so a stuck fan-out is visible instead of silently hiding
+  public notices.
 - Custom-test expected output: for a practice problem with a stored reference
   solution, a non-sample custom run now also runs the reference on the same
   stdin and shows **Your output** beside **Expected output (reference)**.

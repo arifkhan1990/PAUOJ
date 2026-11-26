@@ -33,6 +33,7 @@ note "$(echo "$HEALTH" | grep -q '"migrations":{[^}]*"ok":true' && echo 1 || ech
 version="$(grep -m1 '"version"' package.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
 note "$(echo "$HEALTH" | grep -q "\"version\":\"$version\"" && echo 1 || echo 0)" "health version matches package" "$version"
 note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^}]*"pending"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health broadcastQueue pending is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^}]*"oldestPendingSeconds"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health broadcast oldest age is numeric"
 
 for path in /learn /learn/basic-programming-math /learn/basic-programming-math/complexity /problems /rank; do
   code="$(status "$path")"

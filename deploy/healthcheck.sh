@@ -24,4 +24,12 @@ echo "$BODY"
 echo "$BODY" | grep -q '"status":"ok"' || fail "$BODY"
 echo "$BODY" | grep -qE '"workers":[1-9][0-9]*' || fail "$BODY"
 
+# A single stuck broadcast row keeps public announcements invisible; the worker
+# normally drains within ~30s, so 10 minutes is a safe alert threshold. The
+# field is absent on pre-rollout images, so skip the check there.
+OLDEST_PENDING="$(printf '%s' "$BODY" | grep -oE '"oldestPendingSeconds":[0-9]+' | head -1 | grep -oE '[0-9]+' || true)"
+if [ -n "$OLDEST_PENDING" ] && [ "$OLDEST_PENDING" -gt 600 ]; then
+  fail "$BODY"
+fi
+
 echo "PAU OJ healthy."

@@ -134,11 +134,14 @@ delivery.
 ## Monitoring
 
 - `/health` for uptime checks. Besides `status`/`workers`/`migrations`, it
-  exposes `emailOutbox: { pending, failed }` and `broadcastQueue: { pending }`.
-  `broadcastQueue.pending > 0` means broadcasts are still awaiting worker
-  fan-out; public announcements stay hidden until `completed_at` is set, and a
-  rising value means the sweep is behind or stalled. Neither counter changes the
-  health status, and both read `0` if the tables are missing.
+  exposes `emailOutbox: { pending, failed }` and
+  `broadcastQueue: { pending, oldestPendingSeconds }`. `broadcastQueue.pending >
+  0` means broadcasts are still awaiting worker fan-out; public announcements
+  stay hidden until `completed_at` is set, and a rising `oldestPendingSeconds`
+  means the sweep is stalled. Neither counter changes the health status, both
+  read `0` if the tables are missing, and `deploy/healthcheck.sh` treats an
+  oldest pending age above 10 minutes as a failure so cron/webhooks catch a
+  stuck row.
 - Container logs are JSON with 10 MB × 3 rotation.
 - Watch worker failures, queue depth (`pauoj-judge`), disk space for Docker
   images and judge workdirs, and PostgreSQL connection counts.
