@@ -97,7 +97,7 @@ describe("POST /api/v1/auth/register", () => {
     expect(enforceRateLimit).toHaveBeenNthCalledWith(
       1,
       "auth:register:ip:203.0.113.9",
-      600,
+      1_500,
       15 * 60,
     );
     expect(enforceRateLimit).toHaveBeenNthCalledWith(
@@ -117,7 +117,7 @@ describe("POST /api/v1/auth/register", () => {
     expect(enforceRateLimit).toHaveBeenNthCalledWith(
       1,
       "auth:register:ip:unknown",
-      600,
+      1_500,
       15 * 60,
     );
   });

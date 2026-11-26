@@ -80,6 +80,8 @@ describe("GET /health", () => {
     expect(body.emailOutbox).toEqual({ pending: 2, failed: 1 });
     expect(body.broadcastQueue).toEqual({ pending: 2, oldestPendingSeconds: 12 });
     expect(body.workers).toBe(2);
+    expect(typeof body.judgeSlots).toBe("number");
+    expect(body.judgeSlots).toBeGreaterThan(0);
     expect(typeof body.memory.rssMb).toBe("number");
     expect(body.memory.rssMb).toBeGreaterThan(0);
     expect(typeof body.memory.heapUsedMb).toBe("number");

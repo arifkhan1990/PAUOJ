@@ -75,6 +75,25 @@ case "${1:-}" in
       *) echo "→ APP_MEM_LIMIT=$current_app_limit (operator override)" ;;
     esac
 
+    # 1,200-contestant profile: two workers × two concurrent runs = 4 judge
+    # slots. Preserve an explicit larger operator value.
+    current_concurrency="$(env_value JUDGE_CONCURRENCY)"
+    case "$current_concurrency" in
+      ""|1|2)
+        set_env JUDGE_CONCURRENCY 2
+        echo "→ JUDGE_CONCURRENCY=2 (4 slots with 2 workers)"
+        ;;
+      *) echo "→ JUDGE_CONCURRENCY=$current_concurrency (operator override)" ;;
+    esac
+    current_workers="$(env_value JUDGE_WORKER_REPLICAS)"
+    case "$current_workers" in
+      ""|1)
+        set_env JUDGE_WORKER_REPLICAS 2
+        echo "→ JUDGE_WORKER_REPLICAS=2 for the 1,200-contestant profile"
+        ;;
+      *) echo "→ JUDGE_WORKER_REPLICAS=$current_workers (operator override)" ;;
+    esac
+
     available_mb="$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo 2>/dev/null || echo 0)"
     if [ "${available_mb:-0}" -gt 0 ] && [ "$available_mb" -lt 4096 ]; then
       echo "! host MemAvailable=${available_mb}MB; 10k SSE may pressure the shared host" >&2
@@ -202,6 +221,20 @@ case "${1:-}" in
       echo "→ srv-caddy memory limit verified at ${caddy_limit}B"
     else
       echo "→ srv-caddy not found; edge memory check skipped"
+    fi
+
+    # Scale judge workers after compose so a normal deploy does not reset the
+    # 1,200-contestant profile back to one replica. `--no-deps` leaves the
+    # already-healthy app/db/redis alone.
+    worker_replicas="$(env_value JUDGE_WORKER_REPLICAS)"
+    case "$worker_replicas" in ''|*[!0-9]*) worker_replicas=2 ;; esac
+    if [ "$worker_replicas" -lt 1 ]; then worker_replicas=2; fi
+    if docker compose -p srv-pauoj -f compose.yml --env-file .env \
+      up -d --no-deps --scale worker="$worker_replicas" worker >/dev/null; then
+      echo "→ judge workers scaled to $worker_replicas"
+    else
+      echo "ERROR: could not scale judge workers to $worker_replicas" >&2
+      exit 1
     fi
 
     echo "→ seeding curriculum (idempotent)"

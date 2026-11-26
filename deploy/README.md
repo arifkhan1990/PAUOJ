@@ -168,6 +168,23 @@ the CPU count, and recheck the pool formula because every worker also opens a
 database pool. `--scale worker=4` needs no published port, no `container_name`
 and no named volume.
 
+### 1,200-contestant profile
+
+The srv deploy hook now targets **2 workers × `JUDGE_CONCURRENCY=2` = 4 judge
+slots**, sized for ~1,200 contestants making 3–5 submissions each in a 2-hour
+round (4,800–6,000 runs; roughly 1–1.25 hours at ~3s/run with 4 slots). It sets
+`JUDGE_CONCURRENCY=2` and `JUDGE_WORKER_REPLICAS=2` in the host `.env` and
+scales the worker after compose; an explicit larger operator value is
+preserved. The app's `/health` reports `workers` and `judgeSlots`, so the live
+profile is visible (`workers:2`, `judgeSlots:4`).
+
+Registration is now 1,500/15 min per IP + 6,000/15 min global, enough for 1,200
+campus-NAT signups in one window. Pre-register and ask contestants to log in
+before the round. At this size the app's 4096 `somaxconn` is sufficient for a
+1,200 burst; the 16,384 host/container sysctl is a 10k-SSE requirement. Same
+second page loading of 1,200 users is ~4–5s at the measured 276 page rps, not a
+failure.
+
 ### Load check
 
 `scripts/capacity-load.mjs` is dependency-free (Node 22+, built-in `fetch`) and
@@ -908,8 +925,8 @@ it around every release:
 - `post`: lifts the running app to 3000m, lifts `srv-caddy` to 2000m and then
   verifies the effective limit — it exits 1 (failing the deploy) if the edge
   stays above 0 and below 2000 MiB, and logs/skips when `srv-caddy` is absent.
-  After that it runs the idempotent seed service, so new problems/references
-  land with the release.
+  It then scales the judge to `JUDGE_WORKER_REPLICAS` (default 2) and runs the
+  idempotent seed service, so new problems/references land with the release.
 
 ### First judge build on a fresh host
 

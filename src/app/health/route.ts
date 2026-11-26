@@ -89,6 +89,12 @@ export async function GET() {
     judgeQueue = await getJudgeQueueCounts();
   }
   const network = readNetworkSettings();
+  const configuredConcurrency = Number(process.env.JUDGE_CONCURRENCY);
+  const judgeConcurrency =
+    Number.isSafeInteger(configuredConcurrency) && configuredConcurrency > 0
+      ? configuredConcurrency
+      : 1;
+  const judgeSlots = workers * judgeConcurrency;
   const healthy = database && redis && (migrations?.ok ?? true);
   const usage = process.memoryUsage();
   const constrained =
@@ -104,6 +110,7 @@ export async function GET() {
       emailOutbox: emailOutboxCounts,
       broadcastQueue: broadcastQueueCounts,
       judgeQueue,
+      judgeSlots,
       network,
       edge: { caddyMemoryLimitMb },
       memory: {

@@ -37,6 +37,7 @@ note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^
 note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"waiting"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue waiting is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"active"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue active is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"failed"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue failed is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"judgeSlots"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeSlots is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"memory"[[:space:]]*:[[:space:]]*\{[^}]*"rssMb"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health memory rss is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"memory"[[:space:]]*:[[:space:]]*\{[^}]*"limitMb"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health memory limit is numeric"
 memory_limit="$(printf '%s' "$HEALTH" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("memory",{}).get("limitMb") or 0)' 2>/dev/null || echo 0)"

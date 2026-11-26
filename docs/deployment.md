@@ -180,8 +180,10 @@ delivery.
 - `/health` for uptime checks. Besides `status`/`workers`/`migrations`, it
   exposes `emailOutbox: { pending, failed }`,
   `broadcastQueue: { pending, oldestPendingSeconds }` and
-  `judgeQueue: { waiting, active, prioritized, delayed, failed }` and
-  `memory: { rssMb, heapUsedMb, limitMb }`. `memory.limitMb` is the cgroup limit
+  `judgeQueue: { waiting, active, prioritized, delayed, failed }`,
+  `judgeSlots` (`workers × JUDGE_CONCURRENCY`) and
+  `memory: { rssMb, heapUsedMb, limitMb }`. The 1,200-contestant profile is
+  `workers:2`, `JUDGE_CONCURRENCY:2` → 4 slots. `memory.limitMb` is the cgroup limit
   Node sees (0 when unlimited) — for 10k SSE the app needs ~1.7 GB RSS, so a
   container limit below 2 GB is a red flag. `broadcastQueue.pending >
   0` means broadcasts are still awaiting worker fan-out; public announcements

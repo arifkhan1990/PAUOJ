@@ -7,9 +7,9 @@ All notable changes to PAU OJ are documented here. The format follows
 
 ### Fixed
 - Registration no longer caps one address at 5 attempts per 15 minutes. The
-  per-egress budget is now 600/15 min (40/min) with a 6,000/15 min global
-  backstop, so a campus NAT can onboard over hours without opening the door to
-  unlimited signup/email spam.
+  per-egress budget is now 1,500/15 min (100/min) with a 6,000/15 min global
+  backstop, enough for a 1,200-contestant campus onboarding burst without
+  opening the door to unlimited signup/email spam.
 - The public announcement drawer is cached in-process for 30s and its limits
   are now 12,000/min per IP plus 30,000/min global, so 10k guests behind one
   NAT can open the bell without exhausting a 60/min bucket; the feed still
@@ -51,10 +51,13 @@ All notable changes to PAU OJ are documented here. The format follows
 
 ### Changed
 - `/health` now reports `judgeQueue: { waiting, active, prioritized, delayed,
-  failed }` from BullMQ and `memory: { rssMb, heapUsedMb, limitMb }` so
-  operators can see judge saturation and the container memory ceiling; backlog
-  never changes the health status, and the queue probe degrades to zeros on a
-  Redis or BullMQ error.
+  failed }`, `judgeSlots` (workers × concurrency), and
+  `memory: { rssMb, heapUsedMb, limitMb }` so operators can see judge
+  saturation and the container memory ceiling; backlog never changes the health
+  status, and the queue probe degrades to zeros on a Redis or BullMQ error.
+- The srv deploy hook now targets the **1,200-contestant profile**: 2 workers ×
+  `JUDGE_CONCURRENCY=2` = 4 judge slots, preserved across deploys, with
+  `JUDGE_WORKER_REPLICAS=2`; the registration limit is 1,500/15 min per IP.
 - The edge budget is now 2 GB for `srv-caddy` (measured ~1.1 GB with 10k TLS
   streams), the deploy hook raises/verifies it, and the host healthcheck fails
   if the edge is downgraded below 2 GB. The cron healthcheck publishes the

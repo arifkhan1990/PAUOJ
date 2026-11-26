@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
     assertSameOrigin(request);
     const ip = getClientIp(request) ?? "unknown";
     // A campus, office or carrier NAT puts thousands of legitimate students
-    // behind one address. 600 signups per 15 min (40/min per egress) is far
-    // above one human's pace but still bounds spam and the verification-email
-    // fan-out; the platform-wide 6000 per 15 min (400/min) caps a client
-    // rotating X-Forwarded-For. Together they let a campus onboard over hours.
-    await enforceRateLimit(`auth:register:ip:${ip}`, 600, 15 * 60);
+    // behind one address. 1,500 signups per 15 min (100/min per egress) covers
+    // a 1,200-contestant onboarding burst while still bounding spam and the
+    // verification-email fan-out; the platform-wide 6000 per 15 min (400/min)
+    // caps a client rotating X-Forwarded-For.
+    await enforceRateLimit(`auth:register:ip:${ip}`, 1_500, 15 * 60);
     await enforceRateLimit("auth:register:global", 6_000, 15 * 60);
     const input = await parseJson(request, registerSchema);
     const user = await registerUser(input);
