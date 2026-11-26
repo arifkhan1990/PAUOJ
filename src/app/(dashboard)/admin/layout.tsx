@@ -1,6 +1,5 @@
 import { DashboardFrame } from "@/components/dashboard/dashboard-frame";
 import { requireAdmin } from "@/server/auth/guards";
-import { countPendingPaymentOrders } from "@/server/services/learning-payments";
 import { getSocialCounts } from "@/server/services/social-counts";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +10,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   const admin = await requireAdmin();
-  const [counts, pendingAccess] = await Promise.all([
-    getSocialCounts(admin.id),
-    countPendingPaymentOrders(),
-  ]);
+  const counts = await getSocialCounts(admin.id, true);
   return (
     <DashboardFrame
       panel="ADMIN"
@@ -26,7 +22,7 @@ export default async function AdminLayout({
       unreadMessages={counts.messages}
       unreadNotifications={counts.notifications}
       pendingFollowRequests={counts.requests}
-      pendingAccessRequests={pendingAccess}
+      pendingAccessRequests={counts.access}
     >
       {children}
     </DashboardFrame>

@@ -16,7 +16,29 @@ cd "$PROJECT_DIR"
 
 env_value() {
   [ -f .env ] || return 0
-  grep -E "^$1=" .env | tail -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//"
+  grep -E "^$1=" .env 2>/dev/null | tail -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" || true
+}
+
+set_env() {
+  # set_env KEY VALUE: update KEY in $PROJECT_DIR/.env (append if missing)
+  # without duplicating it, keeping the file mode (0600 on the srv host).
+  local key="$1" value="$2" mode tmp file="$PROJECT_DIR/.env"
+  if [ -f "$file" ]; then
+    mode="$(stat -c '%a' "$file" 2>/dev/null || echo 600)"
+  else
+    : > "$file"
+    chmod 600 "$file"
+    mode=600
+  fi
+  tmp="$(mktemp "$PROJECT_DIR/.env.XXXXXX")"
+  chmod "$mode" "$tmp"
+  awk -v k="$key" -v v="$value" '
+    $0 ~ "^" k "=" && !done { print k "=" v; done = 1; next }
+    { print }
+    END { if (!done) print k "=" v }
+  ' "$file" > "$tmp"
+  mv "$tmp" "$file"
+  chmod "$mode" "$file"
 }
 
 judge_hash() {
@@ -32,6 +54,15 @@ judge_hash() {
 
 case "${1:-}" in
   pre)
+    # srv runs this hook after the git sync, so HEAD is the code this deploy
+    # builds. /health reports APP_COMMIT so CI can verify the exact commit.
+    if APP_COMMIT="$(git -C source rev-parse --short=7 HEAD 2>/dev/null)"; then
+      set_env APP_COMMIT "$APP_COMMIT"
+      echo "→ APP_COMMIT=$APP_COMMIT"
+    else
+      echo "! source is not a git checkout; APP_COMMIT left unchanged" >&2
+    fi
+
     JUDGE_IMAGE="$(env_value JUDGE_IMAGE)"
     JUDGE_IMAGE="${JUDGE_IMAGE:-pauoj/judge:latest}"
     HASH="$(judge_hash)"

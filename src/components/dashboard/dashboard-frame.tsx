@@ -29,7 +29,8 @@ function countsChanged(previous: SocialCounts, next: SocialCounts): boolean {
   return (
     previous.messages !== next.messages ||
     previous.notifications !== next.notifications ||
-    previous.requests !== next.requests
+    previous.requests !== next.requests ||
+    previous.access !== next.access
   );
 }
 
@@ -86,12 +87,13 @@ export function DashboardFrame({
     messages: unreadMessages,
     notifications: unreadNotifications,
     requests: pendingFollowRequests,
+    access: pendingAccessRequests,
   });
   const badges: DashboardBadges = {
     messages: socialCounts.messages,
     notifications: socialCounts.notifications,
     requests: socialCounts.requests,
-    access: pendingAccessRequests,
+    access: socialCounts.access,
   };
   const sections = dashboardNav(panel, username, badges);
   const meta = dashboardWorkspaceMeta(panel);
@@ -128,15 +130,22 @@ export function DashboardFrame({
         messages: unreadMessages,
         notifications: unreadNotifications,
         requests: pendingFollowRequests,
+        access: pendingAccessRequests,
       })
         ? {
             messages: unreadMessages,
             notifications: unreadNotifications,
             requests: pendingFollowRequests,
+            access: pendingAccessRequests,
           }
         : previous,
     );
-  }, [unreadMessages, unreadNotifications, pendingFollowRequests]);
+  }, [
+    unreadMessages,
+    unreadNotifications,
+    pendingFollowRequests,
+    pendingAccessRequests,
+  ]);
 
   // The server layout already fetched the counts, so the first request waits
   // for the interval or for the tab becoming visible again.
@@ -156,6 +165,7 @@ export function DashboardFrame({
           messages: counts.messages,
           notifications: counts.notifications,
           requests: counts.requests,
+          access: counts.access,
         };
         setSocialCounts((previous) =>
           countsChanged(previous, next) ? next : previous,

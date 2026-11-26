@@ -7,7 +7,7 @@ export async function GET() {
   try {
     const user = await requireApiUser();
     await enforceRateLimit(`social-counts:${user.id}`, 120, 60);
-    const response = apiOk(await getSocialCounts(user.id));
+    const response = apiOk(await getSocialCounts(user.id, user.role === "ADMIN"));
     response.headers.set("Cache-Control", "private, no-store");
     return response;
   } catch (error) {

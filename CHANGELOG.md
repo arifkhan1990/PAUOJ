@@ -6,6 +6,15 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- The admin **Payments & access** badge now refreshes with the existing 45s
+  dashboard counts poll; `/api/v1/social/counts` returns `access` for admins and
+  `0` for everyone else, and the sidebar updates without a navigation.
+- Admin premium-order notifications are capped at 10 per admin per rolling hour;
+  additional orders send one hourly digest while the queue badge and `/admin`
+  callout keep showing the true pending count.
+- The Study plan E2E Chrome launch now captures stderr, waits up to 30s for
+  DevTools (with the stderr WebSocket fallback) and retries once with a fresh
+  profile, so the CI "no DevTools port" flake is diagnosable and self-healing.
 - `srv deploy` now runs a `deploy/srv/deploy.sh` hook: the pre-hook rebuilds the
   judge sandbox image when `judge/` changes or the image is missing, and the
   post-hook seeds the curriculum. This prevents the judge worker from
@@ -24,6 +33,10 @@ All notable changes to PAU OJ are documented here. The format follows
   metadata instead of a judge-error fallback.
 
 ### Changed
+- `/health` reports the deployed `APP_COMMIT`; the srv deploy hook records it,
+  the server compose passes it to web/worker, and CI/CD only accepts a deploy
+  when the live commit matches the queued short SHA. The first judge image build
+  is documented as a one-time ~10 minute, ~3.2 GB step that is cached.
 - CI/CD now deploys `main` automatically after a green **CI** run (and on manual
   dispatch) through the srv deploy hook. The job waits for the server queue and
   verifies `/health`, the production smoke suite and the 5 MiB upload probe.

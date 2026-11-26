@@ -52,6 +52,7 @@ export async function GET() {
       emailOutbox: emailOutboxCounts,
       workers,
       version: APP_VERSION,
+      commit: process.env.APP_COMMIT?.trim() || null,
       timestamp: new Date().toISOString(),
     },
     { status: healthy ? 200 : 503 },

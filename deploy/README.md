@@ -10,7 +10,7 @@ rollback, and a deploy workflow.
 - A public DNS record, e.g. `oj.example.edu`, pointing at the server.
 - Ports 80 and 443 open. PostgreSQL and Redis stay private.
 - Enough disk for Docker images, judge workdirs and backups. The judge image is
-  ~800 MB; budget several GB.
+  ~3.2 GB; budget at least 10 GB for images, workdirs and backups.
 
 Install Docker from the official Docker Engine instructions, then verify:
 
@@ -57,7 +57,10 @@ bash deploy/deploy.sh
 
 This tags the previous image, builds `pauoj/app:latest`, builds the judge image
 if missing, starts the stack, and waits for `/health` with at least one live
-worker. If health fails it rolls back to the previous app image.
+worker. If health fails it rolls back to the previous app image. The very first
+deploy on a fresh host also builds `pauoj/judge:latest` once (~10 minutes); later
+app-only deploys reuse it unless `judge/` changed (see the srv hook notes in
+section 7).
 
 Seed the database once:
 
@@ -81,8 +84,10 @@ curl -fsS https://oj.example.edu/health
 ```
 
 The health response must show `"status":"ok"` and `"workers":1` (or more).
-It also reports `migrations: { applied, expected, ok }`; a database that is
-behind the shipped drizzle journal returns `503` with `"status":"degraded"`, so
+It also reports `commit` (the deployed short SHA on the srv host, `null` when
+`APP_COMMIT` is not wired) and `migrations: { applied, expected, ok }`. A database
+that is behind the shipped drizzle journal returns `503` with
+`"status":"degraded"`, so
 a partial deploy cannot serve stale schema. The app container runs
 `node dist/migrate.js` before `server.js`, so the normal compose path migrates
 first. Migration `0046_dashboard_notification_links` is a data-only backfill
@@ -414,8 +419,36 @@ no down migration is required.
 **CI** run on `main` (and on manual dispatch). It does not build on the runner:
 it calls the srv deploy hook at
 `https://deploy.nabasolution.tech/deploy/pauoj` with `X-Deploy-Token`, waits for
-the deploy queue to drain, then verifies `/health` (version, migrations, worker),
-`scripts/prod-smoke.sh` and the 5 MiB upload probe.
+the deploy queue to drain, then verifies `/health` (version, migrations, worker,
+**exact commit**), `scripts/prod-smoke.sh` and the 5 MiB upload probe.
+
+### Exact-commit health check
+
+`/health` reports `commit: process.env.APP_COMMIT?.trim() || null`. CI only
+treats a deploy as healthy when `version`, `migrations.ok`, `workers >= 1` **and**
+`commit` equals the 7-character short SHA it queued. A green build that never
+reached production, or a stale container still answering the old version,
+therefore fails the workflow with
+`production health did not reach commit <short>` and prints the last health body.
+
+The hook writes the value on the srv host; the server `compose.yml` must pass it
+to the runtime. Keep these three pieces in sync:
+
+1. `deploy/srv/deploy.sh` (`pre`) runs
+   `git -C source rev-parse --short=7 HEAD` and writes/updates
+   `APP_COMMIT=<short sha>` in the project `.env` (0600 preserved, key never
+   duplicated). The `post` branch is unchanged.
+2. `/home/naba/server/projects/pauoj/compose.yml` maps
+   `APP_COMMIT: ${APP_COMMIT}` in the `web` and `worker` `environment` maps
+   (`env_file: .env` alone also works, but the explicit mapping documents the
+   contract and survives env-file changes).
+3. `deploy/docker-compose.prod.yml` and `deploy/docker-compose.shared.yml` carry
+   `APP_COMMIT: ${APP_COMMIT:-}` in their shared app environment anchor, so the
+   app and worker images receive it at runtime.
+
+`APP_COMMIT` is read at container start, not baked into the image: the running
+container only reports the new commit after the deploy recreates web/worker. A
+plain `docker restart` does not apply it.
 
 Required repository secret (one time):
 
@@ -441,13 +474,24 @@ skipped so an older commit cannot overwrite a newer deploy.
 (one-time: `ln -sfn source/deploy/srv/deploy.sh deploy.sh`). `srv deploy` runs
 it around every release:
 
-- `pre`: rebuilds `pauoj/judge:latest` when the contents of `source/judge`
-  change, or when the image is missing, using a local `.judge-hash` marker.
-  This prevents the worker from crash-looping when an app-only deploy leaves the
-  judge sandbox image missing. Set `BUILD_SWIFT=1` to build the optional Swift
-  image too.
+- `pre`: records the deployed commit (`APP_COMMIT`) for `/health`, then rebuilds
+  `pauoj/judge:latest` when the contents of `source/judge` change, or when the
+  image is missing, using a local `.judge-hash` marker. This prevents the worker
+  from crash-looping when an app-only deploy leaves the judge sandbox image
+  missing. Set `BUILD_SWIFT=1` to build the optional Swift image too.
 - `post`: runs the idempotent seed service after the app is healthy, so new
   problems/references land with the release.
+
+### First judge build on a fresh host
+
+The first `srv deploy` (or `deploy.sh`) on a new host builds `pauoj/judge:latest`
+once from `judge/` (about 10 minutes on the current host; the image is ~3.2 GB
+and downloads the language toolchains). The build is cached: later app-only deploys skip it unless
+the content hash of `judge/` changed or the image is missing. The optional Swift
+image (`pauoj/judge-swift:latest`) is **not** built by default; run the deploy
+with `BUILD_SWIFT=1` once to create it. Swift submissions fall back to a clear
+"Swift judge image is missing" failure until it exists. There is no GHCR/image
+registry pipeline: every host builds the judge image locally.
 
 ## 8. Security checklist
 

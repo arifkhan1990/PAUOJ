@@ -21,12 +21,13 @@ describe("GET /api/v1/social/counts", () => {
     enforceRateLimit.mockResolvedValue({ allowed: true });
   });
 
-  it("returns the three viewer-scoped counts with no-store caching", async () => {
-    requireApiUser.mockResolvedValue({ id: "user-1" });
+  it("returns the four viewer-scoped counts with no-store caching", async () => {
+    requireApiUser.mockResolvedValue({ id: "user-1", role: "USER" });
     getSocialCounts.mockResolvedValue({
       messages: 2,
       notifications: 7,
       requests: 1,
+      access: 0,
     });
 
     const response = await GET();
@@ -34,10 +35,28 @@ describe("GET /api/v1/social/counts", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     await expect(response.json()).resolves.toEqual({
-      data: { messages: 2, notifications: 7, requests: 1 },
+      data: { messages: 2, notifications: 7, requests: 1, access: 0 },
     });
-    expect(getSocialCounts).toHaveBeenCalledWith("user-1");
+    expect(getSocialCounts).toHaveBeenCalledWith("user-1", false);
     expect(enforceRateLimit).toHaveBeenCalledWith("social-counts:user-1", 120, 60);
+  });
+
+  it("includes the pending access queue for admins", async () => {
+    requireApiUser.mockResolvedValue({ id: "admin-1", role: "ADMIN" });
+    getSocialCounts.mockResolvedValue({
+      messages: 0,
+      notifications: 3,
+      requests: 0,
+      access: 4,
+    });
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      data: { messages: 0, notifications: 3, requests: 0, access: 4 },
+    });
+    expect(getSocialCounts).toHaveBeenCalledWith("admin-1", true);
   });
 
   it("rejects anonymous callers", async () => {
@@ -50,7 +69,7 @@ describe("GET /api/v1/social/counts", () => {
   });
 
   it("maps the polling limiter to 429", async () => {
-    requireApiUser.mockResolvedValue({ id: "user-1" });
+    requireApiUser.mockResolvedValue({ id: "user-1", role: "USER" });
     enforceRateLimit.mockRejectedValue(errors.rateLimited());
 
     const response = await GET();

@@ -117,26 +117,35 @@ jobs:
 
       - name: Verify health, smoke tests and upload limit
         if: steps.guard.outputs.skip != 'true' && steps.token.outputs.configured == 'true'
+        env:
+          SHORT: ${{ steps.target.outputs.short }}
         run: |
           set -euo pipefail
+          if [ -z "${SHORT:-}" ]; then
+            echo "::error::target short SHA is empty; cannot verify the deployed commit"
+            exit 1
+          fi
           expected=$(python3 -c 'import json; print(json.load(open("package.json"))["version"])')
           health=""
           version=""
+          commit=""
           migrations_ok=""
           workers="0"
           for i in $(seq 1 60); do
             health=$(curl -fsS -m 10 "$HEALTH_URL" || true)
             version=$(printf '%s' "$health" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("version") or "")' 2>/dev/null || true)
+            commit=$(printf '%s' "$health" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("commit") or "")' 2>/dev/null || true)
             migrations_ok=$(printf '%s' "$health" | python3 -c 'import sys,json; print(str(json.load(sys.stdin).get("migrations",{}).get("ok")).lower())' 2>/dev/null || true)
             workers=$(printf '%s' "$health" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("workers") or 0)' 2>/dev/null || echo 0)
-            echo "attempt $i: version=${version:-none} migrations_ok=${migrations_ok:-none} workers=${workers:-0}"
-            if [ "$version" = "$expected" ] && [ "$migrations_ok" = "true" ] && [ "$workers" -ge 1 ]; then
+            echo "attempt $i: version=${version:-none} commit=${commit:-none} migrations_ok=${migrations_ok:-none} workers=${workers:-0}"
+            if [ "$version" = "$expected" ] && [ "$migrations_ok" = "true" ] && [ "$workers" -ge 1 ] && [ "$commit" = "$SHORT" ]; then
               break
             fi
             sleep 10
           done
-          if [ "$version" != "$expected" ] || [ "$migrations_ok" != "true" ] || [ "$workers" -lt 1 ]; then
-            echo "::error::production health did not reach version $expected with current migrations and a live worker"
+          if [ "$version" != "$expected" ] || [ "$migrations_ok" != "true" ] || [ "$workers" -lt 1 ] || [ "$commit" != "$SHORT" ]; then
+            echo "::error::production health did not reach commit $SHORT"
+            echo "expected version $expected, commit $SHORT, current migrations and a live worker"
             printf '%s\n' "$health"
             exit 1
           fi
