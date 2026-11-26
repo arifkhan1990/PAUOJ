@@ -11,6 +11,10 @@ import {
   X,
 } from "lucide-react";
 import { PaymentGrantForm } from "@/components/admin/payment-grant-form";
+import {
+  PaymentApproveDialog,
+  PaymentReasonDialog,
+} from "@/components/admin/payment-review-dialogs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -45,7 +49,11 @@ export function PaymentQueue() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
+  const [approveOrder, setApproveOrder] = useState<Order | null>(null);
+  const [reasonTarget, setReasonTarget] = useState<{
+    order: Order;
+    action: "REJECT" | "REVOKE";
+  } | null>(null);
 
   const load = useCallback(
     async (nextFilter: Filter, nextPage: number, append: boolean) => {
@@ -82,26 +90,9 @@ export function PaymentQueue() {
   const review = async (
     order: Order,
     action: "APPROVE" | "REJECT" | "REVOKE",
+    note?: string,
   ) => {
     if (busyId) return;
-    let note: string | undefined;
-    if (action === "REJECT" || action === "REVOKE") {
-      const reason = window.prompt(
-        action === "REJECT"
-          ? "Why are you rejecting this payment?"
-          : "Why are you revoking this access?",
-      );
-      if (!reason || reason.trim().length < 3) return;
-      note = reason.trim();
-    } else if (
-      !window.confirm(
-        order.kind === "PURCHASE"
-          ? `Approve ৳${order.amountBdt} from @${order.user.username}?`
-          : `Grant free access to @${order.user.username}?`,
-      )
-    ) {
-      return;
-    }
     setBusyId(order.id);
     setError(null);
     try {
@@ -287,7 +278,7 @@ export function PaymentQueue() {
                     <Button
                       type="button"
                       size="sm"
-                      onClick={() => void review(order, "APPROVE")}
+                      onClick={() => setApproveOrder(order)}
                       disabled={busyId === order.id}
                     >
                       {busyId === order.id ? (
@@ -301,7 +292,7 @@ export function PaymentQueue() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => void review(order, "REJECT")}
+                      onClick={() => setReasonTarget({ order, action: "REJECT" })}
                       disabled={busyId === order.id}
                     >
                       <X className="size-3.5" /> Reject
@@ -315,7 +306,7 @@ export function PaymentQueue() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => void review(order, "REVOKE")}
+                      onClick={() => setReasonTarget({ order, action: "REVOKE" })}
                       disabled={busyId === order.id}
                     >
                       <X className="size-3.5" /> Revoke access
@@ -342,6 +333,28 @@ export function PaymentQueue() {
       ) : null}
 
       <PaymentGrantForm />
+
+      <PaymentApproveDialog
+        order={approveOrder}
+        onCancel={() => setApproveOrder(null)}
+        onConfirm={() => {
+          if (!approveOrder) return;
+          const order = approveOrder;
+          setApproveOrder(null);
+          void review(order, "APPROVE");
+        }}
+      />
+
+      <PaymentReasonDialog
+        target={reasonTarget}
+        onCancel={() => setReasonTarget(null)}
+        onConfirm={(reason) => {
+          if (!reasonTarget) return;
+          const { order, action } = reasonTarget;
+          setReasonTarget(null);
+          void review(order, action, reason);
+        }}
+      />
     </div>
   );
 }
