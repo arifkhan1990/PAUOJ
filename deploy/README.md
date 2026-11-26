@@ -170,13 +170,15 @@ and no named volume.
 
 ### 1,200-contestant profile
 
-The srv deploy hook now targets **2 workers × `JUDGE_CONCURRENCY=2` = 4 judge
+The srv deploy hook now targets **1 worker × `JUDGE_CONCURRENCY=4` = 4 judge
 slots**, sized for ~1,200 contestants making 3–5 submissions each in a 2-hour
 round (4,800–6,000 runs; roughly 1–1.25 hours at ~3s/run with 4 slots). It sets
-`JUDGE_CONCURRENCY=2` and `JUDGE_WORKER_REPLICAS=2` in the host `.env` and
-scales the worker after compose; an explicit larger operator value is
-preserved. The app's `/health` reports `workers` and `judgeSlots`, so the live
-profile is visible (`workers:2`, `judgeSlots:4`).
+`JUDGE_CONCURRENCY=4` and `JUDGE_WORKER_REPLICAS=1` in the host `.env`; an
+explicit larger operator value is preserved. One worker avoids Compose
+replica/container-name edge cases, and judge containers run through the host
+Docker daemon rather than the worker cgroup. The app's `/health` reports
+`workers` and `judgeSlots`, so the live profile is visible (`workers:1`,
+`judgeSlots:4`).
 
 Registration is now 1,500/15 min per IP + 6,000/15 min global, enough for 1,200
 campus-NAT signups in one window. Pre-register and ask contestants to log in

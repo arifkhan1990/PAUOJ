@@ -75,21 +75,22 @@ case "${1:-}" in
       *) echo "→ APP_MEM_LIMIT=$current_app_limit (operator override)" ;;
     esac
 
-    # 1,200-contestant profile: two workers × two concurrent runs = 4 judge
-    # slots. Preserve an explicit larger operator value.
+    # 1,200-contestant profile: one worker × four concurrent runs = 4 judge
+    # slots. One worker avoids Compose replica/container_name edge cases;
+    # judge containers run through the host Docker daemon, not the worker cgroup.
     current_concurrency="$(env_value JUDGE_CONCURRENCY)"
     case "$current_concurrency" in
-      ""|1|2)
-        set_env JUDGE_CONCURRENCY 2
-        echo "→ JUDGE_CONCURRENCY=2 (4 slots with 2 workers)"
+      ""|1|2|3)
+        set_env JUDGE_CONCURRENCY 4
+        echo "→ JUDGE_CONCURRENCY=4 (4 judge slots on one worker)"
         ;;
       *) echo "→ JUDGE_CONCURRENCY=$current_concurrency (operator override)" ;;
     esac
     current_workers="$(env_value JUDGE_WORKER_REPLICAS)"
     case "$current_workers" in
-      ""|1)
-        set_env JUDGE_WORKER_REPLICAS 2
-        echo "→ JUDGE_WORKER_REPLICAS=2 for the 1,200-contestant profile"
+      ""|1|2)
+        set_env JUDGE_WORKER_REPLICAS 1
+        echo "→ JUDGE_WORKER_REPLICAS=1 for the 1,200-contestant profile"
         ;;
       *) echo "→ JUDGE_WORKER_REPLICAS=$current_workers (operator override)" ;;
     esac
@@ -227,21 +228,25 @@ case "${1:-}" in
     # 1,200-contestant profile back to one replica. `--no-deps` leaves the
     # already-healthy app/db/redis alone.
     worker_replicas="$(env_value JUDGE_WORKER_REPLICAS)"
-    case "$worker_replicas" in ''|*[!0-9]*) worker_replicas=2 ;; esac
-    if [ "$worker_replicas" -lt 1 ]; then worker_replicas=2; fi
-    if docker compose -p srv-pauoj -f compose.yml --env-file .env \
-      up -d --no-deps --scale worker="$worker_replicas" worker >/dev/null; then
-      worker_containers="$(docker ps -q \
-        --filter label=com.docker.compose.service=worker \
-        --filter name=pauoj 2>/dev/null | wc -l | tr -d ' ')"
-      echo "→ judge workers scaled to $worker_replicas (containers=${worker_containers:-0})"
-      if [ "${worker_containers:-0}" -lt "$worker_replicas" ]; then
-        echo "ERROR: only ${worker_containers:-0}/${worker_replicas} judge worker containers are running" >&2
+    case "$worker_replicas" in ''|*[!0-9]*) worker_replicas=1 ;; esac
+    if [ "$worker_replicas" -lt 1 ]; then worker_replicas=1; fi
+    if [ "$worker_replicas" -gt 1 ]; then
+      if docker compose -p srv-pauoj -f compose.yml --env-file .env \
+        up -d --no-deps --scale worker="$worker_replicas" worker >/dev/null; then
+        worker_containers="$(docker ps -q \
+          --filter label=com.docker.compose.service=worker \
+          --filter name=pauoj 2>/dev/null | wc -l | tr -d ' ')"
+        echo "→ judge workers scaled to $worker_replicas (containers=${worker_containers:-0})"
+        if [ "${worker_containers:-0}" -lt "$worker_replicas" ]; then
+          echo "ERROR: only ${worker_containers:-0}/${worker_replicas} judge worker containers are running" >&2
+          exit 1
+        fi
+      else
+        echo "ERROR: could not scale judge workers to $worker_replicas" >&2
         exit 1
       fi
     else
-      echo "ERROR: could not scale judge workers to $worker_replicas" >&2
-      exit 1
+      echo "→ judge worker replicas: 1 (JUDGE_CONCURRENCY=$(env_value JUDGE_CONCURRENCY))"
     fi
 
     echo "→ seeding curriculum (idempotent)"

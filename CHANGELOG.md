@@ -58,9 +58,9 @@ All notable changes to PAU OJ are documented here. The format follows
   `memory: { rssMb, heapUsedMb, limitMb }` so operators can see judge
   saturation and the container memory ceiling; backlog never changes the health
   status, and the queue probe degrades to zeros on a Redis or BullMQ error.
-- The srv deploy hook now targets the **1,200-contestant profile**: 2 workers ×
-  `JUDGE_CONCURRENCY=2` = 4 judge slots, preserved across deploys, with
-  `JUDGE_WORKER_REPLICAS=2`; the registration limit is 1,500/15 min per IP.
+- The srv deploy hook now targets the **1,200-contestant profile**: 1 worker ×
+  `JUDGE_CONCURRENCY=4` = 4 judge slots, preserved across deploys, with
+  `JUDGE_WORKER_REPLICAS=1`; the registration limit is 1,500/15 min per IP.
 - The edge budget is now 2 GB for `srv-caddy` (measured ~1.1 GB with 10k TLS
   streams), the deploy hook raises/verifies it, and the host healthcheck fails
   if the edge is downgraded below 2 GB. The cron healthcheck publishes the
