@@ -6,6 +6,10 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- `srv deploy` now runs a `deploy/srv/deploy.sh` hook: the pre-hook rebuilds the
+  judge sandbox image when `judge/` changes or the image is missing, and the
+  post-hook seeds the curriculum. This prevents the judge worker from
+  crash-looping after an app-only deploy.
 - Admins are now notified in-app when a premium payment or free-access request
   arrives; the admin sidebar links to **Payments & access** with a
   pending-count badge and `/admin` shows a review callout, so free-access

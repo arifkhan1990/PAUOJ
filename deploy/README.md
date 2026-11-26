@@ -435,6 +435,20 @@ No self-hosted runner or `DEPLOY_DIR` variable is needed. The old
 self-hosted-runner job is retired, and a stale CI run (main already moved on) is
 skipped so an older commit cannot overwrite a newer deploy.
 
+### srv deploy hook
+
+`source/deploy/srv/deploy.sh` is symlinked to the project root as `deploy.sh`
+(one-time: `ln -sfn source/deploy/srv/deploy.sh deploy.sh`). `srv deploy` runs
+it around every release:
+
+- `pre`: rebuilds `pauoj/judge:latest` when the contents of `source/judge`
+  change, or when the image is missing, using a local `.judge-hash` marker.
+  This prevents the worker from crash-looping when an app-only deploy leaves the
+  judge sandbox image missing. Set `BUILD_SWIFT=1` to build the optional Swift
+  image too.
+- `post`: runs the idempotent seed service after the app is healthy, so new
+  problems/references land with the release.
+
 ## 8. Security checklist
 
 - `SEED_DEMO_DATA=false` in production; rotate the seeded admin password if you
