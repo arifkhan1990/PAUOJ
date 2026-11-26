@@ -253,6 +253,21 @@ async function connectChrome({ chromeBin, baseUrl }) {
         await send("Input.dispatchMouseEvent", { type: "mouseReleased", ...base }, sessionId);
         return true;
       },
+      /** Real key events so native focus trapping/Escape run (synthetic JS events do not). */
+      async pressKey(key, { shift = false } = {}) {
+        const codes = { Tab: 9, Enter: 13, Escape: 27, ArrowLeft: 37, ArrowUp: 38, ArrowRight: 39, ArrowDown: 40 };
+        const code = codes[key];
+        if (!code) throw new Error(`unsupported key: ${key}`);
+        const event = {
+          key,
+          code: key,
+          windowsVirtualKeyCode: code,
+          nativeVirtualKeyCode: code,
+          modifiers: shift ? 8 : 0,
+        };
+        await send("Input.dispatchKeyEvent", { type: "rawKeyDown", ...event }, sessionId);
+        await send("Input.dispatchKeyEvent", { type: "keyUp", ...event }, sessionId);
+      },
       async navigate(url) {
         await send("Page.navigate", { url }, sessionId);
         await waitFor(

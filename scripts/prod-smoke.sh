@@ -32,6 +32,7 @@ note "$(echo "$HEALTH" | grep -q '"workers":[1-9]' && echo 1 || echo 0)" "judge 
 note "$(echo "$HEALTH" | grep -q '"migrations":{[^}]*"ok":true' && echo 1 || echo 0)" "migrations current"
 version="$(grep -m1 '"version"' package.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
 note "$(echo "$HEALTH" | grep -q "\"version\":\"$version\"" && echo 1 || echo 0)" "health version matches package" "$version"
+note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^}]*"pending"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health broadcastQueue pending is numeric"
 
 for path in /learn /learn/basic-programming-math /learn/basic-programming-math/complexity /problems /rank; do
   code="$(status "$path")"
@@ -51,6 +52,14 @@ note "$(grep -q 'Learning tracks' "$TMP_DIR/body" && echo 1 || echo 0)" "learnin
 
 status /problems >/dev/null
 note "$(grep -q 'Show all' "$TMP_DIR/body" && echo 1 || echo 0)" "tag filter rendered"
+note "$(grep -q 'aria-label="Open announcements and upcoming contests"' "$TMP_DIR/body" && echo 1 || echo 0)" "guest notification bell rendered"
+
+code="$(curl -sS -m 15 -D "$TMP_DIR/announcement-headers" -o "$TMP_DIR/announcement-body" -w '%{http_code}' "$BASE_URL/api/v1/announcements" || echo 000)"
+note "$([ "$code" = 200 ] && echo 1 || echo 0)" "announcements api 200" "$code"
+note "$(grep -Eq '"data"[[:space:]]*:[[:space:]]*\[' "$TMP_DIR/announcement-body" && echo 1 || echo 0)" "announcements api data array"
+announcement_cache="$(grep -i '^cache-control:' "$TMP_DIR/announcement-headers" || true)"
+note "$(echo "$announcement_cache" | grep -q 'public' && echo 1 || echo 0)" "announcements api cache public"
+note "$(echo "$announcement_cache" | grep -q 'max-age=60' && echo 1 || echo 0)" "announcements api cache max-age=60"
 
 code="$(status /admin/lesson-reports)"
 note "$([ "$code" = 307 ] || [ "$code" = 302 ] && echo 1 || echo 0)" "admin queue protected" "$code"

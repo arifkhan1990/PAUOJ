@@ -148,8 +148,9 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   analytics.
 
 ### Platform
-- **Notifications** — a public navbar bell with an unread badge and an accessible drawer
-  (All / Unread / Notices, per-item and mark-all read, load more, direct links) for in-app notices.
+- **Notifications** — a bell in the public navbar and the coder/teacher/admin dashboard
+  headers with an unread badge and an accessible drawer (All / Unread / Notices, per-item and
+  mark-all read, load more, direct links) for in-app notices.
   Email and browser push cover verdicts, contest registration/30-minute reminders/final
   results+rating, clarifications, reviews, learning enrollment/payments/reminders, badges and solved
   milestones, announcements, new contests/course modules, direct messages and problem/lesson

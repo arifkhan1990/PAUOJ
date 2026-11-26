@@ -17,6 +17,7 @@ export async function GET() {
   }
   const migrations = await getMigrationStatus();
   let emailOutboxCounts = { pending: 0, failed: 0 };
+  let broadcastQueueCounts = { pending: 0 };
   if (database) {
     try {
       const [row] = await getSql()`
@@ -31,6 +32,18 @@ export async function GET() {
       };
     } catch {
       emailOutboxCounts = { pending: 0, failed: 0 };
+    }
+    // Broadcasts awaiting worker fan-out. A backlog is operational signal only;
+    // it never flips the service to unhealthy. Missing table (pre-migration)
+    // also degrades to 0.
+    try {
+      const [row] = await getSql()`
+        select count(*) filter (where completed_at is null)::int as pending
+        from broadcasts
+      `;
+      broadcastQueueCounts = { pending: Number(row?.pending ?? 0) };
+    } catch {
+      broadcastQueueCounts = { pending: 0 };
     }
   }
   const redis = await pingRedis();
@@ -50,6 +63,7 @@ export async function GET() {
       redis,
       migrations,
       emailOutbox: emailOutboxCounts,
+      broadcastQueue: broadcastQueueCounts,
       workers,
       version: APP_VERSION,
       commit: process.env.APP_COMMIT?.trim() || null,

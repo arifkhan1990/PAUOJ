@@ -7,6 +7,7 @@ import { ChevronRight, ExternalLink, Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/header-nav";
 import { DashboardFooter } from "@/components/dashboard/dashboard-footer";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { apiRequest } from "@/lib/api-client";
@@ -125,20 +126,14 @@ export function DashboardFrame({
   // A server render (refresh or navigation) carries fresher counts than the
   // last poll, so adopt them without dropping a still-valid object identity.
   useEffect(() => {
+    const next: SocialCounts = {
+      messages: unreadMessages,
+      notifications: unreadNotifications,
+      requests: pendingFollowRequests,
+      access: pendingAccessRequests,
+    };
     setSocialCounts((previous) =>
-      countsChanged(previous, {
-        messages: unreadMessages,
-        notifications: unreadNotifications,
-        requests: pendingFollowRequests,
-        access: pendingAccessRequests,
-      })
-        ? {
-            messages: unreadMessages,
-            notifications: unreadNotifications,
-            requests: pendingFollowRequests,
-            access: pendingAccessRequests,
-          }
-        : previous,
+      countsChanged(previous, next) ? next : previous,
     );
   }, [
     unreadMessages,
@@ -373,6 +368,17 @@ export function DashboardFrame({
               <ExternalLink className="size-3.5" aria-hidden="true" />
               Public site
             </Link>
+            <NotificationBell
+              signedIn
+              initialUnread={socialCounts.notifications}
+              poll={false}
+              onUnreadChange={(notifications) =>
+                setSocialCounts((previous) => {
+                  const next = { ...previous, notifications };
+                  return countsChanged(previous, next) ? next : previous;
+                })
+              }
+            />
             <ThemeToggle />
             <UserMenu
               user={{ username, displayName, role, avatarPreset, avatarImageUpdatedAt }}

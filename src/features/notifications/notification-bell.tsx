@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatUnreadBadge } from "./notification-date-groups";
@@ -13,23 +13,47 @@ const POLL_INTERVAL_MS = 45_000;
  * Navbar bell. Signed-in users see an unread badge that refreshes every 45s
  * while the tab is visible, on tab return and on window focus; guests see the
  * same control without a count.
+ *
+ * Dashboard shells already poll the shared counts endpoint, so they pass
+ * `poll={false}` and mirror drawer actions through `onUnreadChange` instead.
  */
 export function NotificationBell({
   signedIn,
   initialUnread,
+  poll = true,
+  onUnreadChange,
 }: {
   signedIn: boolean;
   initialUnread: number;
+  /** Set false when the parent owns the counts poll (e.g. DashboardFrame). */
+  poll?: boolean;
+  /** Fires when polling or drawer actions change the count, not on render. */
+  onUnreadChange?: (unread: number) => void;
 }) {
   const [unread, setUnread] = useState(initialUnread);
   const [open, setOpen] = useState(false);
+  const reportedUnread = useRef(initialUnread);
+  const onUnreadChangeRef = useRef(onUnreadChange);
 
   useEffect(() => {
+    onUnreadChangeRef.current = onUnreadChange;
+  }, [onUnreadChange]);
+
+  // The parent owns the server value, so adopting it is not an external change.
+  const applyUnread = useCallback((next: number) => {
+    setUnread(next);
+    if (reportedUnread.current === next) return;
+    reportedUnread.current = next;
+    onUnreadChangeRef.current?.(next);
+  }, []);
+
+  useEffect(() => {
+    reportedUnread.current = initialUnread;
     setUnread(initialUnread);
   }, [initialUnread]);
 
   useEffect(() => {
-    if (!signedIn) return;
+    if (!poll || !signedIn) return;
     let cancelled = false;
     let interval: ReturnType<typeof setInterval> | null = null;
 
@@ -37,7 +61,7 @@ export function NotificationBell({
       if (document.visibilityState !== "visible") return;
       try {
         const counts = await fetchUnreadCounts();
-        if (!cancelled) setUnread(counts.notifications);
+        if (!cancelled) applyUnread(counts.notifications);
       } catch {
         // Badging is best-effort; the drawer surfaces load errors to the user.
       }
@@ -74,7 +98,7 @@ export function NotificationBell({
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", refresh);
     };
-  }, [signedIn]);
+  }, [poll, signedIn, applyUnread]);
 
   const badge = signedIn ? formatUnreadBadge(unread) : null;
   const label = signedIn
@@ -108,7 +132,7 @@ export function NotificationBell({
         signedIn={signedIn}
         unread={unread}
         onOpenChange={setOpen}
-        onUnreadChange={setUnread}
+        onUnreadChange={applyUnread}
       />
     </>
   );

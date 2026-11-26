@@ -82,6 +82,17 @@ origin; secure cookies are enabled automatically when `APP_URL` starts with
 checks continue to work. Recommended headers are already sent by the app; the
 proxy should also enforce HSTS and request-size limits.
 
+The app derives the rate-limit client key from the **first** `X-Forwarded-For`
+hop (falling back to `X-Real-IP`), so the proxy must own that header: overwrite
+it with the peer address, or append to a chain you control, and never pass an
+incoming client-supplied value through. Caddy 2 does this by default. Behind
+Cloudflare (proxy or Tunnel) the visitor IP arrives as `CF-Connecting-IP`, and
+Cloudflare *appends* to `X-Forwarded-For`, so a client can occupy the first
+position; set `X-Forwarded-For` to `cf.connecting_ip` in a Cloudflare Transform
+Rule for the OJ hostname. `GET /api/v1/announcements` additionally has a
+1200/min instance-wide limit that bounds spoofed-key abuse. See section 3c of
+`deploy/README.md` for per-topology details and a Redis-key check.
+
 ## Transactional email
 
 Verification, password reset, review notifications and assessment invite emails all go through
@@ -122,7 +133,12 @@ delivery.
 
 ## Monitoring
 
-- `/health` for uptime checks.
+- `/health` for uptime checks. Besides `status`/`workers`/`migrations`, it
+  exposes `emailOutbox: { pending, failed }` and `broadcastQueue: { pending }`.
+  `broadcastQueue.pending > 0` means broadcasts are still awaiting worker
+  fan-out; public announcements stay hidden until `completed_at` is set, and a
+  rising value means the sweep is behind or stalled. Neither counter changes the
+  health status, and both read `0` if the tables are missing.
 - Container logs are JSON with 10 MB × 3 rotation.
 - Watch worker failures, queue depth (`pauoj-judge`), disk space for Docker
   images and judge workdirs, and PostgreSQL connection counts.
@@ -172,5 +188,7 @@ Keep migrations backward compatible so a rollback of the app image is safe.
 | `EADDRINUSE` on 5432/6379 | Change `POSTGRES_PORT`/`REDIS_PORT` in `.env` |
 | Login succeeds then immediately logs out | `APP_URL` protocol/origin and proxy headers |
 | Health 503 | `docker compose logs db redis app` |
+| Announcements missing after publish | `/health` `broadcastQueue.pending` > 0: worker not draining broadcasts; check `worker` logs, then the `broadcasts` rows (`completed_at is null`) |
+| Rate limits block a whole shared IP | Edge is overwriting `X-Forwarded-For` with the proxy IP (or Cloudflare's first hop is client-controlled); fix the proxy/Cloudflare rule, see `deploy/README.md` section 3c |
 | `413` on DM image upload | Edge proxy `request_body { max_size }` is below 8MB; raise it to at least `8MB` and run `bash deploy/check-upload-limit.sh <base-url>` to confirm the 5 MiB body passes (`401`/`422` = pass, `413` = still blocked; the deploy fails/rolls back on any non-pass probe) |
 | Java always CE/RE | public class must be named `Main` |

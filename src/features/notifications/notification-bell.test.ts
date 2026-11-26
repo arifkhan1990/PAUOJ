@@ -8,7 +8,12 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-function render(props: { signedIn: boolean; initialUnread: number }): string {
+function render(props: {
+  signedIn: boolean;
+  initialUnread: number;
+  poll?: boolean;
+  onUnreadChange?: (unread: number) => void;
+}): string {
   return renderToStaticMarkup(
     createElement(
       ToastProvider,
@@ -48,6 +53,28 @@ describe("NotificationBell", () => {
     const html = render({ signedIn: true, initialUnread: 0 });
 
     expect(html).toContain('aria-label="Open notifications, 0 unread"');
+    expect(html).not.toContain("bg-destructive");
+  });
+
+  it("renders the same markup when the parent owns the poll", () => {
+    const polling = render({ signedIn: true, initialUnread: 7 });
+    const parentPolled = render({
+      signedIn: true,
+      initialUnread: 7,
+      poll: false,
+      onUnreadChange: () => undefined,
+    });
+
+    expect(parentPolled).toBe(polling);
+    expect(parentPolled).toContain('aria-label="Open notifications, 7 unread"');
+  });
+
+  it("keeps the guest label when polling is disabled", () => {
+    const html = render({ signedIn: false, initialUnread: 0, poll: false });
+
+    expect(html).toContain(
+      'aria-label="Open announcements and upcoming contests"',
+    );
     expect(html).not.toContain("bg-destructive");
   });
 });

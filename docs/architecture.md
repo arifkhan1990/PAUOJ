@@ -871,9 +871,14 @@ full notification center and preferences. Guests read public announcements and
 live/upcoming contests from the same drawer; no personal data is requested.
 `GET /api/v1/announcements` serves the public announcement list from completed
 admin broadcasts (baseline history excluded), keeps hrefs to same-origin paths,
-and is IP rate limited with a short public cache. Per-item reads are scoped by
-`(user_id, notification_id)`, so one user can never mark another user's row.
-The messages and notification feature pages and their icons stay dashboard-only.
+and is IP rate limited with a short public cache. `/health` exposes
+`broadcastQueue.pending` so a broadcast fan-out stuck behind the worker is
+visible to operators. The coder/teacher/admin dashboard header renders the same
+bell with `poll={false}` and reuses the shell's existing 45-second counts poll;
+drawer read actions feed back into the sidebar badge immediately. Per-item reads
+are scoped by `(user_id, notification_id)`, so one user can never mark another
+user's row. The messages and notification feature pages and their icons stay
+dashboard-only.
 The old public page URLs (`/notifications`,
 `/messages`, `/messages/:id`, `/connections/requests`, `/connections`) answer
 with permanent `308` redirects to the `/dashboard/...` paths and forward query

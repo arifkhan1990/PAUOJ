@@ -100,6 +100,26 @@ shipping:
 pnpm db:check
 ```
 
+### `/health` queue fields
+
+`/health` reports two operational counters from the database:
+
+- `emailOutbox: { pending, failed }` — queued/failed transactional mail.
+- `broadcastQueue: { pending }` — broadcast rows whose fan-out has not finished
+  (`broadcasts.completed_at is null`).
+
+`broadcastQueue.pending > 0` means the worker's broadcast sweep is behind or
+stuck (it normally drains within ~30 s). It is a warning, not an outage: the
+service stays `ok`/`503`-free on this signal. Public announcements and the guest
+drawer only show rows with `completed_at` set, so a stuck worker leaves freshly
+published announcements invisible rather than half-delivered. Both counters read
+as `0` when the table is missing (pre-migration) or the query fails, so `/health`
+never fails on them. Investigate with:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs --tail 200 worker | grep -i broadcast
+```
+
 ## 3b. Shared host with an existing Caddy / Cloudflare Tunnel
 
 > If the host runs the `srv` CLI (the naba server does), use
@@ -185,7 +205,8 @@ Automated operations on the same host:
   and appends failures to `/home/naba/server/logs/pauoj-health.log`. Export
   `ALERT_WEBHOOK` in the cron line to POST failures to a chat webhook.
 - After every deploy run `bash scripts/prod-smoke.sh` (health/version/
-  migrations/worker, key pages, markers and the admin gate).
+  migrations/worker/`broadcastQueue`, key pages, guest bell + announcements API,
+  markers and the admin gate).
 - After deploying rating changes, run `pnpm ratings:audit` (read-only) and
   confirm `critical: 0` and `warnings: 0`; `--strict` also fails on warnings.
   The worker must be running (or page views/`pnpm ratings:finalize` can drain
@@ -259,6 +280,53 @@ reconnects.
   `is_public = true` with `publication_status = 'DRAFT'`. Then retag
   `srv-pauoj-web:pre-0.7.0` as `srv-pauoj-web:latest` and recreate web/worker. Keep
   the pre-deploy dump for a full restore.
+
+## 3c. Client IP, `X-Forwarded-For` and rate limits
+
+`src/server/api/request.ts` derives the client key from the **first**
+`X-Forwarded-For` hop, then `X-Real-IP`. Public rate limits are only as good as
+the edge that writes that header:
+
+- **Dedicated Compose (`deploy/Caddyfile`).** Caddy 2 ignores client-supplied
+  `X-Forwarded-*` values by default and rewrites `X-Forwarded-For` to the
+  immediate peer, so a direct client → Caddy → app path already yields a
+  trustworthy key. Do not add `header_up X-Forwarded-For {header.X-Forwarded-For}`
+  or any other pass-through; that reintroduces spoofing. If Cloudflare is put in
+  front of this Caddy, Caddy sees a Cloudflare edge IP instead of the client, so
+  keys become coarse — spoofing is still blocked. Add the Cloudflare ranges via
+  the global `servers { trusted_proxies ... }` option only if per-client keys
+  matter.
+- **Shared host / Cloudflare Tunnel (`docker-compose.shared.yml`).** The path is
+  Cloudflare → tunnel (`cloudflared`) → the shared Caddy site → `pauoj-app:3000`.
+  Cloudflare *appends* the visitor IP to `X-Forwarded-For` and also sets
+  `CF-Connecting-IP`. Because the app reads the first hop, a client that sends
+  its own `X-Forwarded-For` can win the first position. Fix it at the edge, not
+  in the app: add a Cloudflare Transform Rule that **sets** `X-Forwarded-For` to
+  `cf.connecting_ip` (overwrite, not append) for the OJ hostname. If the shared
+  Caddy is between the tunnel and the app, it must trust the tunnel range
+  (global Caddy `servers { trusted_proxies ... }`, not the generated site file,
+  which `srv` rewrites) or it will overwrite the header with the tunnel IP and
+  collapse every visitor into one bucket.
+- **Global backstop.** `GET /api/v1/announcements` enforces 60/min per client key
+  **and** 1200/min across all keys. Even with a fully spoofed `X-Forwarded-For`,
+  an attacker can rotate keys only up to the global ceiling, which is sized for
+  the whole instance (drawer polling from every open tab). Do not raise the
+  per-key limit to "fix" a shared-IP problem; fix the edge header instead.
+
+Verify the edge is writing what you expect. The limiter keys are
+`announcements:<client-key>` and `announcements:global`, so one request with a
+fake first hop shows whether the edge overwrote it:
+
+```bash
+curl -sS -o /dev/null https://oj.example.edu/api/v1/announcements \
+  -H 'X-Forwarded-For: 203.0.113.9'
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  exec -T redis redis-cli --scan --pattern 'announcements:*'
+```
+
+`announcements:203.0.113.9` means the edge forwarded the client-supplied hop
+(needs an overwrite rule); a real client/edge address means it overwrote
+correctly. `announcements:global` is the instance-wide backstop.
 
 ## 4. Backups
 
@@ -369,8 +437,9 @@ docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
 
 `FAILED` outbox rows carry the last SMTP error and are not retried after five
 attempts; inspect them before assuming mail is healthy. `/health` also reports
-`emailOutbox.pending` and `emailOutbox.failed`. Delivered rows are
-pruned after 30 days and failed rows after 90 days.
+`emailOutbox.pending`, `emailOutbox.failed` and `broadcastQueue.pending` (rows
+still awaiting fan-out; see `/health` queue fields in section 3). Delivered rows
+are pruned after 30 days and failed rows after 90 days.
 
 Browser push needs a VAPID keypair and HTTPS. Generate one with
 `npx web-push generate-vapid-keys --json`, then set `WEB_PUSH_PUBLIC_KEY`,
