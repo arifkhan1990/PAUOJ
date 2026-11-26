@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createSubmissionEventBus,
+  parseSubmissionVersion,
+  publishSubmissionChangedWith,
+  readSubmissionVersionWith,
   submissionChannel,
+  submissionVersionKey,
   SUBMISSION_CHANNEL_PREFIX,
+  SUBMISSION_VERSION_TTL_SECONDS,
+  type RedisPublisher,
   type RedisSubscriber,
+  type RedisVersionReader,
 } from "./submission-events";
 
 function createFakeSubscriber() {
@@ -164,5 +171,161 @@ describe("createSubmissionEventBus", () => {
 describe("submissionChannel", () => {
   it("namespaces channels per submission id", () => {
     expect(submissionChannel("abc")).toBe(`${SUBMISSION_CHANNEL_PREFIX}abc`);
+  });
+});
+
+describe("submissionVersionKey", () => {
+  it("namespaces the version key per submission id", () => {
+    expect(submissionVersionKey("abc")).toBe("pauoj:submission:abc:version");
+  });
+});
+
+describe("parseSubmissionVersion", () => {
+  it("parses non-negative integers", () => {
+    expect(parseSubmissionVersion("0")).toBe(0);
+    expect(parseSubmissionVersion("42")).toBe(42);
+    expect(parseSubmissionVersion("0007")).toBe(7);
+  });
+
+  it("rejects null, empty and non-numeric values", () => {
+    expect(parseSubmissionVersion(null)).toBeNull();
+    expect(parseSubmissionVersion("")).toBeNull();
+    expect(parseSubmissionVersion("changed")).toBeNull();
+    expect(parseSubmissionVersion("1.5")).toBeNull();
+    expect(parseSubmissionVersion("1e3")).toBeNull();
+    expect(parseSubmissionVersion(" 1")).toBeNull();
+    expect(parseSubmissionVersion("+1")).toBeNull();
+  });
+
+  it("rejects negative and unsafe values", () => {
+    expect(parseSubmissionVersion("-1")).toBeNull();
+    expect(parseSubmissionVersion("9".repeat(40))).toBeNull();
+  });
+});
+
+function createFakeReader(options: {
+  status?: string;
+  value?: string | null;
+  error?: Error;
+} = {}) {
+  const get = vi.fn(async (): Promise<string | null> => {
+    if (options.error) throw options.error;
+    return options.value ?? null;
+  });
+  const client: RedisVersionReader = {
+    status: options.status ?? "ready",
+    get,
+  };
+  return { client, get };
+}
+
+describe("readSubmissionVersionWith", () => {
+  it("reads and parses the version key when the client is ready", async () => {
+    const { client, get } = createFakeReader({ value: "7" });
+
+    await expect(readSubmissionVersionWith(client, "s1")).resolves.toBe(7);
+    expect(get).toHaveBeenCalledWith(submissionVersionKey("s1"));
+  });
+
+  it("returns null when the key is missing or non-numeric", async () => {
+    await expect(
+      readSubmissionVersionWith(createFakeReader().client, "s1"),
+    ).resolves.toBeNull();
+    await expect(
+      readSubmissionVersionWith(createFakeReader({ value: "oops" }).client, "s1"),
+    ).resolves.toBeNull();
+    await expect(
+      readSubmissionVersionWith(createFakeReader({ value: "-2" }).client, "s1"),
+    ).resolves.toBeNull();
+  });
+
+  it("returns null without a GET when the client is not ready", async () => {
+    const { client, get } = createFakeReader({ status: "reconnecting" });
+
+    await expect(readSubmissionVersionWith(client, "s1")).resolves.toBeNull();
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  it("never rejects when the GET throws", async () => {
+    const { client } = createFakeReader({ error: new Error("redis down") });
+
+    await expect(readSubmissionVersionWith(client, "s1")).resolves.toBeNull();
+  });
+});
+
+type FakePipeline = {
+  incr(key: string): FakePipeline;
+  expire(key: string, seconds: number): FakePipeline;
+  publish(channel: string, message: string): FakePipeline;
+  exec(): Promise<unknown>;
+};
+
+function createFakePublisher(options: {
+  status?: string;
+  execError?: Error;
+  multiError?: Error;
+} = {}) {
+  const pipeline: FakePipeline = {
+    incr: vi.fn((): FakePipeline => pipeline),
+    expire: vi.fn((): FakePipeline => pipeline),
+    publish: vi.fn((): FakePipeline => pipeline),
+    exec: vi.fn((): Promise<unknown> =>
+      options.execError
+        ? Promise.reject(options.execError)
+        : Promise.resolve([[null, 1], [null, 1], [null, 1]]),
+    ),
+  };
+  const multi = vi.fn((): FakePipeline => {
+    if (options.multiError) throw options.multiError;
+    return pipeline;
+  });
+  const client: RedisPublisher = {
+    status: options.status ?? "ready",
+    multi,
+  };
+  return { client, multi, pipeline };
+}
+
+describe("publishSubmissionChangedWith", () => {
+  it("increments the version, sets the TTL and publishes in one pipeline", () => {
+    const { client, pipeline } = createFakePublisher();
+
+    publishSubmissionChangedWith(client, "s1");
+
+    expect(pipeline.incr).toHaveBeenCalledWith(submissionVersionKey("s1"));
+    expect(pipeline.expire).toHaveBeenCalledWith(
+      submissionVersionKey("s1"),
+      SUBMISSION_VERSION_TTL_SECONDS,
+    );
+    expect(pipeline.publish).toHaveBeenCalledWith(
+      submissionChannel("s1"),
+      "changed",
+    );
+    expect(pipeline.exec).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips the pipeline entirely when the client is not ready", () => {
+    const { client, multi } = createFakePublisher({ status: "reconnecting" });
+
+    publishSubmissionChangedWith(client, "s1");
+
+    expect(multi).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when the pipeline exec rejects", async () => {
+    const { client } = createFakePublisher({
+      execError: new Error("exec failed"),
+    });
+
+    expect(() => publishSubmissionChangedWith(client, "s1")).not.toThrow();
+    await flush();
+  });
+
+  it("does not throw when multi() throws synchronously", () => {
+    const { client } = createFakePublisher({
+      multiError: new Error("multi failed"),
+    });
+
+    expect(() => publishSubmissionChangedWith(client, "s1")).not.toThrow();
   });
 });

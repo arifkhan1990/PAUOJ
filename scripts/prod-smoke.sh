@@ -34,6 +34,9 @@ version="$(grep -m1 '"version"' package.json | sed -E 's/.*"version": *"([^"]+)"
 note "$(echo "$HEALTH" | grep -q "\"version\":\"$version\"" && echo 1 || echo 0)" "health version matches package" "$version"
 note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^}]*"pending"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health broadcastQueue pending is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^}]*"oldestPendingSeconds"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health broadcast oldest age is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"waiting"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue waiting is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"active"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue active is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"failed"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue failed is numeric"
 
 for path in /learn /learn/basic-programming-math /learn/basic-programming-math/complexity /problems /rank; do
   code="$(status "$path")"

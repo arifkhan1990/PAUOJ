@@ -6,6 +6,17 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- Registration no longer caps one address at 5 attempts per 15 minutes. The
+  per-egress budget is now 600/15 min (40/min) with a 6,000/15 min global
+  backstop, so a campus NAT can onboard over hours without opening the door to
+  unlimited signup/email spam.
+- The public announcement drawer is cached in-process for 30s and its limits
+  are now 12,000/min per IP plus 30,000/min global, so 10k guests behind one
+  NAT can open the bell without exhausting a 60/min bucket; the feed still
+  keeps its 60s public HTTP cache.
+- A lost verdict pub/sub event is now detected by a jittered 5–7s Redis version
+  check instead of waiting for the 15s (now 30s) DB fallback. The version key
+  lives for an hour, so a long judge queue does not degrade pending streams.
 - Sign-in no longer applies a 20-per-15-minute cap to every attempt from one
   address. Only failed passwords are counted against the shared egress IP
   (50 per 15 minutes), so a campus or carrier NAT can sign a whole contest in
@@ -37,6 +48,13 @@ All notable changes to PAU OJ are documented here. The format follows
   metadata instead of a judge-error fallback.
 
 ### Changed
+- `/health` now reports `judgeQueue: { waiting, active, prioritized, delayed,
+  failed }` from BullMQ so operators can see judge saturation; backlog never
+  changes the health status, and the probe degrades to zeros on a Redis or
+  BullMQ error.
+- Submission SSE checks a per-submission Redis version every 5–7s; a DB poll
+  happens only after a version change, with a 30s fallback for Redis outages.
+  Contest/assessment jobs still outrank practice work.
 - Live standings scale to 10k participants: the board is cached per app process
   for 5s (30s after the contest), paginated at 50 rows, and served with an
   ETag/304; the page polls the API every 20s instead of re-rendering the whole
@@ -69,6 +87,10 @@ All notable changes to PAU OJ are documented here. The format follows
   overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
+- `scripts/sse-soak.mjs`, a dependency-free SSE soak harness for up to 10k
+  connections (opened/failed/initial+subsequent updates/done/errors/RSS) with
+  deploy docs for running it against a staging contest and scaling judge
+  workers when `judgeQueue.waiting` grows.
 - `scripts/capacity-load.mjs`, a dependency-free GET load check for a seeded
   contest (p50/p95/p99, RPS, status/error counts, exit on 5xx or a p95 budget),
   and a capacity/sizing section in `deploy/README.md` covering the pool formula,

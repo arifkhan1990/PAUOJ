@@ -513,10 +513,11 @@ event: done
 data: { "id": "uuid" }
 ```
 
-Verdicts are pushed through Redis pub/sub and the stream keeps a 15s fallback
-poll plus a 15s heartbeat. A large contest therefore opens many idle streams
-without generating one database query per stream per second; if Redis is down,
-verdicts still arrive within the fallback window.
+Verdicts are pushed through Redis pub/sub and a per-submission version key. A
+jittered 5–7s version check catches a lost pub/sub event without a database
+query; a 30s DB fallback covers a Redis outage, and a 15s heartbeat keeps the
+stream open. A large contest therefore opens many idle streams without
+generating one database query per stream per second.
 
 ## Custom runs
 
@@ -1394,8 +1395,11 @@ newest manual announcements as `{ "data": [{ "id": "…", "title": "…",
 (migration baseline history and queued/retrying broadcasts are excluded), and
 `href` is reduced to a same-origin absolute path or `null`. `limit` is an
 integer 1–20 (default 10; other values are `422`). Responses are
-`Cache-Control: public, max-age=60, stale-while-revalidate=300` and rate
-limited to 60/min per IP plus a 1200/min global backstop (`429` beyond that).
+`Cache-Control: public, max-age=60, stale-while-revalidate=300`. The route is
+cached in-process for 30s (one DB read per limit per window) and rate limited to
+12,000/min per IP plus a 30,000/min global backstop (`429` beyond that); the
+higher per-egress ceiling is sized for a campus/carrier NAT opening the drawer
+in a burst.
 
 ## Web Push
 

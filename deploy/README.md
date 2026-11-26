@@ -133,6 +133,61 @@ node scripts/capacity-load.mjs \
 - It measures request throughput and latency, not 10k held SSE streams. Check
   `ulimit -n`, `/proc/<pid>/fd` and established connections for the stream side.
 
+### Judge queue health and 10k SSE soak
+
+`/health` reports the BullMQ depth of the `pauoj-judge` queue:
+`judgeQueue: { waiting, active, prioritized, delayed, failed }`. `waiting` is
+the unprioritized wait list, `prioritized` the priority list (every submission
+gets a priority), `active` jobs running now, `delayed` retries/backoff and
+`failed` retained failures. These counters are operational signal only: they
+never change `status` or the HTTP code, and every field reads `0` when
+Redis/BullMQ is unavailable (the probe is bounded to 2 s, so it cannot hang
+`/health`).
+
+A growing `waiting`/`prioritized` while `active` is pinned at the workers'
+concurrency means the judge is saturated. Add workers manually with the
+`--scale worker` command above and recheck the database pool formula; there is
+no autoscaler, so a deploy never changes the worker count. Poll the depth with:
+
+```bash
+watch -n 5 'curl -fsS https://oj.example.edu/health | jq -c .judgeQueue'
+```
+
+`scripts/sse-soak.mjs` is a dependency-free (Node 22+) harness for the SSE
+verdict streams. On a staging contest, seed at least N public *pending*
+submissions, list their ids one per line in `ids.txt`, and run it from a
+separate host:
+
+```bash
+node scripts/sse-soak.mjs \
+  --url https://staging.example.edu \
+  --ids-file ids.txt \
+  --concurrency 10000 --hold 120 --timeout-ms 10000
+```
+
+- It opens HTTP(S) SSE connections with keep-alive agents
+  (`maxSockets=concurrency`) in batches of 100, holds them for `--hold`
+  seconds, then destroys everything. Ids are cycled when there are fewer ids
+  than connections. Public pending submissions need no cookie; pass
+  `--cookie '<raw Cookie header>'` for private ones (keep it out of shell
+  history and logs).
+- It counts opened/failed opens, initial and subsequent `update` events, `done`
+  events, socket errors and RSS. Chunks are scanned for `event:` names only;
+  response bodies are never buffered. The last line is JSON
+  (`| tail -1 | jq .`).
+- Exit 0 means every connection opened, emitted its initial `update` and had no
+  socket error. Exit 1 means a failed open, fewer connections than
+  `--concurrency`, an opened stream with no initial `update`, a socket error or
+  a premature close; exit 2 means bad arguments.
+- `initial update` should match `opened`. A `2xx` stream that sends no
+  `update` fails the run and usually means the proxy answered with an HTML
+  error page; check the status counts, the seeded ids and `--cookie`.
+- The harness proves the app tier. It cannot attribute a failure to the app or
+  the edge, so soak Caddy (and Cloudflare, if used) separately through the
+  public URL, and check `ulimit -n`, `/proc/<pid>/fd` and established
+  connections on the app and proxy while it runs. Never run it from the app
+  server, and never against production during a real contest.
+
 ## 2. Clone and prepare
 
 ```bash
@@ -216,12 +271,17 @@ pnpm db:check
 
 ### `/health` queue fields
 
-`/health` reports two operational counters from the database:
+`/health` reports three operational counters, two from the database and one
+from Redis:
 
 - `emailOutbox: { pending, failed }` — queued/failed transactional mail.
 - `broadcastQueue: { pending, oldestPendingSeconds }` — broadcast rows whose
   fan-out has not finished (`broadcasts.completed_at is null`) and the age of
   the oldest one.
+- `judgeQueue: { waiting, active, prioritized, delayed, failed }` — BullMQ
+  depth of the `pauoj-judge` queue. It is a backlog signal only, never part of
+  `status`/the HTTP code, and reads `0` when Redis is down. See section 1b for
+  scaling workers when `waiting` grows.
 
 `broadcastQueue.pending > 0` means the worker's broadcast sweep is behind or
 stuck (it normally drains within ~30 s); `oldestPendingSeconds` distinguishes a
@@ -230,8 +290,8 @@ fresh burst from a stuck row. It is a warning, not an outage: the service stays
 once the oldest pending row is older than 10 minutes. Public announcements and
 the guest drawer only show rows with `completed_at` set, so a stuck worker
 leaves freshly published announcements invisible rather than half-delivered.
-Both counters read as `0` when the table is missing (pre-migration) or the query
-fails, so `/health` never fails on them. Investigate with:
+The database counters read as `0` when the table is missing (pre-migration) or
+the query fails, so `/health` never fails on them. Investigate with:
 
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs --tail 200 worker | grep -i broadcast

@@ -90,8 +90,9 @@ Cloudflare (proxy or Tunnel) the visitor IP arrives as `CF-Connecting-IP`, and
 Cloudflare *appends* to `X-Forwarded-For`, so a client can occupy the first
 position; set `X-Forwarded-For` to `cf.connecting_ip` in a Cloudflare Transform
 Rule for the OJ hostname. `GET /api/v1/announcements` additionally has a
-1200/min instance-wide limit that bounds spoofed-key abuse. See section 3c of
-`deploy/README.md` for per-topology details and a Redis-key check.
+30,000/min instance-wide limit and a 30s in-process cache that bound
+spoofed-key abuse. See section 3c of `deploy/README.md` for per-topology details
+and a Redis-key check.
 
 ## Transactional email
 
@@ -134,14 +135,20 @@ delivery.
 ## Monitoring
 
 - `/health` for uptime checks. Besides `status`/`workers`/`migrations`, it
-  exposes `emailOutbox: { pending, failed }` and
-  `broadcastQueue: { pending, oldestPendingSeconds }`. `broadcastQueue.pending >
+  exposes `emailOutbox: { pending, failed }`,
+  `broadcastQueue: { pending, oldestPendingSeconds }` and
+  `judgeQueue: { waiting, active, prioritized, delayed, failed }`. `broadcastQueue.pending >
   0` means broadcasts are still awaiting worker fan-out; public announcements
   stay hidden until `completed_at` is set, and a rising `oldestPendingSeconds`
-  means the sweep is stalled. Neither counter changes the health status, both
-  read `0` if the tables are missing, and `deploy/healthcheck.sh` treats an
-  oldest pending age above 10 minutes as a failure so cron/webhooks catch a
-  stuck row.
+  means the sweep is stalled. None of these counters changes the health status;
+  the table-backed counters read `0` if their tables are missing, and
+  `deploy/healthcheck.sh` treats an oldest broadcast age above 10 minutes as a
+  failure so cron/webhooks catch a stuck row. `judgeQueue` is the Redis-backed
+  BullMQ depth: `waiting`/`prioritized` growing while `active` is pinned at the
+  worker concurrency means the judge is saturated; it reads `0` when Redis is
+  unavailable. `scripts/prod-smoke.sh` checks the queue fields are numeric. See
+  `deploy/README.md` section 1b for scaling workers and the
+  `scripts/sse-soak.mjs` harness.
 - `scripts/prod-smoke.sh` optionally verifies the signed-in surface when
   `SMOKE_USER` and `SMOKE_PASSWORD` are set. Use a normal non-admin account
   created through `/register`; the check logs in, verifies the bell, dashboard

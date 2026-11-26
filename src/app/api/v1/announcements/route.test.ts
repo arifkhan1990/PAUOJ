@@ -1,20 +1,32 @@
 import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { errors } from "@/server/api/errors";
+import type { PublicAnnouncement } from "@/lib/notification-types";
 
-const { enforceRateLimit, getClientIp, listPublicAnnouncements } = vi.hoisted(
-  () => ({
+const { enforceRateLimit, getClientIp, getCachedPublicAnnouncements } =
+  vi.hoisted(() => ({
     enforceRateLimit: vi.fn(),
     getClientIp: vi.fn(),
-    listPublicAnnouncements: vi.fn(),
-  }),
-);
+    getCachedPublicAnnouncements: vi.fn(),
+  }));
 
 vi.mock("@/server/api/rate-limit", () => ({ enforceRateLimit }));
 vi.mock("@/server/api/request", () => ({ getClientIp }));
-vi.mock("@/server/services/public-updates", () => ({ listPublicAnnouncements }));
+vi.mock("@/server/services/public-announcements-cache", () => ({
+  getCachedPublicAnnouncements,
+}));
 
 const { GET } = await import("./route");
+
+const ANNOUNCEMENTS: PublicAnnouncement[] = [
+  {
+    id: "announcement-1",
+    title: "Contest reminder",
+    body: "Round 1 starts at 20:00.",
+    href: "/contests/round-1",
+    createdAt: "2026-11-27T10:00:00.000Z",
+  },
+];
 
 function request(query = ""): NextRequest {
   return {
@@ -27,81 +39,91 @@ describe("GET /api/v1/announcements", () => {
   beforeEach(() => {
     enforceRateLimit.mockReset();
     getClientIp.mockReset();
-    listPublicAnnouncements.mockReset();
-    enforceRateLimit.mockResolvedValue({ allowed: true });
+    getCachedPublicAnnouncements.mockReset();
+
     getClientIp.mockReturnValue("203.0.113.9");
+    enforceRateLimit.mockResolvedValue({ allowed: true });
+    getCachedPublicAnnouncements.mockResolvedValue(ANNOUNCEMENTS);
   });
 
-  it("returns the public feed with a shared cache header", async () => {
-    listPublicAnnouncements.mockResolvedValue([
-      {
-        id: "a1",
-        title: "Maintenance",
-        body: "Sunday 02:00 UTC",
-        href: "/contests",
-        createdAt: "2026-01-01T00:00:00.000Z",
-      },
-    ]);
-
-    const response = await GET(request());
+  it("serves the cached feed with the shared CDN cache header", async () => {
+    const response = await GET(request("?limit=15"));
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe(
       "public, max-age=60, stale-while-revalidate=300",
     );
-    await expect(response.json()).resolves.toMatchObject({
-      data: [{ id: "a1", href: "/contests" }],
-    });
-    expect(enforceRateLimit).toHaveBeenCalledWith(
+    await expect(response.json()).resolves.toEqual({ data: ANNOUNCEMENTS });
+    expect(getCachedPublicAnnouncements).toHaveBeenCalledWith(15);
+  });
+
+  it("charges the per-egress bucket before the global backstop", async () => {
+    await GET(request());
+
+    expect(enforceRateLimit).toHaveBeenNthCalledWith(
+      1,
+      "announcements:ip:203.0.113.9",
+      12_000,
+      60,
+    );
+    expect(enforceRateLimit).toHaveBeenNthCalledWith(
+      2,
       "announcements:global",
-      1200,
+      30_000,
       60,
     );
-    expect(enforceRateLimit).toHaveBeenCalledWith(
-      "announcements:203.0.113.9",
-      60,
-      60,
-    );
-    expect(listPublicAnnouncements).toHaveBeenCalledWith(10);
+    // No query limit falls back to the drawer default.
+    expect(getCachedPublicAnnouncements).toHaveBeenCalledWith(10);
   });
 
-  it("accepts an explicit limit up to 20", async () => {
-    listPublicAnnouncements.mockResolvedValue([]);
-
-    const response = await GET(request("?limit=20"));
-
-    expect(response.status).toBe(200);
-    expect(listPublicAnnouncements).toHaveBeenCalledWith(20);
-  });
-
-  it("falls back to the unknown bucket without a client ip", async () => {
+  it("uses the unknown bucket when no client IP is available", async () => {
     getClientIp.mockReturnValue(null);
-    listPublicAnnouncements.mockResolvedValue([]);
 
     const response = await GET(request());
 
     expect(response.status).toBe(200);
-    expect(enforceRateLimit).toHaveBeenCalledWith(
-      "announcements:unknown",
-      60,
+    expect(enforceRateLimit).toHaveBeenNthCalledWith(
+      1,
+      "announcements:ip:unknown",
+      12_000,
       60,
     );
   });
 
-  it("rejects an out-of-range or non-numeric limit with 422", async () => {
-    for (const query of ["?limit=0", "?limit=21", "?limit=abc"]) {
-      const response = await GET(request(query));
-      expect(response.status).toBe(422);
-    }
-    expect(listPublicAnnouncements).not.toHaveBeenCalled();
-  });
-
-  it("maps the limiter to 429", async () => {
-    enforceRateLimit.mockRejectedValue(errors.rateLimited());
+  it("propagates a 429 from the per-IP limiter", async () => {
+    enforceRateLimit.mockRejectedValueOnce(errors.rateLimited());
 
     const response = await GET(request());
 
     expect(response.status).toBe(429);
-    expect(listPublicAnnouncements).not.toHaveBeenCalled();
+    expect(enforceRateLimit).toHaveBeenCalledTimes(1);
+    expect(getCachedPublicAnnouncements).not.toHaveBeenCalled();
+  });
+
+  it("propagates a 429 from the global limiter", async () => {
+    enforceRateLimit
+      .mockResolvedValueOnce({ allowed: true })
+      .mockRejectedValueOnce(errors.rateLimited());
+
+    const response = await GET(request());
+
+    expect(response.status).toBe(429);
+    expect(enforceRateLimit).toHaveBeenCalledTimes(2);
+    expect(getCachedPublicAnnouncements).not.toHaveBeenCalled();
+  });
+
+  it("accepts an explicit limit up to 20", async () => {
+    const response = await GET(request("?limit=20"));
+
+    expect(response.status).toBe(200);
+    expect(getCachedPublicAnnouncements).toHaveBeenCalledWith(20);
+  });
+
+  it("rejects an out-of-range or non-numeric limit before touching the cache", async () => {
+    for (const query of ["?limit=0", "?limit=21", "?limit=abc"]) {
+      const response = await GET(request(query));
+      expect(response.status).toBe(422);
+    }
+    expect(getCachedPublicAnnouncements).not.toHaveBeenCalled();
   });
 });

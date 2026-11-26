@@ -3,6 +3,7 @@ import { APP_VERSION } from "@/lib/constants";
 import { getSql } from "@/server/db";
 import { getMigrationStatus } from "@/server/db/migration-status";
 import { pingRedis } from "@/server/redis";
+import { getJudgeQueueCounts } from "@/server/judge/queue-health";
 import { getWorkerCount } from "@/server/worker-heartbeat";
 
 export const dynamic = "force-dynamic";
@@ -56,12 +57,22 @@ export async function GET() {
   }
   const redis = await pingRedis();
   let workers = 0;
+  let judgeQueue = {
+    waiting: 0,
+    active: 0,
+    prioritized: 0,
+    delayed: 0,
+    failed: 0,
+  };
   if (redis) {
     try {
       workers = await getWorkerCount();
     } catch {
       workers = 0;
     }
+    // Queue depth is operational signal only. It never flips `status` or the
+    // HTTP code, and reads as zeros when Redis/BullMQ is unavailable.
+    judgeQueue = await getJudgeQueueCounts();
   }
   const healthy = database && redis && (migrations?.ok ?? true);
   return NextResponse.json(
@@ -72,6 +83,7 @@ export async function GET() {
       migrations,
       emailOutbox: emailOutboxCounts,
       broadcastQueue: broadcastQueueCounts,
+      judgeQueue,
       workers,
       version: APP_VERSION,
       commit: process.env.APP_COMMIT?.trim() || null,

@@ -28,10 +28,12 @@ the Docker CLI and the judge image contains the harness.
 7. The harness writes per-test results to a root-only results directory.
 8. The worker updates the submission and per-test rows in one transaction,
    recomputes problem counters and marks the job complete.
-9. The worker publishes the verdict on Redis `pauoj:submission:<id>`; the
-   browser's EventSource receives `update` events and a final `done` event.
-   The stream has a 15s fallback poll, so a Redis outage does not strand a
-   pending verdict.
+9. The worker increments `pauoj:submission:<id>:version` (1h TTL) and
+   publishes on Redis `pauoj:submission:<id>` in one MULTI. The browser's
+   EventSource receives the initial `update` and a final `done` event. A
+   jittered 5–7s version check re-polls only when the version changed, so a lost
+   pub/sub event is normally caught within that window; a 30s DB fallback covers
+   a Redis outage.
 10. Live contest and assessment jobs are enqueued at priority 1; practice,
     virtual-contest, rejudge and custom-run jobs use priority 10. Every job has
     an explicit priority because BullMQ drains unprioritized jobs first.
@@ -496,6 +498,17 @@ theme-aware form panel. Sign-in and registration expose tabs that preserve the
 the shared `AuthField` component, errors use
 `AuthError`, and the password-strength meter is client-side only. These are
 full pages styled as a modal card, not a route-level overlay.
+
+### Rate limits and shared networks
+
+Login keeps a per-account limit (10/15 min) and counts **only failed passwords**
+against the shared egress IP (50/15 min), so a campus NAT can sign a whole
+contest in. Registration uses 600/15 min per IP plus a 6,000/15 min global
+backstop; the public announcement feed uses 12,000/min per IP plus 30,000/min
+global and a 30s in-process cache. These ceilings are deliberately sized for
+shared NAT while still bounding signup/email abuse and a rotating-XFF client.
+The edge proxy must still own `X-Forwarded-For` (see
+[deployment.md](deployment.md)).
 
 ## Contest access rules
 
@@ -1091,6 +1104,12 @@ re-running `router.refresh()` on the whole route, and Next.js prefetch is
 disabled on contest tabs, problem links, profile links and pagination so a
 10k-viewer page does not fan out background RSC renders. The API's ETag ignores
 `generatedAt` so unchanged pages return `304`.
+
+The snapshot cache is per app process, not a shared Redis cache. Multiple app
+replicas therefore each compute at most one full board per TTL window (5s while
+RUNNING, 30s when ENDED). That cost is bounded by the replica count; moving a
+5–10 MB snapshot through Redis on every refresh was deliberately avoided until
+database snapshot work, not web CPU, becomes the limiting factor.
 
 ## Ranking
 
