@@ -50,6 +50,16 @@ All notable changes to PAU OJ are documented here. The format follows
   overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
+- Notification bell and drawer in the public navbar: signed-in users get an
+  unread-count badge that refreshes while the tab is visible, an accessible
+  right-side drawer with All / Unread / Notices tabs, per-item and mark-all
+  read, load-more pagination, loading/empty/error states and links to the full
+  notification center and preferences. Notices, announcements, new-contest and
+  contest-update rows carry visible category chips. Guests can open the same
+  bell to read public announcements and live/upcoming contests. Adds
+  `PATCH /api/v1/notifications/:id/read`, a `filter` on the notification list,
+  and the public `GET /api/v1/announcements` endpoint (completed fan-out only,
+  baseline rows excluded, same-origin hrefs, rate limited and cacheable).
 - Custom-test expected output: for a practice problem with a stored reference
   solution, a non-sample custom run now also runs the reference on the same
   stdin and shows **Your output** beside **Expected output (reference)**.

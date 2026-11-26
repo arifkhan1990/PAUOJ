@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeInternalHref } from "@/lib/safe-internal-href";
 
 export const announcementSchema = z.object({
   title: z.string().trim().min(4).max(120),
@@ -8,8 +9,8 @@ export const announcementSchema = z.object({
     .trim()
     .max(300)
     .refine(
-      (value) => value === "" || value.startsWith("/"),
-      "Use an in-app path that starts with /.",
+      (value) => value === "" || safeInternalHref(value) !== null,
+      "Use a same-site path that starts with /.",
     )
     .optional(),
 });

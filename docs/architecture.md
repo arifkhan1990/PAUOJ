@@ -859,9 +859,22 @@ decision if image volume grows beyond DM usage — not a current defect.
 The dashboard sidebar refreshes its three social badges (messages, unread
 notifications, pending follow requests) from `GET /api/v1/social/counts` every
 45 seconds while the tab is visible; a server render already carries the first
-counts. The public site header shows only a small unread-activity dot on the
-avatar/Coder dashboard menu row — the messages and notification feature pages
-and their icons stay dashboard-only. The old public page URLs (`/notifications`,
+counts. The public site header now has a notification bell for every visitor:
+the signed-in bell shows the unread notification count from the same counts
+payload and polls it every 45 seconds, while the avatar dot covers only unread
+messages and pending follow requests. The bell opens a lazy right-side drawer
+on the native `<dialog>` element (focus trap/return, Escape and backdrop close,
+body scroll lock). Signed-in users get All / Unread / Notices tabs with
+per-item and mark-all read, category chips for notices, announcements, new
+contest marketing and contest updates, load-more pagination and links to the
+full notification center and preferences. Guests read public announcements and
+live/upcoming contests from the same drawer; no personal data is requested.
+`GET /api/v1/announcements` serves the public announcement list from completed
+admin broadcasts (baseline history excluded), keeps hrefs to same-origin paths,
+and is IP rate limited with a short public cache. Per-item reads are scoped by
+`(user_id, notification_id)`, so one user can never mark another user's row.
+The messages and notification feature pages and their icons stay dashboard-only.
+The old public page URLs (`/notifications`,
 `/messages`, `/messages/:id`, `/connections/requests`, `/connections`) answer
 with permanent `308` redirects to the `/dashboard/...` paths and forward query
 strings (`src/lib/legacy-redirects.ts`). Message read and delete match both href

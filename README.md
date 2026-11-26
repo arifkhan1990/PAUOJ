@@ -148,12 +148,15 @@ progress. `PAU-OJ-Design/` is the design reference; this is the working judge.
   analytics.
 
 ### Platform
-- **Notifications** — in-app, email and browser push notices for verdicts, contest
-  registration/30-minute reminders/final results+rating, clarifications, reviews, learning
-  enrollment/payments/reminders, badges and solved milestones, announcements, new contests/course
-  modules, direct messages and problem/lesson replies. Per-category preferences, token unsubscribe,
-  a durable retrying email outbox with immediate dispatch, grouped notifications, review digests, a
-  weekly admin report and an admin announcement composer are included.
+- **Notifications** — a public navbar bell with an unread badge and an accessible drawer
+  (All / Unread / Notices, per-item and mark-all read, load more, direct links) for in-app notices.
+  Email and browser push cover verdicts, contest registration/30-minute reminders/final
+  results+rating, clarifications, reviews, learning enrollment/payments/reminders, badges and solved
+  milestones, announcements, new contests/course modules, direct messages and problem/lesson
+  replies. Guests can use the same drawer for public announcements and live/upcoming contests.
+  Per-category preferences, token unsubscribe, a durable retrying email outbox with immediate
+  dispatch, grouped notifications, review digests, a weekly admin report and an admin announcement
+  composer are included.
 - **Dashboards** — one responsive shell for coder, teacher and admin; coder stats, review panels with
   7/30/all-time filters and 48-hour flags, and a version/changelog footer.
 - **Production plumbing** — migrations, seeds, Docker Compose, worker heartbeats, health checks,

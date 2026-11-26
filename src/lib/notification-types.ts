@@ -22,6 +22,28 @@ export type NotificationType =
   | "MARKETING"
   | "SYSTEM";
 
+/** Broadcast-style notices the drawer groups behind the NOTICE filter. */
+export const NOTICE_NOTIFICATION_TYPES = [
+  "ANNOUNCEMENT",
+  "MARKETING",
+  "SYSTEM",
+  "CONTEST_START",
+  "CONTEST_REGISTRATION",
+  "CONTEST_REMINDER",
+  "CONTEST_RESULT",
+  "CONTEST_APPROVAL",
+] as const;
+
+export type NotificationFilter = "ALL" | "UNREAD" | "NOTICE";
+
+export type PublicAnnouncement = {
+  id: string;
+  title: string;
+  body: string;
+  href: string | null;
+  createdAt: string;
+};
+
 export type NotificationItem = {
   id: string;
   type: NotificationType;

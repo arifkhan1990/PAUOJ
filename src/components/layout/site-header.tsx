@@ -6,13 +6,14 @@ import { HeaderNav } from "./header-nav";
 export async function SiteHeader() {
   const user = await getCurrentUser();
   let hasSocialUnread = false;
+  let unreadNotifications = 0;
   if (user) {
     try {
       const counts = await getSocialCounts(user.id);
-      hasSocialUnread =
-        counts.messages + counts.notifications + counts.requests > 0;
+      unreadNotifications = counts.notifications;
+      hasSocialUnread = counts.messages + counts.requests > 0;
     } catch {
-      // The awareness dot is best-effort and must never break the header.
+      // Best-effort awareness dots must never break the header.
     }
   }
   return (
@@ -20,6 +21,7 @@ export async function SiteHeader() {
       {user ? <PresenceHeartbeat /> : null}
       <HeaderNav
         hasSocialUnread={hasSocialUnread}
+        unreadNotifications={unreadNotifications}
         user={
           user
             ? {

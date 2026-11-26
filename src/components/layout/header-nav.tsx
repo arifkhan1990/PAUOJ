@@ -18,6 +18,7 @@ import { useToast } from "@/components/providers/toast-provider";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { UserAvatar } from "@/components/shared/user-avatar";
+import { NotificationBell } from "@/features/notifications/notification-bell";
 import type { HeaderUser } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -49,7 +50,7 @@ export function UserMenu({
     HeaderUser,
     "username" | "displayName" | "role" | "avatarPreset" | "avatarImageUpdatedAt"
   >;
-  /** Unread messages, notifications, or follow requests; shows a quiet dot. */
+  /** Unread messages or follow requests; shows a quiet dot next to the avatar. */
   hasSocialUnread?: boolean;
 }) {
   const [open, setOpen] = useState(false);
@@ -212,9 +213,12 @@ export function UserMenu({
 export function HeaderNav({
   user,
   hasSocialUnread = false,
+  unreadNotifications = 0,
 }: {
   user: HeaderUser | null;
   hasSocialUnread?: boolean;
+  /** Unread notification count for the bell badge; 0 for guests. */
+  unreadNotifications?: number;
 }) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -268,6 +272,10 @@ export function HeaderNav({
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+          <NotificationBell
+            signedIn={Boolean(user)}
+            initialUnread={user ? unreadNotifications : 0}
+          />
           <ThemeToggle />
           {user ? (
             <UserMenu user={user} hasSocialUnread={hasSocialUnread} />

@@ -1,5 +1,15 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { and, count, desc, eq, gt, gte, isNull, lte } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lte,
+} from "drizzle-orm";
 import { getDb } from "@/server/db";
 import {
   contestRegistrations,
@@ -8,10 +18,12 @@ import {
   users,
 } from "@/server/db/schema";
 import { toOffset, type PaginationInput } from "@/server/api/validation";
-import type {
-  NotificationItem,
-  NotificationPreferences,
-  NotificationType,
+import {
+  NOTICE_NOTIFICATION_TYPES,
+  type NotificationFilter,
+  type NotificationItem,
+  type NotificationPreferences,
+  type NotificationType,
 } from "@/lib/notification-types";
 import type { NotificationPreferencesInput } from "@/lib/schemas/notification";
 import { getEnv } from "@/server/env";
@@ -21,6 +33,7 @@ import {
   requestEmailFlush,
 } from "./email-outbox";
 import { sendPushToUser } from "./web-push";
+import { safeInternalHref } from "@/lib/safe-internal-href";
 import {
   emailCategoryForNotification,
   emailEnabled,
@@ -236,16 +249,27 @@ export async function notifyUser(input: NotifyInput): Promise<boolean> {
   return inApp ? createdNotification : queuedEmail;
 }
 
+function notificationFilterWhere(
+  userId: string,
+  filter: NotificationFilter,
+) {
+  const owned = eq(notifications.userId, userId);
+  if (filter === "UNREAD") return and(owned, isNull(notifications.readAt));
+  if (filter === "NOTICE") {
+    return and(owned, inArray(notifications.type, [...NOTICE_NOTIFICATION_TYPES]));
+  }
+  return owned;
+}
+
 export async function listNotifications(
   userId: string,
   page: PaginationInput,
+  filter: NotificationFilter = "ALL",
 ): Promise<{ items: NotificationItem[]; total: number }> {
   const db = getDb();
+  const where = notificationFilterWhere(userId, filter);
   const [totalRow, rows] = await Promise.all([
-    db
-      .select({ value: count() })
-      .from(notifications)
-      .where(eq(notifications.userId, userId)),
+    db.select({ value: count() }).from(notifications).where(where),
     db
       .select({
         id: notifications.id,
@@ -257,7 +281,7 @@ export async function listNotifications(
         createdAt: notifications.createdAt,
       })
       .from(notifications)
-      .where(eq(notifications.userId, userId))
+      .where(where)
       .orderBy(desc(notifications.createdAt))
       .limit(page.pageSize)
       .offset(toOffset(page)),
@@ -270,38 +294,12 @@ export async function listNotifications(
       type: row.type as NotificationType,
       title: row.title,
       body: row.body,
-      href: row.href,
+      // Defense in depth: even admin-authored hrefs render only same-origin paths.
+      href: safeInternalHref(row.href),
       readAt: row.readAt?.toISOString() ?? null,
       createdAt: row.createdAt.toISOString(),
     })),
   };
-}
-
-export async function getUnreadNotificationCount(
-  userId: string,
-): Promise<number> {
-  const [row] = await getDb()
-    .select({ value: count() })
-    .from(notifications)
-    .where(
-      and(
-        eq(notifications.userId, userId),
-        isNull(notifications.readAt),
-      ),
-    );
-  return Number(row?.value ?? 0);
-}
-
-export async function markAllNotificationsRead(userId: string): Promise<void> {
-  await getDb()
-    .update(notifications)
-    .set({ readAt: new Date(), updatedAt: new Date() })
-    .where(
-      and(
-        eq(notifications.userId, userId),
-        isNull(notifications.readAt),
-      ),
-    );
 }
 
 export async function getNotificationPreferences(
@@ -385,3 +383,8 @@ export async function notifyStartingContests(): Promise<number> {
 }
 
 export { getUnsubscribeTarget, unsubscribeByToken } from "./notification-unsubscribe";
+export {
+  getUnreadNotificationCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+} from "./notification-read";

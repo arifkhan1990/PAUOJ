@@ -1306,9 +1306,22 @@ best-effort.
 All endpoints require a session except unsubscribe. JSON request bodies are
 capped at 1 MiB (`413 PAYLOAD_TOO_LARGE`).
 
-- `GET /notifications?page=1` returns the current user's notifications, newest
-  first, with `type`, `title`, `body`, `href`, `readAt` and `createdAt`.
-- `PATCH /notifications/read` marks every unread notification as read.
+- `GET /notifications?page=1&filter=all|unread|notice` returns the current
+  user's notifications, newest first (20 per page), with `type`, `title`,
+  `body`, `href`, `readAt` and `createdAt`. `unread` keeps only unread rows;
+  `notice` keeps broadcast-style types (`ANNOUNCEMENT`, `MARKETING`, `SYSTEM`,
+  `CONTEST_START`, `CONTEST_REGISTRATION`, `CONTEST_REMINDER`,
+  `CONTEST_RESULT`, `CONTEST_APPROVAL`). The filter also applies to
+  `meta.total`, and `meta.unread` carries the badge count. Unknown filters are
+  `422`. Responses are `Cache-Control: private, no-store`; the limit is 120/min
+  per user.
+- `PATCH /notifications/read` (same-origin, 60/min) marks every unread
+  notification as read and returns `{ "ok": true, "marked": 3, "unread": 0 }`
+  with `private, no-store` caching.
+- `PATCH /notifications/:id/read` (same-origin, 120/min) marks one owned
+  notification read and returns `{ "ok": true, "readAt": "…", "unread": 2 }`.
+  Repeating the call is idempotent (the original `readAt` is kept); foreign or
+  unknown ids return `404`. Cached `private, no-store`.
 - `PATCH /users/me/notifications` replaces the full preference object:
   `{ "emailVerdicts": true, "emailContests": true, "emailClarifications": true, "emailReviews": true, "emailAccount": true, "emailLearning": true, "emailAchievements": true, "emailAnnouncements": true, "emailMarketing": true, "emailDiscussions": true, "emailMessages": true, "emailFollows": true, "notifyMessages": true, "notifyFollows": true, "notifyMarketing": true, "reviewEmailFrequency": "INSTANT" }`.
   `notifyMessages`/`notifyFollows` control in-app MESSAGE and FOLLOW_* notices;
@@ -1351,6 +1364,18 @@ user. Admins with review emails enabled also receive one weekly backlog report
 (pending proposals, overdue items, oldest age and pending contest requests) as
 an in-app SYSTEM notification and an email; the ISO week key prevents
 duplicates.
+
+### Announcements
+
+`GET /api/v1/announcements?limit=10` is public (no session) and returns the
+newest manual announcements as `{ "data": [{ "id": "…", "title": "…",
+"body": "…", "href": "/contests" | null, "createdAt": "…" }] }`. Only
+`ANNOUNCEMENT` rows whose notification fan-out completed are included
+(migration baseline history and queued/retrying broadcasts are excluded), and
+`href` is reduced to a same-origin absolute path or `null`. `limit` is an
+integer 1–20 (default 10; other values are `422`). Responses are
+`Cache-Control: public, max-age=60, stale-while-revalidate=300` and rate
+limited to 60/min per IP plus a 1200/min global backstop (`429` beyond that).
 
 ## Web Push
 

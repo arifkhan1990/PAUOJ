@@ -227,6 +227,17 @@ async function connectChrome({ chromeBin, baseUrl }) {
         const result = await send("Network.setCookie", { name, value, url: `${baseUrl}/` }, sessionId);
         if (result.success === false) throw new Error("CDP Network.setCookie was rejected");
       },
+      /** True mobile widths: headless window-size is clamped to 500px. */
+      async setViewport(width, height) {
+        await send("Emulation.setDeviceMetricsOverride", {
+          width,
+          height,
+          screenWidth: width,
+          screenHeight: height,
+          deviceScaleFactor: 1,
+          mobile: width < 768,
+        }, sessionId);
+      },
       async click(selector) {
         const point = await evaluate(`(() => {
           const element = document.querySelector(${JSON.stringify(selector)});

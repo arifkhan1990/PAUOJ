@@ -471,6 +471,27 @@
   animation: pauoj-badge-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Right-side sheet: slide in on open, cut instantly for reduced motion. */
+@keyframes pauoj-drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawer-panel[open] {
+  animation: pauoj-drawer-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer-panel[open] {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
 .animate-dash {
   animation: pauoj-dash 5s linear infinite;
 }
