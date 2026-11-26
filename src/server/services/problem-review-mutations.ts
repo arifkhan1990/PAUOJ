@@ -1,13 +1,18 @@
 import { and, eq } from "drizzle-orm";
 import { errors } from "@/server/api/errors";
 import { getDb } from "@/server/db";
-import { problemReviewApprovals, problems } from "@/server/db/schema";
+import {
+  problemReferenceSolutions,
+  problemReviewApprovals,
+  problems,
+} from "@/server/db/schema";
 import type { ProblemReviewActionResult } from "@/lib/problem-review-types";
 import type {
   ProblemReviewApproveInput,
   ProblemReviewRereviewInput,
 } from "@/lib/schemas/problem-review";
 import { assertProblemNotInLiveContext } from "./problem-access";
+import { referenceFromApproval } from "./problem-reference-approval";
 import {
   assertAuthorOrAdmin,
   assertEligibleReviewer,
@@ -118,6 +123,29 @@ export async function approveProblemReview(
       testsAdded,
       editorialProvided: Boolean(editorial),
     });
+    const reference = referenceFromApproval(input);
+    if (reference) {
+      const script = problem.judgeLanguage === "sql-script";
+      const now = new Date();
+      await tx
+        .insert(problemReferenceSolutions)
+        .values({
+          problemId,
+          language: reference.language,
+          source: reference.source,
+          script,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: problemReferenceSolutions.problemId,
+          set: {
+            language: reference.language,
+            source: reference.source,
+            script,
+            updatedAt: now,
+          },
+        });
+    }
     published = await publishIfReady(tx, {
       problemId,
       cycle,

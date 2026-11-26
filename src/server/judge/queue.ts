@@ -21,7 +21,12 @@ export type RunJob = {
   memoryLimitMb: number;
   sqlScript?: boolean;
   /** Practice problems only: the reference solution used to derive output. */
-  reference?: { language: JudgeLanguage; source: string } | null;
+  reference?: {
+    language: JudgeLanguage;
+    source: string;
+    /** SQL script labs need the multi-statement runner. */
+    sqlScript?: boolean;
+  } | null;
   checker?: { type: RunCheckerType; floatTolerance: number } | null;
 };
 

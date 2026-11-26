@@ -6,36 +6,18 @@ import {
 } from "@/server/db/schema";
 import type { RunCheckerType } from "@/server/judge/compare-output";
 import type { JudgeLanguage } from "@/server/judge/types";
+import { normalizeReferenceLanguage } from "./problem-reference-language";
 
 export type RunReference = {
-  reference: { language: JudgeLanguage; source: string } | null;
+  reference: {
+    language: JudgeLanguage;
+    source: string;
+    /** SQL script labs need the multi-statement runner. */
+    sqlScript: boolean;
+  } | null;
   checkerType: RunCheckerType;
   floatTolerance: number;
 };
-
-const JUDGE_LANGUAGES = new Set<JudgeLanguage>([
-  "c",
-  "cpp",
-  "python",
-  "javascript",
-  "java",
-  "csharp",
-  "go",
-  "php",
-  "kotlin",
-  "swift",
-  "sql",
-  "sqlite",
-  "mysql",
-  "postgresql",
-]);
-
-function toJudgeLanguage(value: string | null): JudgeLanguage | null {
-  if (!value) return null;
-  return JUDGE_LANGUAGES.has(value as JudgeLanguage)
-    ? (value as JudgeLanguage)
-    : null;
-}
 
 /**
  * Reference solutions are only used to derive expected output for practice
@@ -48,6 +30,7 @@ export async function getRunReference(
     .select({
       language: problemReferenceSolutions.language,
       source: problemReferenceSolutions.source,
+      script: problemReferenceSolutions.script,
       checkerType: problems.checkerType,
       floatTolerance: problems.floatTolerance,
     })
@@ -60,11 +43,11 @@ export async function getRunReference(
     .limit(1);
   if (!row) return null;
 
-  const language = toJudgeLanguage(row.language);
+  const language = normalizeReferenceLanguage(row.language);
   return {
     reference:
       language && row.source !== null
-        ? { language, source: row.source }
+        ? { language, source: row.source, sqlScript: row.script ?? false }
         : null,
     checkerType: row.checkerType,
     floatTolerance: row.floatTolerance,

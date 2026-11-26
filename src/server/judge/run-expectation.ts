@@ -1,4 +1,5 @@
 import type { Verdict } from "@/lib/verdicts";
+import type { JudgeLanguage } from "./types";
 import {
   compareJudgeOutput,
   type RunCheckerType,
@@ -18,6 +19,10 @@ export type RunExpectationInput = {
    */
   reference: { status: Verdict; stdout: string } | null | undefined;
   checker: RunExpectationChecker;
+  /** Language the user ran, used for honest SQL dialect notes. */
+  userLanguage?: JudgeLanguage;
+  /** Language of the reference solution, used for honest SQL dialect notes. */
+  referenceLanguage?: JudgeLanguage;
 };
 
 export type RunExpectation = {
@@ -31,6 +36,9 @@ export const REFERENCE_FAILED_NOTE =
 
 export const CUSTOM_CHECKER_NOTE =
   "This problem uses a custom checker; compare the outputs manually.";
+
+export const SQL_DIALECT_NOTE =
+  "Expected output was produced by the SQLite reference; MySQL/PostgreSQL output may differ.";
 
 /**
  * Pure decision table for practice custom runs: derive the expected output
@@ -56,6 +64,16 @@ export function computeRunExpectation(
   }
 
   const expectedOutput = reference.stdout;
+  const dialectDiffers =
+    input.referenceLanguage === "sql" &&
+    (input.userLanguage === "mysql" || input.userLanguage === "postgresql");
+  if (dialectDiffers) {
+    return {
+      expectedOutput,
+      matchesExpected: null,
+      expectedNote: SQL_DIALECT_NOTE,
+    };
+  }
   if (input.checker?.type === "CUSTOM") {
     return {
       expectedOutput,

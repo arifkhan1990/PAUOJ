@@ -154,24 +154,37 @@ async function seedProblems(adminId: string): Promise<Map<string, SeededProblem>
     }
 
     const referencePython = definition.referencePython.trim();
+    const referenceSql = definition.referenceSql?.trim() ?? "";
     const isSqlProblem =
       definition.judgeLanguage === "sql" ||
       definition.judgeLanguage === "sql-script";
-    if (referencePython.length > 0 && !isSqlProblem) {
+    let reference: {
+      language: string;
+      source: string;
+      script: boolean;
+    } | null = null;
+    if (isSqlProblem) {
+      if (referenceSql.length > 0) {
+        reference = {
+          language: "sql",
+          source: definition.referenceSql ?? "",
+          script: definition.judgeLanguage === "sql-script",
+        };
+      }
+    } else if (referencePython.length > 0) {
+      reference = {
+        language: "python",
+        source: definition.referencePython,
+        script: false,
+      };
+    }
+    if (reference) {
       await db
         .insert(problemReferenceSolutions)
-        .values({
-          problemId,
-          language: "python",
-          source: definition.referencePython,
-        })
+        .values({ problemId, ...reference })
         .onConflictDoUpdate({
           target: problemReferenceSolutions.problemId,
-          set: {
-            language: "python",
-            source: definition.referencePython,
-            updatedAt: new Date(),
-          },
+          set: { ...reference, updatedAt: new Date() },
         });
     } else {
       await db

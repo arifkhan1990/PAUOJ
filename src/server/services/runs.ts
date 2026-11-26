@@ -20,7 +20,12 @@ export type CreateRunInput = {
   timeLimitMs: number;
   memoryLimitMb: number;
   sqlScript?: boolean;
-  reference?: { language: JudgeLanguage; source: string } | null;
+  reference?: {
+    language: JudgeLanguage;
+    source: string;
+    /** SQL script labs need the multi-statement runner. */
+    sqlScript?: boolean;
+  } | null;
   checker?: {
     type: "EXACT" | "TOKEN" | "FLOAT" | "CUSTOM";
     floatTolerance: number;

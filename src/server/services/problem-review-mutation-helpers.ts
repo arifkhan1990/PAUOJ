@@ -35,6 +35,7 @@ export type LockedProblem = {
   publicationStatus: ProblemPublicationStatus;
   reviewCycle: number;
   editorial: string | null;
+  judgeLanguage: string | null;
 };
 
 export const REVIEW_LOCK_MESSAGE =
@@ -63,6 +64,7 @@ export async function lockProblem(
       publicationStatus: problems.publicationStatus,
       reviewCycle: problems.reviewCycle,
       editorial: problems.editorial,
+      judgeLanguage: problems.judgeLanguage,
     })
     .from(problems)
     .where(eq(problems.id, problemId))

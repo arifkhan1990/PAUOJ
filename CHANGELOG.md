@@ -30,10 +30,17 @@ All notable changes to PAU OJ are documented here. The format follows
   “Matches expected” / “Differs from expected” uses the problem's `EXACT`,
   `TOKEN` or `FLOAT` checker (`CUSTOM` shows the reference output without a
   pass/fail claim). Official samples skip the extra run and keep the existing
-  sample comparison; contest/assessment runs, SQL problems and problems without
-  a reference show an explicit unavailable note. Reference sources are never
-  returned to the client. Adds migration 0053
-  (`problem_reference_solutions`) and seeds 471 non-SQL references.
+  sample comparison; contest/assessment runs and problems without a reference
+  show an explicit unavailable note. Reference sources are never returned to
+  the client. Adds migration 0053 (`problem_reference_solutions`) and seeds 471
+  non-SQL references.
+- SQL and author-created reference coverage: migration 0054 adds the
+  `problem_reference_solutions.script` flag, the seed stores all 136 SQL
+  reference queries (132 normal + 4 script labs), and reviewer approvals now
+  inherit their solution as the problem reference. SQL expected output is
+  generated with the SQLite fixture; MySQL/PostgreSQL runs show it without a
+  pass/fail claim and with a dialect note. Successful reference output is
+  cached for one hour per reference source + stdin.
 - Message document sharing and live conversation info: PDF/TXT/CSV/ZIP/DOCX/
   XLSX/PPTX files up to 5 MiB now upload from the composer (magic-byte
   validated, opaque participant-only downloads), render as document bubbles and

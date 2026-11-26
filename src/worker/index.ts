@@ -4,6 +4,10 @@ import { closeDb } from "@/server/db";
 import { getEnv } from "@/server/env";
 import { checkDocker, hasImage } from "@/server/judge/docker";
 import { runJudge } from "@/server/judge/engine";
+import {
+  getCachedExpectedOutput,
+  setCachedExpectedOutput,
+} from "@/server/judge/reference-cache";
 import { computeRunExpectation } from "@/server/judge/run-expectation";
 import { runStatusForOutcome } from "@/server/judge/run-status";
 import {
@@ -20,6 +24,7 @@ import {
   recoverStaleSubmissions,
 } from "@/server/judge/submission-runner";
 import type { JudgeOutcome } from "@/server/judge/types";
+import type { Verdict } from "@/lib/verdicts";
 import { logger } from "@/server/logger";
 import { closeRedis, getRedis } from "@/server/redis";
 import { clearWorkerHeartbeat, recordWorkerHeartbeat } from "@/server/worker-heartbeat";
@@ -107,44 +112,63 @@ async function handleRun(job: RunJob): Promise<void> {
       sqlScript: job.sqlScript,
     });
 
-    let referenceOutcome: JudgeOutcome | null = null;
+    let referenceResult: { status: Verdict; stdout: string } | null = null;
     if (job.reference) {
+      const reference = {
+        language: job.reference.language,
+        source: job.reference.source,
+        sqlScript: job.reference.sqlScript ?? false,
+      };
       try {
-        referenceOutcome = await runJudge({
-          language: job.reference.language,
-          source: job.reference.source,
-          timeLimitMs: job.timeLimitMs,
-          memoryLimitMb: job.memoryLimitMb,
-          tests: [
-            {
-              id: "reference",
-              position: 1,
-              input: job.stdin,
-              expectedOutput: null,
-              isSample: false,
-            },
-          ],
-          checker: { type: "EXACT", source: null, floatTolerance: 0.000001 },
-          mode: "run",
-          sqlScript: false,
-        });
+        const cached = await getCachedExpectedOutput(reference, job.stdin);
+        if (cached !== null) {
+          referenceResult = { status: "ACCEPTED", stdout: cached };
+        } else {
+          const referenceOutcome = await runJudge({
+            language: reference.language,
+            source: reference.source,
+            timeLimitMs: job.timeLimitMs,
+            memoryLimitMb: job.memoryLimitMb,
+            tests: [
+              {
+                id: "reference",
+                position: 1,
+                input: job.stdin,
+                expectedOutput: null,
+                isSample: false,
+              },
+            ],
+            checker: { type: "EXACT", source: null, floatTolerance: 0.000001 },
+            mode: "run",
+            sqlScript: reference.sqlScript,
+          });
+          referenceResult = {
+            status: referenceOutcome.status,
+            stdout: referenceOutcome.runStdout,
+          };
+          if (referenceOutcome.status === "ACCEPTED") {
+            await setCachedExpectedOutput(
+              reference,
+              job.stdin,
+              referenceOutcome.runStdout,
+            );
+          }
+        }
       } catch (error) {
         logger.warn("Reference run failed", {
           runId: job.runId,
           error: error instanceof Error ? error.message : String(error),
         });
-        referenceOutcome = null;
+        referenceResult = null;
       }
     }
 
     const expectation = computeRunExpectation({
       user: { status: outcome.status, stdout: outcome.runStdout },
-      reference: job.reference
-        ? referenceOutcome
-          ? { status: referenceOutcome.status, stdout: referenceOutcome.runStdout }
-          : null
-        : undefined,
+      reference: job.reference ? referenceResult : undefined,
       checker: job.checker ?? null,
+      userLanguage: job.language,
+      referenceLanguage: job.reference?.language,
     });
 
     await updateRun(job.userId, job.runId, {
