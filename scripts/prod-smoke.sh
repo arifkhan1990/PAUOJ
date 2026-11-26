@@ -37,6 +37,8 @@ note "$(echo "$HEALTH" | grep -Eq '"broadcastQueue"[[:space:]]*:[[:space:]]*\{[^
 note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"waiting"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue waiting is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"active"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue active is numeric"
 note "$(echo "$HEALTH" | grep -Eq '"judgeQueue"[[:space:]]*:[[:space:]]*\{[^}]*"failed"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health judgeQueue failed is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"memory"[[:space:]]*:[[:space:]]*\{[^}]*"rssMb"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health memory rss is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"memory"[[:space:]]*:[[:space:]]*\{[^}]*"limitMb"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health memory limit is numeric"
 
 for path in /learn /learn/basic-programming-math /learn/basic-programming-math/complexity /problems /rank; do
   code="$(status "$path")"

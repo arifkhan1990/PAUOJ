@@ -137,7 +137,10 @@ delivery.
 - `/health` for uptime checks. Besides `status`/`workers`/`migrations`, it
   exposes `emailOutbox: { pending, failed }`,
   `broadcastQueue: { pending, oldestPendingSeconds }` and
-  `judgeQueue: { waiting, active, prioritized, delayed, failed }`. `broadcastQueue.pending >
+  `judgeQueue: { waiting, active, prioritized, delayed, failed }` and
+  `memory: { rssMb, heapUsedMb, limitMb }`. `memory.limitMb` is the cgroup limit
+  Node sees (0 when unlimited) — for 10k SSE the app needs ~1.7 GB RSS, so a
+  container limit below 2 GB is a red flag. `broadcastQueue.pending >
   0` means broadcasts are still awaiting worker fan-out; public announcements
   stay hidden until `completed_at` is set, and a rising `oldestPendingSeconds`
   means the sweep is stalled. None of these counters changes the health status;

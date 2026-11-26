@@ -155,7 +155,9 @@ never change `status` or the HTTP code, and every field reads `0` when
 Redis/BullMQ is unavailable (the probe is bounded to 2 s, so it cannot hang
 `/health`).
 
-A growing `waiting`/`prioritized` while `active` is pinned at the workers'
+`/health` also reports `memory: { rssMb, heapUsedMb, limitMb }`. For 10k SSE
+the app needs ~1.7 GB RSS; `limitMb` must be comfortably above that (the prod
+Compose default is 3 GB). A `0` means no cgroup limit is set. A growing `waiting`/`prioritized` while `active` is pinned at the workers'
 concurrency means the judge is saturated. Add workers manually with the
 `--scale worker` command above and recheck the database pool formula; there is
 no autoscaler, so a deploy never changes the worker count. Poll the depth with:

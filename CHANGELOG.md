@@ -49,9 +49,10 @@ All notable changes to PAU OJ are documented here. The format follows
 
 ### Changed
 - `/health` now reports `judgeQueue: { waiting, active, prioritized, delayed,
-  failed }` from BullMQ so operators can see judge saturation; backlog never
-  changes the health status, and the probe degrades to zeros on a Redis or
-  BullMQ error.
+  failed }` from BullMQ and `memory: { rssMb, heapUsedMb, limitMb }` so
+  operators can see judge saturation and the container memory ceiling; backlog
+  never changes the health status, and the queue probe degrades to zeros on a
+  Redis or BullMQ error.
 - Submission SSE checks a per-submission Redis version every 5–7s; a DB poll
   happens only after a version change, with a 30s fallback for Redis outages.
   Contest/assessment jobs still outrank practice work.

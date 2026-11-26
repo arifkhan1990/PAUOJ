@@ -75,6 +75,11 @@ export async function GET() {
     judgeQueue = await getJudgeQueueCounts();
   }
   const healthy = database && redis && (migrations?.ok ?? true);
+  const usage = process.memoryUsage();
+  const constrained =
+    typeof process.constrainedMemory === "function"
+      ? process.constrainedMemory()
+      : 0;
   return NextResponse.json(
     {
       status: healthy && workers > 0 ? "ok" : "degraded",
@@ -84,6 +89,11 @@ export async function GET() {
       emailOutbox: emailOutboxCounts,
       broadcastQueue: broadcastQueueCounts,
       judgeQueue,
+      memory: {
+        rssMb: Math.round(usage.rss / (1024 * 1024)),
+        heapUsedMb: Math.round(usage.heapUsed / (1024 * 1024)),
+        limitMb: constrained > 0 ? Math.round(constrained / (1024 * 1024)) : 0,
+      },
       workers,
       version: APP_VERSION,
       commit: process.env.APP_COMMIT?.trim() || null,
