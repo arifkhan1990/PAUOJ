@@ -47,6 +47,27 @@ else
     fail "srv-caddy memory limit ${CADDY_MEM}B is below 2000 MiB (${CADDY_MEM_MIN_BYTES}B) needed for ~10k proxied SSE; raise the edge cgroup"
   fi
   echo "edge: srv-caddy memory limit ${CADDY_MEM}B"
+
+  # The app container only sees its own cgroup, so `/health` cannot read the
+  # shared edge limit. Publish it for the app through the PAU OJ Redis. The key
+  # expires after 15 minutes: if this cron stops, `/health` reports 0 rather
+  # than a stale limit. Publishing is best effort and never fails the check.
+  if [ "$CADDY_MEM" -gt 0 ]; then
+    REDIS_ID="$(docker ps -q \
+      --filter label=com.docker.compose.service=redis \
+      --filter name=pauoj 2>/dev/null | head -n1 || true)"
+    if [ -z "$REDIS_ID" ]; then
+      REDIS_ID="$(docker ps -q --filter name=pauoj-redis 2>/dev/null | head -n1 || true)"
+    fi
+    if [ -z "$REDIS_ID" ]; then
+      echo "note: no pauoj redis container found; edge memory key not published"
+    elif docker exec "$REDIS_ID" redis-cli SET pauoj:edge:caddy:memory \
+      "$CADDY_MEM" EX 900 >/dev/null 2>&1; then
+      echo "edge: published pauoj:edge:caddy:memory=${CADDY_MEM}B (EX 900)"
+    else
+      echo "note: could not publish pauoj:edge:caddy:memory via $REDIS_ID"
+    fi
+  fi
 fi
 
 echo "PAU OJ healthy."

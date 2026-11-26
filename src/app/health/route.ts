@@ -2,9 +2,14 @@ import { NextResponse } from "next/server";
 import { APP_VERSION } from "@/lib/constants";
 import { getSql } from "@/server/db";
 import { getMigrationStatus } from "@/server/db/migration-status";
-import { pingRedis } from "@/server/redis";
+import { getRedis, pingRedis } from "@/server/redis";
 import { getJudgeQueueCounts } from "@/server/judge/queue-health";
 import { getWorkerCount } from "@/server/worker-heartbeat";
+import {
+  EDGE_CADDY_MEMORY_KEY,
+  parseEdgeMemoryBytes,
+  readNetworkSettings,
+} from "@/server/health/environment";
 
 export const dynamic = "force-dynamic";
 
@@ -64,16 +69,26 @@ export async function GET() {
     delayed: 0,
     failed: 0,
   };
+  // Shared edge memory budget written by the host healthcheck. Operational
+  // signal only: it never feeds `healthy`/`status` and reads as 0 without Redis.
+  let caddyMemoryLimitMb = 0;
   if (redis) {
     try {
       workers = await getWorkerCount();
     } catch {
       workers = 0;
     }
+    try {
+      const raw = await getRedis().get(EDGE_CADDY_MEMORY_KEY);
+      caddyMemoryLimitMb = Math.round(parseEdgeMemoryBytes(raw) / (1024 * 1024));
+    } catch {
+      caddyMemoryLimitMb = 0;
+    }
     // Queue depth is operational signal only. It never flips `status` or the
     // HTTP code, and reads as zeros when Redis/BullMQ is unavailable.
     judgeQueue = await getJudgeQueueCounts();
   }
+  const network = readNetworkSettings();
   const healthy = database && redis && (migrations?.ok ?? true);
   const usage = process.memoryUsage();
   const constrained =
@@ -89,6 +104,8 @@ export async function GET() {
       emailOutbox: emailOutboxCounts,
       broadcastQueue: broadcastQueueCounts,
       judgeQueue,
+      network,
+      edge: { caddyMemoryLimitMb },
       memory: {
         rssMb: Math.round(usage.rss / (1024 * 1024)),
         heapUsedMb: Math.round(usage.heapUsed / (1024 * 1024)),

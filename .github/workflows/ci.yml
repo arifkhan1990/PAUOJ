@@ -42,6 +42,29 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - name: Build web/worker image
@@ -52,6 +75,38 @@ jobs:
         run: |
           docker run --rm pauoj/judge:ci sh -c \
             'g++ --version | head -n 1 && python3 --version && javac -version && node --version && test -s /harness.py'
+      - name: Migrate database with the image
+        run: >-
+          docker run --rm --network host
+          -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci
+          pauoj/app:ci node dist/migrate.js
+      # Proves the custom server.js (not just `next start`) boots in the real
+      # image that the srv host runs. The worker is absent, so `status` is
+      # allowed to stay "degraded"; database, Redis and migrations must be ok.
+      - name: Start web image and check /health
+        run: |
+          docker run -d --name pauoj-web-ci --network host \
+            -e DATABASE_URL=postgres://ci:ci@localhost:5432/ci \
+            -e REDIS_URL=redis://localhost:6379 \
+            -e APP_URL=http://localhost:3000 \
+            -e HOSTNAME=0.0.0.0 \
+            pauoj/app:ci
+          for attempt in $(seq 1 30); do
+            body="$(curl -fsS --connect-timeout 2 --max-time 5 http://127.0.0.1:3000/health || true)"
+            if printf '%s' "$body" | grep -q '"database":true' \
+              && printf '%s' "$body" | grep -q '"redis":true' \
+              && printf '%s' "$body" | grep -Eq '"migrations":[[:space:]]*\{[^}]*"ok":true'; then
+              echo "$body"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::web image did not become healthy within 60s"
+          docker logs pauoj-web-ci || true
+          exit 1
+      - name: Remove web container
+        if: always()
+        run: docker rm -f pauoj-web-ci 2>/dev/null || true
 
   study-plans-e2e:
     name: Study plan E2E

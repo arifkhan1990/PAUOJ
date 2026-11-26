@@ -104,6 +104,14 @@ The `srv` deploy pre-hook warns when `somaxconn` is below 8192, and
 above 0 and below 2000 MiB. Both are host checks; see
 `deploy/README.md` section 1b for the full sizing table.
 
+`/health` mirrors the same signals so they can be checked remotely: `network:
+{ somaxconn, tcpMaxSynBacklog }` comes from the app's network namespace, and
+`edge: { caddyMemoryLimitMb }` comes from the Redis key
+`pauoj:edge:caddy:memory`, which `deploy/healthcheck.sh` writes with `EX 900`
+after reading `srv-caddy`'s cgroup limit. The field reads `0` until the cron has
+run and after 15 minutes without it; it never changes `status`.
+`scripts/prod-smoke.sh` asserts all three fields are numeric.
+
 ## Reverse proxy and TLS
 
 Put Caddy or Nginx in front of port 3000. Set `APP_URL` to the public HTTPS
@@ -184,8 +192,12 @@ delivery.
   failure so cron/webhooks catch a stuck row. `judgeQueue` is the Redis-backed
   BullMQ depth: `waiting`/`prioritized` growing while `active` is pinned at the
   worker concurrency means the judge is saturated; it reads `0` when Redis is
-  unavailable. `scripts/prod-smoke.sh` checks the queue fields are numeric. See
-  `deploy/README.md` section 1b for scaling workers and the
+  unavailable. `network: { somaxconn, tcpMaxSynBacklog }` and
+  `edge: { caddyMemoryLimitMb }` report the effective listen limits and shared
+  edge cgroup (the latter via the `pauoj:edge:caddy:memory` Redis bridge, `0`
+  before the cron runs), and never change `status`.
+  `scripts/prod-smoke.sh` checks the queue, `network` and `edge` fields are
+  numeric. See `deploy/README.md` section 1b for scaling workers and the
   `scripts/sse-soak.mjs` harness.
 - `scripts/prod-smoke.sh` optionally verifies the signed-in surface when
   `SMOKE_USER` and `SMOKE_PASSWORD` are set. Use a normal non-admin account
@@ -229,6 +241,12 @@ delivery.
 5. Verify `/health`, a sample accepted submission, and a contest page.
 
 Keep migrations backward compatible so a rollback of the app image is safe.
+
+CI validates the runtime image on every build: the `images` job applies
+migrations inside `pauoj/app:ci`, then starts the image with `--network host` and
+requires `/health` to report `database: true`, `redis: true` and
+`migrations.ok: true` within 60 s (`status` may be `degraded` because no worker
+runs). A broken custom `server.js` therefore fails CI instead of the deploy.
 
 ## Troubleshooting
 

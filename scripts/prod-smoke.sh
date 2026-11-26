@@ -41,6 +41,13 @@ note "$(echo "$HEALTH" | grep -Eq '"memory"[[:space:]]*:[[:space:]]*\{[^}]*"rssM
 note "$(echo "$HEALTH" | grep -Eq '"memory"[[:space:]]*:[[:space:]]*\{[^}]*"limitMb"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health memory limit is numeric"
 memory_limit="$(printf '%s' "$HEALTH" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("memory",{}).get("limitMb") or 0)' 2>/dev/null || echo 0)"
 note "$([ "${memory_limit:-0}" = 0 ] || [ "${memory_limit:-0}" -ge 2500 ] && echo 1 || echo 0)" "health memory limit fits 10k SSE" "${memory_limit:-0}MB"
+note "$(echo "$HEALTH" | grep -Eq '"network"[[:space:]]*:[[:space:]]*\{[^}]*"somaxconn"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health network somaxconn is numeric"
+note "$(echo "$HEALTH" | grep -Eq '"network"[[:space:]]*:[[:space:]]*\{[^}]*"tcpMaxSynBacklog"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health network tcpMaxSynBacklog is numeric"
+# The edge limit arrives through the Redis bridge written by the host cron, so
+# 0 is normal before the first run or right after the container starts. Only
+# the field being numeric is asserted here.
+edge_limit="$(printf '%s' "$HEALTH" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("edge",{}).get("caddyMemoryLimitMb") or 0)' 2>/dev/null || echo 0)"
+note "$(echo "$HEALTH" | grep -Eq '"edge"[[:space:]]*:[[:space:]]*\{[^}]*"caddyMemoryLimitMb"[[:space:]]*:[[:space:]]*[0-9]+' && echo 1 || echo 0)" "health edge caddyMemoryLimitMb is numeric" "${edge_limit:-0}MB"
 
 for path in /learn /learn/basic-programming-math /learn/basic-programming-math/complexity /problems /rank; do
   code="$(status "$path")"

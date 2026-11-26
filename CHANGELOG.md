@@ -57,7 +57,9 @@ All notable changes to PAU OJ are documented here. The format follows
   Redis or BullMQ error.
 - The edge budget is now 2 GB for `srv-caddy` (measured ~1.1 GB with 10k TLS
   streams), the deploy hook raises/verifies it, and the host healthcheck fails
-  if the edge is downgraded below 2 GB.
+  if the edge is downgraded below 2 GB. The cron healthcheck publishes the
+  effective edge limit to `pauoj:edge:caddy:memory` (`EX 900`), and production
+  smoke checks the new `network`/`edge` fields numerically.
 - Submission SSE checks a per-submission Redis version every 5–7s; a DB poll
   happens only after a version change, with a 30s fallback for Redis outages.
   Contest/assessment jobs still outrank practice work.
@@ -93,6 +95,13 @@ All notable changes to PAU OJ are documented here. The format follows
   overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
+- `/health` now reports `network: { somaxconn, tcpMaxSynBacklog }` from the
+  app's namespace and `edge: { caddyMemoryLimitMb }` from a
+  `pauoj:edge:caddy:memory` Redis bridge written by the host healthcheck, so
+  the effective backlog and shared-edge budget are visible remotely.
+- CI now starts the built `pauoj/app:ci` image against Postgres/Redis, runs
+  migrations inside the image, and polls `/health` for database, Redis and
+  migration readiness, proving the custom `server.js` boots on every build.
 - A production HTTP server (`scripts/production-server.cjs`, shipped as
   `server.js`) with an 8192 listen backlog, 20k connection cap and 65s/66s
   keep-alive/header timeouts, plus `pnpm start:standalone`. The Docker image

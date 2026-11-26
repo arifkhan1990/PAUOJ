@@ -145,7 +145,11 @@ ss -ltn | grep -E ':(443|3000)\b'   # Send-Q = effective backlog per listener
 `deploy/srv/deploy.sh pre` prints a warning (not a failure) when
 `/proc/sys/net/core/somaxconn` is below 8192. `deploy/healthcheck.sh` fails when
 the shared `srv-caddy` container exists with a memory limit below 2000 MiB, and
-skips the check when `srv-caddy` or Docker is absent.
+skips the check when `srv-caddy` or Docker is absent. The cron also publishes
+that limit to the PAU OJ Redis as `pauoj:edge:caddy:memory` (`EX 900`, best
+effort) so `/health` can expose it as `edge.caddyMemoryLimitMb`. `/health` also
+reports `network: { somaxconn, tcpMaxSynBacklog }` from its own namespace, so
+the app tier can be checked without host access.
 
 ### Judge scale-out
 
@@ -388,6 +392,18 @@ the query fails, so `/health` never fails on them. Investigate with:
 ```bash
 docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml logs --tail 200 worker | grep -i broadcast
 ```
+
+### `/health` network and edge fields
+
+`/health` also reports `network: { somaxconn, tcpMaxSynBacklog }` — the effective
+kernel listen limits in the app's network namespace — and
+`edge: { caddyMemoryLimitMb }`, the shared edge cgroup limit rounded to MiB
+(`0` when unknown). The app container cannot read the edge cgroup, so
+`deploy/healthcheck.sh` publishes `srv-caddy`'s `HostConfig.Memory` to the PAU
+OJ Redis as `pauoj:edge:caddy:memory` with `EX 900`. That key expires after 15
+minutes, so a stopped cron makes the field fall back to `0` instead of reporting
+a stale limit. Neither field changes `status` or the HTTP code;
+`scripts/prod-smoke.sh` only asserts they are numeric.
 
 ## 3b. Shared host with an existing Caddy / Cloudflare Tunnel
 
@@ -685,10 +701,13 @@ restoring, and read the script before running it.
 judge worker, and a broadcast queue whose oldest pending row is under 10
 minutes. It also fails when a `srv-caddy` container is present with a memory
 limit below 2000 MiB (2097152000 bytes), and prints a note and skips that check
-when `srv-caddy` or Docker is unavailable — this catches a shared-edge downgrade
-after a deploy, which `/health` cannot see. `server-setup.sh` runs it every five
-minutes and appends to `/var/log/pauoj-health.log`. Set `ALERT_WEBHOOK` in the
-cron line to post to Slack/Discord-compatible webhooks.
+when `srv-caddy` or Docker is unavailable. On the same run it publishes the
+effective edge limit to Redis as `pauoj:edge:caddy:memory` (`EX 900`, best
+effort; a missing `pauoj` Redis is only a note), which is how `/health` fills
+`edge.caddyMemoryLimitMb` — the app container cannot read the shared edge cgroup
+itself. `server-setup.sh` runs it every five minutes and appends to
+`/var/log/pauoj-health.log`. Set `ALERT_WEBHOOK` in the cron line to post to
+Slack/Discord-compatible webhooks.
 
 Useful commands:
 
@@ -817,6 +836,15 @@ it calls the srv deploy hook at
 `https://deploy.nabasolution.tech/deploy/pauoj` with `X-Deploy-Token`, waits for
 the deploy queue to drain, then verifies `/health` (version, migrations, worker,
 **exact commit**), `scripts/prod-smoke.sh` and the 5 MiB upload probe.
+
+The CI `images` job proves the runtime image, not just the build. With Postgres
+17 and Redis 8 service containers it runs `node dist/migrate.js` inside
+`pauoj/app:ci`, then starts that image with `--network host` and waits up to
+60 s for `http://127.0.0.1:3000/health` to report `"database":true`,
+`"redis":true` and `"migrations":{...,"ok":true}`. `status` may stay `degraded`
+because no worker runs in CI. On timeout it prints `docker logs`, removes the
+container and fails the job, so a broken custom `server.js` cannot reach the srv
+host.
 
 ### Exact-commit health check
 
