@@ -927,8 +927,9 @@ it around every release:
 - `post`: lifts the running app to 3000m, lifts `srv-caddy` to 2000m and then
   verifies the effective limit — it exits 1 (failing the deploy) if the edge
   stays above 0 and below 2000 MiB, and logs/skips when `srv-caddy` is absent.
-  It then scales the judge to `JUDGE_WORKER_REPLICAS` (default 2) and runs the
-  idempotent seed service, so new problems/references land with the release.
+  It then applies the judge profile (`JUDGE_WORKER_REPLICAS`, default 1; scale
+  only when an operator sets a larger value) and runs the idempotent seed
+  service, so new problems/references land with the release.
 
 ### First judge build on a fresh host
 
