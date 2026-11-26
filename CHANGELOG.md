@@ -6,6 +6,10 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- Admins are now notified in-app when a premium payment or free-access request
+  arrives; the admin sidebar links to **Payments & access** with a
+  pending-count badge and `/admin` shows a review callout, so free-access
+  requests no longer sit unseen.
 - Custom-test runs no longer report a green “AC”. A clean run is now
   `EXECUTED`, the result card shows “Ran” (or a sample comparison when the
   input matches an official sample) and never presents an unjudged run as

@@ -25,10 +25,12 @@ import { SubmissionTable } from "@/components/submissions/submission-table";
 import { DifficultyBadge } from "@/components/shared/difficulty-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { requireAdmin } from "@/server/auth/guards";
 import { getSiteStats, getSubmissionActivity } from "@/server/services/stats";
 import { listAdminProblems } from "@/server/services/admin-problems";
 import { listAdminContests } from "@/server/services/admin-contests";
+import { countPendingPaymentOrders } from "@/server/services/learning-payments";
 import { listSubmissions } from "@/server/services/submissions";
 import {
   getReviewAnalytics,
@@ -103,7 +105,7 @@ export default async function AdminDashboardPage({
   const admin = await requireAdmin();
   const params = await searchParams;
   const range = parseReviewRange(firstValue(params.range));
-  const [stats, activity, problemPage, contestPage, submissionPage, analytics] =
+  const [stats, activity, problemPage, contestPage, submissionPage, analytics, pendingAccess] =
     await Promise.all([
       getSiteStats({ userId: admin.id, isAdmin: true }),
       getSubmissionActivity(14),
@@ -111,6 +113,7 @@ export default async function AdminDashboardPage({
       listAdminContests({ page: 1, pageSize: 4 }),
       listSubmissions({ page: 1, pageSize: 6 }, null),
       getReviewAnalytics(admin, "admin", range),
+      countPendingPaymentOrders(),
     ]);
 
   const acceptance =
@@ -138,6 +141,38 @@ export default async function AdminDashboardPage({
           </>
         }
       />
+
+      {pendingAccess > 0 ? (
+        <Card className="flex flex-col gap-3 border-amber-300 bg-amber-50 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-950/40">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md border border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-900/60 dark:text-amber-100">
+              <Wallet className="size-4" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-amber-900 dark:text-amber-100">
+                {pendingAccess} learning access{" "}
+                {pendingAccess === 1 ? "request" : "requests"} waiting for review
+                <Badge variant="warning">{pendingAccess}</Badge>
+              </p>
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                Approve free-access requests and pending TrxIDs to unlock the
+                premium modules.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/admin/payments"
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: "shrink-0 self-start sm:self-auto",
+            })}
+          >
+            Review queue
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </Card>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <DashboardMetric

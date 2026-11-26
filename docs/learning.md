@@ -235,6 +235,10 @@ Modules 1–2 are free. Modules 3–7 are premium and gated server-side:
 - A learner without money can request free access with a reason. The same
   admin queue approves it and grants a `SCHOLARSHIP` entitlement. Admins can
   also grant access manually by username from the queue page.
+- New payments and free-access requests notify every active admin in-app and
+  point at `/admin/payments`. The admin sidebar shows **Payments & access**
+  with a pending-count badge, and `/admin` shows a review callout while
+  anything is waiting.
 - Paywalled module/topic pages never render the concept note or problem sets;
   the public problem archive is unchanged.
 - Manual payment details come from `PAYMENT_BKASH_*`, `PAYMENT_CITYBANK_*`

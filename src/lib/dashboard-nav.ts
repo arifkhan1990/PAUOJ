@@ -17,12 +17,17 @@ import {
   Trophy,
   UserRound,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { UserRole } from "./types";
 
 export type DashboardRole = "ADMIN" | "TEACHER" | "CODER";
 
-export type DashboardBadgeKey = "messages" | "notifications" | "requests";
+export type DashboardBadgeKey =
+  | "messages"
+  | "notifications"
+  | "requests"
+  | "access";
 
 export type DashboardBadges = Partial<Record<DashboardBadgeKey, number>>;
 
@@ -45,6 +50,7 @@ export type DashboardNavSection = {
 export function dashboardBadgeNoun(key: DashboardBadgeKey): string {
   if (key === "messages") return "unread message";
   if (key === "notifications") return "unread notification";
+  if (key === "access") return "pending access request";
   return "pending follow request";
 }
 
@@ -149,7 +155,15 @@ function buildSections(
       },
       {
         label: "People",
-        items: [{ href: "/admin/users", label: "Users", icon: Users }],
+        items: [
+          { href: "/admin/users", label: "Users", icon: Users },
+          {
+            href: "/admin/payments",
+            label: "Payments & access",
+            icon: Wallet,
+            badgeKey: "access",
+          },
+        ],
       },
       socialSection(),
       {

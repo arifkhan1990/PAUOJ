@@ -65,6 +65,7 @@ export function DashboardFrame({
   unreadMessages = 0,
   unreadNotifications = 0,
   pendingFollowRequests = 0,
+  pendingAccessRequests = 0,
   children,
 }: {
   panel: DashboardRole;
@@ -76,6 +77,7 @@ export function DashboardFrame({
   unreadMessages?: number;
   unreadNotifications?: number;
   pendingFollowRequests?: number;
+  pendingAccessRequests?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -89,6 +91,7 @@ export function DashboardFrame({
     messages: socialCounts.messages,
     notifications: socialCounts.notifications,
     requests: socialCounts.requests,
+    access: pendingAccessRequests,
   };
   const sections = dashboardNav(panel, username, badges);
   const meta = dashboardWorkspaceMeta(panel);

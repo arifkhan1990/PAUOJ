@@ -95,6 +95,72 @@ export function mapOrder(row: OrderRow): PaymentOrderView {
   };
 }
 
+/** Admins get one in-app notice per new order; this queue never emails them. */
+export function adminOrderNotification(
+  order: PaymentOrderView,
+): { title: string; body: string } {
+  const who = `@${order.user.username}`;
+  if (order.kind === "FREE_REQUEST") {
+    return {
+      title: "Free access request needs review",
+      body: `${who} requested ${order.label}.`,
+    };
+  }
+  return {
+    title: "Payment needs review",
+    body: `${who} submitted a payment for ${order.label}.`,
+  };
+}
+
+export async function countPendingPaymentOrders(): Promise<number> {
+  const [row] = await getDb()
+    .select({ value: count() })
+    .from(paymentOrders)
+    .where(eq(paymentOrders.status, "PENDING"));
+  return Number(row?.value ?? 0);
+}
+
+/**
+ * Admins are notified after the order is stored. A notification failure never
+ * turns a successfully stored order into an error for the learner.
+ */
+export async function notifyAdminsOfNewOrder(
+  order: PaymentOrderView,
+): Promise<void> {
+  try {
+    const admins = await getDb()
+      .select({ id: users.id })
+      .from(users)
+      .where(and(eq(users.role, "ADMIN"), eq(users.isBanned, false)));
+    const { title, body } = adminOrderNotification(order);
+    const results = await Promise.allSettled(
+      admins.map((admin) =>
+        notifyUser({
+          userId: admin.id,
+          type: "SYSTEM",
+          title,
+          body,
+          href: "/admin/payments",
+          dedupeKey: `admin-order:${order.id}`,
+          email: false,
+        }),
+      ),
+    );
+    const failed = results.filter((result) => result.status === "rejected");
+    if (failed.length > 0) {
+      logger.warn("Learning payment admin notification failed", {
+        orderId: order.id,
+        failed: failed.length,
+      });
+    }
+  } catch (error) {
+    logger.warn("Learning payment admin notification failed", {
+      orderId: order.id,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 /**
  * Acknowledge a submitted order. The learner already gets it in-app; email
  * delivery still follows the `emailLearning` preference.
@@ -236,6 +302,7 @@ export async function createPurchaseOrder(
       "We received your payment details and will verify them shortly.",
       `payment-submitted:${order.id}`,
     );
+    await notifyAdminsOfNewOrder(order);
     return order;
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -301,6 +368,7 @@ export async function createFreeAccessRequest(
     "We received your free-access request and will review it shortly.",
     `free-request:${order.id}`,
   );
+  await notifyAdminsOfNewOrder(order);
   return order;
 }
 
