@@ -410,16 +410,30 @@ no down migration is required.
 
 ## 7. CI/CD
 
-`.github/workflows/deploy.yml` is a manual `workflow_dispatch` job that runs on a
-self-hosted runner labeled `prod`. Install the runner on this server, add the
-runner labels, then set repository variables:
+`.github/workflows/deploy.yml` runs on GitHub-hosted runners after a green
+**CI** run on `main` (and on manual dispatch). It does not build on the runner:
+it calls the srv deploy hook at
+`https://deploy.nabasolution.tech/deploy/pauoj` with `X-Deploy-Token`, waits for
+the deploy queue to drain, then verifies `/health` (version, migrations, worker),
+`scripts/prod-smoke.sh` and the 5 MiB upload probe.
 
-- `DEPLOY_DIR` = `/opt/pauoj`
-- `HEALTH_URL` = `http://127.0.0.1:3000/health`
+Required repository secret (one time):
 
-The runner user needs Docker access and write access to `DEPLOY_DIR`. Prefer a
-manual dispatch or protected environment approval for production. Do not run the
-deploy job on a shared/dirty machine.
+- `DEPLOY_TOKEN` = the shared `WEBHOOK_SECRET` from `~/server/.env` on
+  `naba-solution`.
+
+Without the secret the job logs a warning and skips the deploy; CI still passes.
+The hook runs `srv deploy pauoj` on the server (git pull, host-network build,
+migrate, recreate web/worker). Seed after a content release:
+
+```bash
+cd /home/naba/server/projects/pauoj
+docker compose -p srv-pauoj -f compose.yml --env-file .env --profile seed run --rm seed
+```
+
+No self-hosted runner or `DEPLOY_DIR` variable is needed. The old
+self-hosted-runner job is retired, and a stale CI run (main already moved on) is
+skipped so an older commit cannot overwrite a newer deploy.
 
 ## 8. Security checklist
 

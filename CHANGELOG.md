@@ -20,6 +20,11 @@ All notable changes to PAU OJ are documented here. The format follows
   metadata instead of a judge-error fallback.
 
 ### Changed
+- CI/CD now deploys `main` automatically after a green **CI** run (and on manual
+  dispatch) through the srv deploy hook. The job waits for the server queue and
+  verifies `/health`, the production smoke suite and the 5 MiB upload probe.
+  Requires the one-time `DEPLOY_TOKEN` Actions secret; without it the deploy is
+  skipped with a warning.
 - Conversation info now uses three tabs (Media, Documents, Links), shows
   each detail as a label/value row, binds the profile link to
   “Name (@username)”, and removes the duplicate Actions block (mute/report stay
