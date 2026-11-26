@@ -26,17 +26,28 @@ at the end of this section before a large round.
 
 | Profile | Host |
 | --- | --- |
-| Recommended | 4 vCPU / 8 GB |
+| 10k live SSE viewers (recommended) | 8 vCPU / 16 GB |
+| 10k HTTP/polling users, or ~5k SSE | 4 vCPU / 8 GB |
 | Minimum | 2 vCPU / 4 GB (little headroom; judge and web compete for CPU) |
 
-Budget on the recommended host:
+Budget on the recommended 16 GB host:
 
-- `app`: 2 GB / 2 CPU (raise `mem_limit` to `2g`; `cpus: 2.0` is already set).
+- `app`: 3 GB / 2 CPU (`mem_limit` now defaults to `3g`; local 10k SSE
+  measurement: ~1.1 GB RSS direct and ~1.7 GB RSS through Caddy).
+- `caddy`: 1.5 GB / 1 CPU (`mem_limit` now defaults to `1500m`; local 10k
+  proxied SSE measurement: ~0.9 GB RSS). A shared/campus edge proxy outside
+  this stack needs the same memory and `nofile` headroom.
 - `db`: 2 GB / 2 CPU with `max_connections=100` (the Postgres 17 default);
   raise `mem_limit`/`cpus` on the `db` service from the shipped 1 GB / 1 CPU.
 - `redis`: 512 MB with AOF on (`mem_limit: 512m` is already set).
 - `worker`: 2 GB (`mem_limit: 2g`); it runs beside the above and every judge run
   uses ~1 CPU.
+
+The SSE numbers are local loopback measurements with 10k connections opened over
+~50s (`--ramp-ms 5`). A one-second 10k SYN burst exceeds the kernel/Node listen
+backlog (511) and is not how browsers load a page; real arrivals should be
+ramped or accepted through the edge proxy. Re-measure on the target host before
+a large round.
 
 Confirm the database ceiling and effective connection limits:
 
@@ -341,6 +352,9 @@ the Swift image.
 Memory: the script defaults to `APP_MEM_LIMIT=768m`, `WORKER_MEM_LIMIT=768m`,
 `DB_MEM_LIMIT=384m`, `REDIS_MEM_LIMIT=192m` and `JUDGE_CONCURRENCY=1`, because a
 shared host may have little free RAM. Raise them only after checking `free -h`.
+For a 10k-live-SSE round on a shared host, set `APP_MEM_LIMIT=3g` and give the
+external edge proxy ~1.5 GB and 65k file descriptors; the 768m default only
+fits small rounds. See section 1b.
 
 ### Premium learning payments (manual QR)
 

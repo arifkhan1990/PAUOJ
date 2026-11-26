@@ -95,7 +95,9 @@ services:
     init: true
     security_opt:
       - no-new-privileges:true
-    mem_limit: 1g
+    # ~1.7 GB RSS observed for 10k SSE streams through Caddy locally; keep
+    # headroom for Next.js rendering and transport buffers.
+    mem_limit: ${APP_MEM_LIMIT:-3g}
     cpus: 2.0
     # 10k long-lived SSE connections need far more than Docker's default 1024.
     ulimits:
@@ -162,7 +164,8 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    mem_limit: 256m
+    # ~0.9 GB RSS observed for 10k proxied SSE streams; 256 MB was too low.
+    mem_limit: ${CADDY_MEM_LIMIT:-1500m}
     cpus: 1.0
     # Caddy holds one upstream + client socket per SSE stream.
     ulimits:
