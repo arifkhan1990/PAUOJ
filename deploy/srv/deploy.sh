@@ -118,12 +118,23 @@ case "${1:-}" in
     # APP_MEM_LIMIT is set. Lift the running app to the measured 10k-SSE
     # envelope and restart so Node reads the new cgroup limit; a future
     # compose change should make this persistent.
-    app_ids="$(docker ps -q --filter label=com.docker.compose.service=app)"
+    # The srv-managed stack calls the service `web` and its image
+    # `srv-pauoj-web`; older/compose stacks use `app`/`pauoj/app`. Try both
+    # labels, a name match, and finally the published 3000 port.
+    app_ids="$(
+      {
+        docker ps -q --filter label=com.docker.compose.service=web
+        docker ps -q --filter label=com.docker.compose.service=app
+        docker ps -q --filter name=pauoj-web
+        docker ps -q --filter publish=3000
+      } | sort -u
+    )"
     app_found=0
     for app_id in $app_ids; do
       app_image="$(docker inspect -f '{{.Config.Image}}' "$app_id" 2>/dev/null || true)"
-      case "$app_image" in
-        *pauoj/app*)
+      app_name="$(docker inspect -f '{{.Name}}' "$app_id" 2>/dev/null || true)"
+      case "$app_image $app_name" in
+        *pauoj*)
           app_found=1
           if docker update --memory 3000m --memory-swap 3000m "$app_id" >/dev/null 2>&1; then
             docker restart "$app_id" >/dev/null 2>&1 || true
