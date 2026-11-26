@@ -114,6 +114,39 @@ case "${1:-}" in
     ;;
 
   post)
+    # The srv-managed compose can hardcode the old shared defaults even when
+    # APP_MEM_LIMIT is set. Lift the running app to the measured 10k-SSE
+    # envelope and restart so Node reads the new cgroup limit; a future
+    # compose change should make this persistent.
+    app_id="$(docker ps -q \
+      --filter label=com.docker.compose.project=srv-pauoj \
+      --filter label=com.docker.compose.service=app | head -n 1)"
+    if [ -n "$app_id" ]; then
+      if docker update --memory 3000m --memory-swap 3000m "$app_id" >/dev/null 2>&1; then
+        docker restart "$app_id" >/dev/null 2>&1 || true
+        for _ in $(seq 1 30); do
+          if docker exec "$app_id" node -e \
+            "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))" \
+            >/dev/null 2>&1; then
+            break
+          fi
+          sleep 1
+        done
+        echo "→ app memory lifted to 3000m for 10k SSE"
+      else
+        echo "! could not lift app memory; check the srv compose/cgroup" >&2
+      fi
+    else
+      echo "! srv-pauoj app container not found; memory limit unchanged" >&2
+    fi
+    if docker inspect srv-caddy >/dev/null 2>&1; then
+      if docker update --memory 1500m --memory-swap 1500m srv-caddy >/dev/null 2>&1; then
+        echo "→ srv-caddy memory lifted to 1500m for 10k SSE"
+      else
+        echo "! could not lift srv-caddy memory; check the shared edge cgroup" >&2
+      fi
+    fi
+
     echo "→ seeding curriculum (idempotent)"
     docker compose -p srv-pauoj -f compose.yml --env-file .env \
       --profile seed run --rm --no-deps seed

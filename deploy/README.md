@@ -157,7 +157,11 @@ Redis/BullMQ is unavailable (the probe is bounded to 2 s, so it cannot hang
 
 `/health` also reports `memory: { rssMb, heapUsedMb, limitMb }`. For 10k SSE
 the app needs ~1.7 GB RSS; `limitMb` must be comfortably above that (the prod
-Compose default is 3 GB). A `0` means no cgroup limit is set. A growing `waiting`/`prioritized` while `active` is pinned at the workers'
+Compose default is 3 GB). A `0` means no cgroup limit is set. The `srv` deploy
+hook also lifts the running `srv-pauoj` app to 3000m and `srv-caddy` to 1500m
+after compose and restarts the app, because the srv-managed compose can still
+hardcode the old 768m/256m shared defaults. Make those values persistent in
+the srv compose when possible. A growing `waiting`/`prioritized` while `active` is pinned at the workers'
 concurrency means the judge is saturated. Add workers manually with the
 `--scale worker` command above and recheck the database pool formula; there is
 no autoscaler, so a deploy never changes the worker count. Poll the depth with:
