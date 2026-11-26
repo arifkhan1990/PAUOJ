@@ -10,7 +10,10 @@ export async function stepBrowser(rakib, { slug, note }) {
   const chrome = state.chrome;
   await chrome.setCookie("pauoj_session", rakib);
   await chrome.navigate(`${BASE_URL}/lists/${slug}`);
-  await chrome.waitFor(`!!document.querySelector('button[aria-label^="Edit note for"][aria-expanded]')`, "the compact note trigger");
+  await chrome.waitFor(`(() => {
+    const trigger = document.querySelector('button[aria-label^="Edit note for"][aria-expanded]');
+    return Boolean(trigger && trigger.getBoundingClientRect().width > 0);
+  })()`, "the compact note trigger", 15_000);
 
   const compact = await chrome.evaluate(`(() => {
     const trigger = document.querySelector('button[aria-label^="Edit note for"][aria-expanded]');
