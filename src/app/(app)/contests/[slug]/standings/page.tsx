@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Info, Trophy } from "lucide-react";
-import { AutoRefresh } from "@/components/shared/auto-refresh";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageHeader } from "@/components/shared/page-header";
 import { ContestFormatBadge } from "@/components/contests/contest-format-badge";
 import { ContestTabs } from "@/components/contests/contest-tabs";
 import { buttonVariants } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { ScoreboardTable } from "@/features/contests/scoreboard-table";
+import { StandingsLive } from "@/features/contests/standings-live";
 import { getCurrentUser } from "@/server/auth/session";
 import { ApiError } from "@/server/api/errors";
 import { getScoreboard } from "@/server/services/contests";
 import type { ContestScoreboard } from "@/lib/types";
+import { SCOREBOARD_DEFAULT_PAGE_SIZE } from "@/lib/contest-detail-types";
 import { contestDurationMs } from "@/lib/contests";
+import { readPage, type SearchParams } from "@/lib/pagination";
 import {
   formatDhakaDateTime,
   formatDuration,
@@ -32,16 +32,22 @@ export async function generateMetadata({
 
 export default async function StandingsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
-  const { slug } = await params;
+  const [{ slug }, query] = await Promise.all([params, searchParams]);
+  const page = readPage(query);
   const user = await getCurrentUser();
   let board: ContestScoreboard | null = null;
   let message: string | null = null;
 
   try {
-    board = await getScoreboard(slug, user?.role === "ADMIN");
+    board = await getScoreboard(slug, user?.role === "ADMIN", {
+      page,
+      pageSize: SCOREBOARD_DEFAULT_PAGE_SIZE,
+    });
   } catch (error) {
     if (error instanceof ApiError) {
       message = error.message;
@@ -59,7 +65,11 @@ export default async function StandingsPage({
           description={message ?? "This contest could not be found."}
           icon={Trophy}
           action={
-            <Link href={`/contests/${slug}`} className={buttonVariants()}>
+            <Link
+              href={`/contests/${slug}`}
+              prefetch={false}
+              className={buttonVariants()}
+            >
               Back to contest
             </Link>
           }
@@ -70,12 +80,19 @@ export default async function StandingsPage({
 
   const format = board.contest.format ?? "SINGLE";
   const isGroup = format === "GROUP";
+  const total = board.pagination.total;
+  const participantLabel = `${total.toLocaleString("en-US")} ${
+    isGroup ? "team" : "coder"
+  }${total === 1 ? "" : "s"}`;
   const reviewOpen =
     new Date(board.contest.ratingReviewEndsAt).getTime() > Date.now();
+  // A running board can change every few seconds. Render a light shell and let
+  // the cached API fill the rows, so 10k first loads do not each run RSC over
+  // 50 ranked rows. Ended/upcoming boards stay fully server-rendered.
+  const deferInitialRows = board.contest.status === "RUNNING" && total > 0;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <AutoRefresh enabled={board.contest.status === "RUNNING"} intervalMs={15000} />
       <PageHeader
         eyebrow="Live standings"
         title={board.contest.title}
@@ -87,6 +104,7 @@ export default async function StandingsPage({
         actions={
           <Link
             href={`/contests/${board.contest.slug}`}
+            prefetch={false}
             className={buttonVariants({ variant: "outline" })}
           >
             Contest page
@@ -100,9 +118,7 @@ export default async function StandingsPage({
           teamSize={board.contest.teamSize}
         />
         <span className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-          {isGroup
-            ? `${board.rows.length} team${board.rows.length === 1 ? "" : "s"}`
-            : `${board.rows.length} coder${board.rows.length === 1 ? "" : "s"}`}
+          {participantLabel}
         </span>
       </div>
 
@@ -144,7 +160,7 @@ export default async function StandingsPage({
         </div>
       ) : null}
 
-      {board.rows.length === 0 ? (
+      {total === 0 ? (
         <EmptyState
           className="mt-6"
           title="No registered participants"
@@ -152,9 +168,14 @@ export default async function StandingsPage({
           icon={Trophy}
         />
       ) : (
-        <Card className="mt-5 overflow-hidden p-1">
-          <ScoreboardTable board={board} />
-        </Card>
+        <StandingsLive
+          key={`${board.pagination.page}:${deferInitialRows ? "deferred" : "ssr"}`}
+          slug={board.contest.slug}
+          initialBoard={
+            deferInitialRows ? { ...board, rows: [] } : board
+          }
+          deferInitialRows={deferInitialRows}
+        />
       )}
 
       <p className="mt-4 text-xs text-muted-foreground">

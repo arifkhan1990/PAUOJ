@@ -6,6 +6,10 @@ All notable changes to PAU OJ are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- Sign-in no longer applies a 20-per-15-minute cap to every attempt from one
+  address. Only failed passwords are counted against the shared egress IP
+  (50 per 15 minutes), so a campus or carrier NAT can sign a whole contest in
+  while password spraying is still throttled.
 - The admin **Payments & access** badge now refreshes with the existing 45s
   dashboard counts poll; `/api/v1/social/counts` returns `access` for admins and
   `0` for everyone else, and the sidebar updates without a navigation.
@@ -33,6 +37,21 @@ All notable changes to PAU OJ are documented here. The format follows
   metadata instead of a judge-error fallback.
 
 ### Changed
+- Live standings scale to 10k participants: the board is cached per app process
+  for 5s (30s after the contest), paginated at 50 rows, and served with an
+  ETag/304; the page polls the API every 20s instead of re-rendering the whole
+  route. In-viewport prefetch is disabled on contest tabs, problem links,
+  profile links, pagination and the main nav so viewers do not fan out
+  background RSC renders.
+- Submission verdicts are pushed over Redis pub/sub instead of every open SSE
+  stream polling Postgres once per second; the stream keeps a 15s fallback poll
+  and heartbeat. Live contest and assessment submissions now outrank practice,
+  virtual-contest, rejudge and custom-run jobs in the judge queue.
+- Postgres pools and query timeouts are configurable
+  (`DATABASE_POOL_MAX`, `WORKER_DATABASE_POOL_MAX`,
+  `DATABASE_STATEMENT_TIMEOUT_MS`, `DATABASE_CONNECT_TIMEOUT_SECONDS`), and the
+  Compose stacks raise the file-descriptor limit for 10k long-lived SSE
+  connections. Judge workers can be scaled on one host.
 - `/health` reports the deployed `APP_COMMIT`; the srv deploy hook records it,
   the server compose passes it to web/worker, and CI/CD only accepts a deploy
   when the live commit matches the queued short SHA. The first judge image build
@@ -50,6 +69,10 @@ All notable changes to PAU OJ are documented here. The format follows
   overlay dot is removed so “Online now” is not shown twice.
 
 ### Added
+- `scripts/capacity-load.mjs`, a dependency-free GET load check for a seeded
+  contest (p50/p95/p99, RPS, status/error counts, exit on 5xx or a p95 budget),
+  and a capacity/sizing section in `deploy/README.md` covering the pool formula,
+  file descriptors, SSE streams and judge worker scale-out.
 - Notification bell and drawer in the public navbar: signed-in users get an
   unread-count badge that refreshes while the tab is visible, an accessible
   right-side drawer with All / Unread / Notices tabs, per-item and mark-all

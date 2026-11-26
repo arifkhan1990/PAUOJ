@@ -28,7 +28,13 @@ the Docker CLI and the judge image contains the harness.
 7. The harness writes per-test results to a root-only results directory.
 8. The worker updates the submission and per-test rows in one transaction,
    recomputes problem counters and marks the job complete.
-9. The browser's EventSource receives `update` events and a final `done` event.
+9. The worker publishes the verdict on Redis `pauoj:submission:<id>`; the
+   browser's EventSource receives `update` events and a final `done` event.
+   The stream has a 15s fallback poll, so a Redis outage does not strand a
+   pending verdict.
+10. Live contest and assessment jobs are enqueued at priority 1; practice,
+    virtual-contest, rejudge and custom-run jobs use priority 10. Every job has
+    an explicit priority because BullMQ drains unprioritized jobs first.
 
 ## Database model
 
@@ -1072,6 +1078,19 @@ immediately and needs no backfill.
 - CE and system errors do not add penalty;
 - ranking: solved descending, penalty ascending, last acceptance ascending;
   fully equal rows share a rank and are ordered by username for display.
+
+`getScoreboard` computes the full ranked board and stores that snapshot in a
+per-process TTL cache (5s while RUNNING, 30s when ENDED; up to four contests).
+Concurrent misses share one load, so 10k viewers polling produce one snapshot
+per app process per window instead of one full computation per request. The
+snapshot is sliced to the requested page before it reaches RSC or the API;
+pagination is 50 rows by default (25–200 allowed). Admin and public snapshots
+use separate keys because admins see through a freeze window. The standings
+page polls the paginated API every 20s while the tab is visible instead of
+re-running `router.refresh()` on the whole route, and Next.js prefetch is
+disabled on contest tabs, problem links, profile links and pagination so a
+10k-viewer page does not fan out background RSC renders. The API's ETag ignores
+`generatedAt` so unchanged pages return `304`.
 
 ## Ranking
 

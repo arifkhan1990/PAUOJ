@@ -513,6 +513,11 @@ event: done
 data: { "id": "uuid" }
 ```
 
+Verdicts are pushed through Redis pub/sub and the stream keeps a 15s fallback
+poll plus a 15s heartbeat. A large contest therefore opens many idle streams
+without generating one database query per stream per second; if Redis is down,
+verdicts still arrive within the fallback window.
+
 ## Custom runs
 
 ### POST `/runs`
@@ -601,13 +606,28 @@ by an admin. Deletion is soft and admin deletions are written to the audit log.
 - `GET /contests?filter=ALL|UPCOMING|RUNNING|ENDED`
 - `GET /contests/:slug`
 - `POST /contests/:slug/register`
-- `GET /contests/:slug/standings`
+- `GET /contests/:slug/standings?page=1&pageSize=50`
 
 Standings rows include `rank`, `user`, `team`, `solved`, `penalty` and a map of
 problem labels to `{ solved, attempts, solveTimeMinutes, firstBlood }`. In a
 `GROUP` contest the `team` object carries the team name, member count and roster,
 and the row identity is the captain. When a freeze window is active, public
 responses set `frozen: true` and include `freezeAt`; admins get the live board.
+
+Standings are paginated so a 10k-participant board never returns every row:
+
+- `page` is 1-based (default 1). A page beyond the last is clamped, and
+  `pagination.page` is the page actually served.
+- `pageSize` is 25–200 (default and UI value 50).
+- `pagination` is `{ page, pageSize, total, totalPages }`; `rows` is only that
+  page, already ranked. `generatedAt` is the UTC snapshot time.
+- Responses carry `ETag` and `Cache-Control: private, no-store`. Send
+  `If-None-Match` to receive `304` with no body when the page has not changed.
+  The ETag intentionally ignores `generatedAt`, so a 5s live refresh with no
+  score change still returns `304`.
+- The full board is cached per app process for 5s while RUNNING and 30s after
+  the contest ends; admin and public snapshots are cached separately so a live
+  admin board is never served during a freeze.
 
 ### Team contests
 

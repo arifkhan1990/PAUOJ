@@ -6,6 +6,19 @@ const envSchema = z.object({
     .default("development"),
   APP_URL: z.string().url().default("http://localhost:3000"),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(20),
+  DATABASE_STATEMENT_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .max(120000)
+    .default(15000),
+  DATABASE_CONNECT_TIMEOUT_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(60)
+    .default(10),
   REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
   JUDGE_IMAGE: z.string().min(1).default("pauoj/judge:latest"),
   JUDGE_SWIFT_IMAGE: z.string().min(1).default("pauoj/judge-swift:latest"),

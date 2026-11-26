@@ -25,8 +25,12 @@ import type { SubmissionListItem } from "@/lib/types";
 import { isPendingVerdict, VERDICT_META } from "@/lib/verdicts";
 import { isContestRatingLocked } from "@/lib/contest-rating";
 import type { LanguageId } from "@/lib/languages";
-import { enqueueSubmission } from "@/server/judge/queue";
+import {
+  enqueueSubmission,
+  submissionPriority,
+} from "@/server/judge/queue";
 import { markSubmissionQueued } from "@/server/judge/submission-runner";
+import { publishSubmissionChanged } from "@/server/judge/submission-events";
 import { getAssessmentForSubmission } from "./assessment-access";
 import { getVirtualSubmissionContext } from "./virtual-contests";
 import {
@@ -155,7 +159,9 @@ export async function createSubmission(
   }
 
   try {
-    await enqueueSubmission(submission.id);
+    await enqueueSubmission(submission.id, {
+      priority: submissionPriority({ contestId, assessmentId, virtualContestId }),
+    });
   } catch (error) {
     console.error("Could not enqueue submission", error);
     await db
@@ -352,6 +358,9 @@ export async function rejudgeSubmission(
     await markSubmissionQueued(id);
     await db.insert(auditLogs).values(audit);
   }
+
+  // Best-effort fanout: only after the queued status is committed.
+  publishSubmissionChanged(id);
 
   try {
     await enqueueSubmission(id);

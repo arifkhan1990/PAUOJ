@@ -81,6 +81,7 @@ export function ContestTabs({
           <Link
             key={tab.value}
             href={tab.path(slug)}
+            prefetch={false}
             aria-current={isActive ? "page" : undefined}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 transition-colors",

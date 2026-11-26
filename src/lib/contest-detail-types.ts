@@ -111,6 +111,15 @@ export type VirtualContestInfo = {
   penalty: number;
 };
 
+export type ContestScoreboardPagination = {
+  /** 1-based page that was actually served (clamped into range). */
+  page: number;
+  pageSize: number;
+  /** Total ranked rows before slicing. */
+  total: number;
+  totalPages: number;
+};
+
 export type ContestScoreboard = {
   contest: {
     slug: string;
@@ -129,5 +138,13 @@ export type ContestScoreboard = {
   frozen: boolean;
   freezeAt: string | null;
   labels: string[];
+  /** When this board snapshot was computed (cache-friendly). */
+  generatedAt: string;
+  pagination: ContestScoreboardPagination;
+  /** Only the requested page of ranked rows. */
   rows: ScoreboardRow[];
 };
+
+/** 50 keeps the live payload and SSR/RSC work small at 10k participants. */
+export const SCOREBOARD_DEFAULT_PAGE_SIZE = 50;
+export const SCOREBOARD_MAX_PAGE_SIZE = 200;

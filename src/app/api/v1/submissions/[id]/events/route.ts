@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { errors } from "@/server/api/errors";
 import { optionalApiUser } from "@/server/api/auth";
 import { getSubmissionById } from "@/server/services/submissions";
+import { getSubmissionEventBus } from "@/server/judge/submission-events";
 import { isPendingVerdict } from "@/lib/verdicts";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,8 @@ export async function GET(
       let closed = false;
       let lastPayload = "";
       let running = false;
+      let pendingEvent = false;
+      let unlisten: (() => void) | null = null;
       let pollTimer: ReturnType<typeof setInterval> | null = null;
       let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -41,6 +44,7 @@ export async function GET(
       const cleanup = () => {
         if (closed) return;
         closed = true;
+        unlisten?.();
         if (pollTimer) clearInterval(pollTimer);
         if (heartbeatTimer) clearInterval(heartbeatTimer);
         try {
@@ -84,14 +88,34 @@ export async function GET(
           cleanup();
         } finally {
           running = false;
+          if (pendingEvent && !closed) {
+            // An event arrived mid-poll; pick it up right away.
+            pendingEvent = false;
+            void poll();
+          }
         }
+      };
+
+      const onEvent = () => {
+        if (closed) return;
+        if (running) {
+          pendingEvent = true;
+          return;
+        }
+        void poll();
       };
 
       send("update", initial);
       lastPayload = JSON.stringify(initial);
       if (finishIfDone(initial.status)) return;
 
-      pollTimer = setInterval(() => void poll(), 1000);
+      // Subscribe before the first refresh poll so a verdict committed
+      // between the initial fetch and here is still picked up.
+      unlisten = getSubmissionEventBus().subscribe(id, onEvent);
+      void poll();
+
+      // Fallback poll: covers Redis outages and lost events.
+      pollTimer = setInterval(() => void poll(), 15_000);
       heartbeatTimer = setInterval(() => {
         if (!closed) controller.enqueue(encoder.encode(": keep-alive\n\n"));
       }, 15_000);

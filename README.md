@@ -310,6 +310,10 @@ and transactions) are SQLite-only.
 | --- | --- |
 | `APP_URL` | Public origin used for cookies/links, e.g. `https://oj.example.edu` |
 | `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_POOL_MAX` | Postgres connections per app process, 1–100 (default 20) |
+| `WORKER_DATABASE_POOL_MAX` | Postgres connections per worker process, default 10 |
+| `DATABASE_STATEMENT_TIMEOUT_MS` | Per-query timeout in ms, 1000–120000 (default 15000) |
+| `DATABASE_CONNECT_TIMEOUT_SECONDS` | New-connection timeout in seconds, 1–60 (default 10) |
 | `REDIS_URL` | Redis connection string |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose database credentials |
 | `POSTGRES_PORT`, `REDIS_PORT` | Local Compose host ports |

@@ -232,6 +232,7 @@ export function HeaderNav({
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:px-6 lg:px-8">
         <Link
           href="/"
+          prefetch={false}
           aria-label="PAU OJ Online Judge home"
           className={cn(
             "mr-2 flex shrink-0 items-center gap-2.5",
@@ -254,11 +255,14 @@ export function HeaderNav({
           </span>
         </Link>
 
+        {/* No prefetch: a live contest puts thousands of tabs on the same
+            routes, and background RSC prefetches would multiply SSR load. */}
         <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Main">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={cn(
                 "inline-flex min-h-11 items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 isActive(pathname, item.href)
@@ -332,6 +336,7 @@ export function HeaderNav({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 className={cn(
                   "flex min-h-11 items-center rounded-md px-3 py-2.5 text-sm font-medium",
                   isActive(pathname, item.href)

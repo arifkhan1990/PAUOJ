@@ -143,7 +143,7 @@ export default async function ContestSubmissionsPage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <AutoRefresh enabled={hasPending} intervalMs={5000} />
+      <AutoRefresh enabled={hasPending} intervalMs={15000} />
       <PageHeader
         eyebrow="Contest judge"
         title={access.contest.title}

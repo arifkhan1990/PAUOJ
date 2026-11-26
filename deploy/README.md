@@ -19,6 +19,120 @@ docker version
 docker compose version
 ```
 
+## 1b. Capacity and scale (10k users / one 10k-contestant contest)
+
+These are sizing targets, not measured results. Verify them with the load check
+at the end of this section before a large round.
+
+| Profile | Host |
+| --- | --- |
+| Recommended | 4 vCPU / 8 GB |
+| Minimum | 2 vCPU / 4 GB (little headroom; judge and web compete for CPU) |
+
+Budget on the recommended host:
+
+- `app`: 2 GB / 2 CPU (raise `mem_limit` to `2g`; `cpus: 2.0` is already set).
+- `db`: 2 GB / 2 CPU with `max_connections=100` (the Postgres 17 default);
+  raise `mem_limit`/`cpus` on the `db` service from the shipped 1 GB / 1 CPU.
+- `redis`: 512 MB with AOF on (`mem_limit: 512m` is already set).
+- `worker`: 2 GB (`mem_limit: 2g`); it runs beside the above and every judge run
+  uses ~1 CPU.
+
+Confirm the database ceiling and effective connection limits:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  exec -T db psql -U "${POSTGRES_USER:-pauoj}" -d "${POSTGRES_DB:-pauoj}" \
+  -c 'show max_connections;'
+```
+
+Keep every pool below the database limit:
+
+```text
+app replicas × DATABASE_POOL_MAX
++ worker replicas × WORKER_DATABASE_POOL_MAX
++ headroom < max_connections
+```
+
+Each app and worker process opens its own pool, so scaling workers multiplies
+database connections, not just CPU. `DATABASE_POOL_MAX` sets the app pool and
+`WORKER_DATABASE_POOL_MAX` sets each worker pool (defaults 20 and 10). With
+`max_connections=100`, one app and four workers use 20 + 4×10 = 60 connections
+and leave room for migrations, the seed, `psql` sessions and other clients. Set
+`DATABASE_POOL_MAX`, `WORKER_DATABASE_POOL_MAX`,
+`DATABASE_STATEMENT_TIMEOUT_MS` and `DATABASE_CONNECT_TIMEOUT_SECONDS` in
+`deploy/.env` and recreate app/worker to apply them. A query that hits
+`DATABASE_STATEMENT_TIMEOUT_MS` fails with a statement-timeout error instead of
+holding a pooled connection open; raise it deliberately (max 120000) if a
+legitimate report or standings query needs longer. Migrations run on their own
+client and are not affected.
+
+### File descriptors and long-lived SSE
+
+10k concurrent users includes up to ~10k open SSE verdict streams. Each stream
+is one client socket plus one upstream socket in Caddy and one socket in the
+app, and Docker's default `nofile` of 1024 runs out far earlier. `app`,
+`worker` and `caddy` set `ulimits.nofile` to 65536 in
+`deploy/docker-compose.prod.yml`; `deploy/docker-compose.shared.yml` sets it for
+`app` and `worker` (its edge proxy is external), and the local compose file
+matches for parity.
+
+- The host limit matters too: the Docker daemon needs a high `LimitNOFILE`
+  (systemd unit or `/etc/security/limits.conf`), at least the container value.
+- Caddy keeps client keep-alive connections open and dedicates one upstream
+  connection per SSE stream for the stream's lifetime. It streams
+  `text/event-stream` without buffering, so never add an idle/response timeout
+  to the SSE path.
+- On a shared host the external edge proxy (Caddy/Cloudflare Tunnel) is not in
+  this stack; raise its own nofile limit as well.
+
+Verify after a restart:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml exec app sh -c 'ulimit -n'
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml exec caddy sh -c 'ulimit -n'
+```
+
+### Judge scale-out
+
+Judge workspaces are unique `mkdtemp` directories per run, so workers scale on
+one host without colliding on files:
+
+```bash
+docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml \
+  up -d --scale worker=4
+```
+
+Each judge run uses ~1 CPU and each worker runs `JUDGE_CONCURRENCY` runs at a
+time: four workers at `JUDGE_CONCURRENCY=2` offer eight concurrent runs, which
+oversubscribes a 4 vCPU host and starves the web app. Keep judge runs at or below
+the CPU count, and recheck the pool formula because every worker also opens a
+database pool. `--scale worker=4` needs no published port, no `container_name`
+and no named volume.
+
+### Load check
+
+`scripts/capacity-load.mjs` is dependency-free (Node 22+, built-in `fetch`) and
+GET-only:
+
+```bash
+node scripts/capacity-load.mjs \
+  --url https://staging.example.edu \
+  --path '/api/v1/contests/<slug>/standings?page=1&pageSize=50' \
+  --path /contests/<slug>/standings \
+  --concurrency 200 --duration 60 --max-p95-ms 1500
+```
+
+- Point it at a seeded contest. Standings are computed on demand and are the
+  hot path for a 10k-contestant round, so test the API and the SSR page.
+- Run it from a separate host, never from the app server, and never against
+  production during a real contest.
+- It exits 0 only when there is no 5xx/network error and p95 is within budget;
+  exit 1 means the check failed, exit 2 means bad arguments. The last line is
+  JSON (`| tail -1 | jq .`).
+- It measures request throughput and latency, not 10k held SSE streams. Check
+  `ulimit -n`, `/proc/<pid>/fd` and established connections for the stream side.
+
 ## 2. Clone and prepare
 
 ```bash

@@ -19,6 +19,9 @@ x-app-environment: &app-environment
   APP_COMMIT: ${APP_COMMIT:-}
   APP_URL: ${APP_URL:?Set APP_URL in deploy/.env}
   DATABASE_URL: postgres://${POSTGRES_USER:-pauoj}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in deploy/.env}@db:5432/${POSTGRES_DB:-pauoj}
+  DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-20}
+  DATABASE_STATEMENT_TIMEOUT_MS: ${DATABASE_STATEMENT_TIMEOUT_MS:-15000}
+  DATABASE_CONNECT_TIMEOUT_SECONDS: ${DATABASE_CONNECT_TIMEOUT_SECONDS:-10}
   REDIS_URL: redis://redis:6379
   JUDGE_IMAGE: ${JUDGE_IMAGE:-pauoj/judge:latest}
   JUDGE_SWIFT_IMAGE: ${JUDGE_SWIFT_IMAGE:-pauoj/judge-swift:latest}
@@ -108,6 +111,12 @@ services:
       - no-new-privileges:true
     mem_limit: ${APP_MEM_LIMIT:-768m}
     cpus: 2.0
+    # 10k long-lived SSE connections need far more than Docker's default 1024.
+    # On a shared host the external edge proxy needs the same headroom.
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     restart: unless-stopped
     logging:
       driver: json-file
@@ -119,6 +128,9 @@ services:
     image: pauoj/app:latest
     environment:
       <<: *app-environment
+      # Judge workers are idle between Docker calls; a smaller pool keeps
+      # `--scale worker=4` below Postgres max_connections.
+      DATABASE_POOL_MAX: ${WORKER_DATABASE_POOL_MAX:-10}
     depends_on:
       db:
         condition: service_healthy
@@ -135,6 +147,10 @@ services:
       - no-new-privileges:true
     mem_limit: ${WORKER_MEM_LIMIT:-768m}
     cpus: 2.0
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     restart: unless-stopped
     logging:
       driver: json-file

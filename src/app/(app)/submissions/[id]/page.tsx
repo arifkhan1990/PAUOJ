@@ -7,7 +7,6 @@ import {
   ListChecks,
   User as UserIcon,
 } from "lucide-react";
-import { AutoRefresh } from "@/components/shared/auto-refresh";
 import { UserAvatar } from "@/components/shared/user-avatar";
 import { VerdictBadge } from "@/components/shared/verdict-badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -81,8 +80,6 @@ export default async function SubmissionPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-      <AutoRefresh enabled={pending} intervalMs={3000} />
-
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         <Link href="/submissions" className="hover:text-primary">
           Submissions

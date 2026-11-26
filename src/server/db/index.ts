@@ -18,9 +18,14 @@ const globalForDb = globalThis as typeof globalThis & {
 function createDatabase(): DatabaseCache {
   const env = getEnv();
   const sql = postgres(env.DATABASE_URL, {
-    max: 10,
+    max: env.DATABASE_POOL_MAX,
     idle_timeout: 20,
-    connect_timeout: 10,
+    max_lifetime: 1800,
+    connect_timeout: env.DATABASE_CONNECT_TIMEOUT_SECONDS,
+    connection: {
+      application_name: "pauoj",
+      statement_timeout: env.DATABASE_STATEMENT_TIMEOUT_MS,
+    },
     onnotice: () => undefined,
   });
   const db = drizzle(sql, { schema });

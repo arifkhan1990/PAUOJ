@@ -49,6 +49,7 @@ function ScoreboardIdentity({ board, row }: {
         <span className="flex min-w-0 flex-wrap items-center gap-x-1 text-xs text-muted-foreground">
           <Link
             href={`/users/${row.user.username}`}
+            prefetch={false}
             className="truncate hover:text-primary"
           >
             {team ? `Captain @${row.user.username}` : `@${row.user.username}`}

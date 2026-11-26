@@ -41,6 +41,7 @@ export function Pagination({
     >
       <Link
         href={pageHref(pathname, searchParams, Math.max(1, page - 1))}
+        prefetch={false}
         aria-disabled={page <= 1}
         className={cn(
           buttonVariants({ variant: "outline", size: "icon" }),
@@ -62,6 +63,7 @@ export function Pagination({
           <Link
             key={value}
             href={pageHref(pathname, searchParams, value)}
+            prefetch={false}
             aria-current={value === page ? "page" : undefined}
             className={cn(
               buttonVariants({
@@ -77,6 +79,7 @@ export function Pagination({
       )}
       <Link
         href={pageHref(pathname, searchParams, Math.min(totalPages, page + 1))}
+        prefetch={false}
         aria-disabled={page >= totalPages}
         className={cn(
           buttonVariants({ variant: "outline", size: "icon" }),

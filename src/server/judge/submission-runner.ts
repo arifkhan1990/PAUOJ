@@ -13,6 +13,7 @@ import { VERDICT_META } from "@/lib/verdicts";
 import { getLanguage } from "@/lib/languages";
 import { afterAcceptedSubmission } from "@/server/services/achievement-notifications";
 import { notifyUser } from "@/server/services/notifications";
+import { publishSubmissionChanged } from "./submission-events";
 
 export type JudgeSubmission = {
   id: string;
@@ -161,6 +162,9 @@ export async function completeSubmission(
       .where(eq(problems.id, submission.problemId));
   });
 
+  // Best-effort verdict fanout after the commit; never fails the result.
+  publishSubmissionChanged(submission.id);
+
   try {
     const meta = VERDICT_META[outcome.status];
     await notifyUser({
@@ -218,6 +222,9 @@ export async function failSubmission(
       .where(eq(problems.id, submission.problemId));
   });
 
+  // Best-effort fanout after the commit; never fails the error path.
+  publishSubmissionChanged(submission.id);
+
   try {
     await notifyUser({
       userId: submission.userId,
@@ -245,6 +252,10 @@ export async function recoverStaleSubmissions(): Promise<string[]> {
       ),
     )
     .returning({ id: submissions.id });
+  // Best-effort: wake open SSE streams so they see the requeued status.
+  for (const row of stale) {
+    publishSubmissionChanged(row.id);
+  }
   return stale.map((row) => row.id);
 }
 
