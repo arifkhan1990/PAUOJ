@@ -72,7 +72,7 @@ export function ContestCard({
         "group relative flex flex-col motion-safe:transition-colors",
         "hover:bg-muted/30 focus-within:bg-muted/20",
         isLive && "border-l-2 border-l-emerald-500",
-        "sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)_10.5rem] sm:gap-5 sm:px-5",
+        "sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)_12rem] sm:gap-5 sm:px-5",
         className,
       )}
     >
@@ -151,7 +151,6 @@ export function ContestCard({
             <Countdown
               target={isLive ? contest.endAt : contest.startAt}
               label={isLive ? "Ends in" : "Starts in"}
-              compact
               className="whitespace-nowrap text-[11px] text-muted-foreground"
             />
             <Link
